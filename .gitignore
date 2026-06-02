@@ -1,0 +1,12 @@
+.next/
+node_modules/
+dist/
+out/
+.env
+*.tsbuildinfo
+.vercel/
+coverage/
+.codex
+.agents
+package-lock.json
+.env*

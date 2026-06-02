@@ -1,0 +1,99 @@
+import type { PortableTextBlock } from "next-sanity";
+
+export type SanityImage = {
+  url?: string;
+  alt?: string;
+};
+
+export type ResumeFile = {
+  url?: string;
+};
+
+export type SiteSettings = {
+  _id: string;
+  name: string;
+  role?: string;
+  shortBio?: string;
+  heroDescription?: string;
+  profileImage?: SanityImage;
+  email?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+  resumeFile?: ResumeFile;
+  resumeUrl?: string;
+  location?: string;
+  availabilityText?: string;
+  heroMetrics?: string[];
+  headerCtaText?: string;
+  primaryCtaText?: string;
+  secondaryCtaText?: string;
+  emailCtaText?: string;
+  resumeCtaText?: string;
+  aboutSummary?: string;
+  focusAreas?: string[];
+  contactHeadline?: string;
+  contactDescription?: string;
+  seoTitle?: string;
+  seoDescription?: string;
+};
+
+export type ExperienceItem = {
+  _id: string;
+  role: string;
+  company: string;
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+  currentRole?: boolean;
+  shortDescription?: string;
+  bulletPoints?: string[];
+  skills?: string[];
+  displayOrder?: number;
+};
+
+export type ProjectSummary = {
+  _id: string;
+  title: string;
+  slug?: string;
+  shortSummary?: string;
+  coverImage?: SanityImage;
+  technologies?: string[];
+  keyMetrics?: string[];
+  githubUrl?: string;
+  demoUrl?: string;
+  featured?: boolean;
+  displayOrder?: number;
+};
+
+export type ProjectDetail = ProjectSummary & {
+  problemStatement?: string;
+  approach?: string;
+  results?: string;
+  limitations?: string;
+  futureImprovements?: string;
+  architectureImage?: SanityImage;
+  screenshots?: SanityImage[];
+  detailedContent?: PortableTextBlock[];
+};
+
+export type SkillCategory = {
+  _id: string;
+  title: string;
+  skills?: string[];
+  displayOrder?: number;
+};
+
+export type TechnicalNoteSummary = {
+  _id: string;
+  title: string;
+  slug?: string;
+  shortSummary?: string;
+  tags?: string[];
+  publishedDate?: string;
+  featured?: boolean;
+  coverImage?: SanityImage;
+};
+
+export type TechnicalNoteDetail = TechnicalNoteSummary & {
+  content?: PortableTextBlock[];
+};

@@ -1,0 +1,36 @@
+{
+  "name": "aditya-more-ai-portfolio",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "sanity": "sanity"
+  },
+  "dependencies": {
+    "@portabletext/react": "^3.2.1",
+    "@sanity/image-url": "^1.1.0",
+    "@sanity/vision": "^3.88.3",
+    "lucide-react": "^0.511.0",
+    "next": "^15.3.3",
+    "next-sanity": "^9.12.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "sanity": "^3.88.3",
+    "styled-components": "^6.1.19"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3.3.1",
+    "@tailwindcss/postcss": "^4.1.8",
+    "@types/node": "^22.15.29",
+    "@types/react": "^19.0.12",
+    "@types/react-dom": "^19.0.4",
+    "eslint": "^9.28.0",
+    "eslint-config-next": "^15.3.3",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^5.8.3"
+  }
+}
