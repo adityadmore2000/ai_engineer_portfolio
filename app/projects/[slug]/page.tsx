@@ -7,6 +7,11 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { PortableContent } from "@/components/PortableContent";
 import { SectionShell } from "@/components/SectionShell";
+import {
+  fallbackProjects,
+  fallbackSiteSettings,
+  getFallbackProjectBySlug
+} from "@/sanity/fallbackContent";
 import { getAllProjects, getProjectBySlug, getSiteSettings } from "@/sanity/queries";
 import type { SanityImage } from "@/sanity/types";
 
@@ -19,16 +24,21 @@ type ProjectPageProps = {
 export async function generateStaticParams() {
   const projects = await getAllProjects();
 
-  return projects
+  const sanityParams = projects
     .filter((project) => project.slug)
     .map((project) => ({ slug: project.slug }));
+  const fallbackParams = fallbackProjects.map((project) => ({
+    slug: project.slug || ""
+  }));
+
+  return [...sanityParams, ...fallbackParams].filter((param) => param.slug);
 }
 
 export async function generateMetadata({
   params
 }: ProjectPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const project = await getProjectBySlug(slug);
+  const project = (await getProjectBySlug(slug)) || getFallbackProjectBySlug(slug);
 
   if (!project) {
     return {
@@ -53,14 +63,16 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     getSiteSettings(),
     getProjectBySlug(slug)
   ]);
+  const pageSettings = settings || fallbackSiteSettings;
+  const pageProject = project || getFallbackProjectBySlug(slug);
 
-  if (!project) {
+  if (!pageProject) {
     notFound();
   }
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      <Header settings={settings} />
+      <Header settings={pageSettings} />
       <main>
         <SectionShell className="pt-12">
           <Link
@@ -77,19 +89,19 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 Project
               </p>
               <h1 className="mt-3 max-w-4xl text-4xl font-bold leading-tight text-slate-950 md:text-5xl">
-                {project.title}
+                {pageProject.title}
               </h1>
-              {project.shortSummary ? (
+              {pageProject.shortSummary ? (
                 <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-700">
-                  {project.shortSummary}
+                  {pageProject.shortSummary}
                 </p>
               ) : null}
 
-              {project.coverImage?.url ? (
+              {pageProject.coverImage?.url ? (
                 <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
                   <Image
-                    src={project.coverImage.url}
-                    alt={project.coverImage.alt || `${project.title} cover image`}
+                    src={pageProject.coverImage.url}
+                    alt={pageProject.coverImage.alt || `${pageProject.title} cover image`}
                     fill
                     className="object-cover"
                     priority
@@ -97,26 +109,26 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 </div>
               ) : null}
 
-              <DetailBlock title="Problem" text={project.problemStatement} />
-              <DetailBlock title="Approach" text={project.approach} />
-              <DetailBlock title="Results" text={project.results} />
+              <DetailBlock title="Problem" text={pageProject.problemStatement} />
+              <DetailBlock title="Approach" text={pageProject.approach} />
+              <DetailBlock title="Results" text={pageProject.results} />
 
-              {project.architectureImage?.url ? (
+              {pageProject.architectureImage?.url ? (
                 <ImageBlock
                   title="Architecture"
-                  src={project.architectureImage.url}
+                  src={pageProject.architectureImage.url}
                   alt={
-                    project.architectureImage.alt ||
-                    `${project.title} architecture diagram`
+                    pageProject.architectureImage.alt ||
+                    `${pageProject.title} architecture diagram`
                   }
                 />
               ) : null}
 
-              {project.screenshots?.length ? (
+              {pageProject.screenshots?.length ? (
                 <section className="mt-12">
                   <h2 className="text-2xl font-bold text-slate-950">Screenshots</h2>
                   <div className="mt-5 grid gap-5 sm:grid-cols-2">
-                    {project.screenshots
+                    {pageProject.screenshots
                       .filter(hasImageUrl)
                       .map((screenshot) => (
                       <div
@@ -125,7 +137,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                       >
                         <Image
                           src={screenshot.url}
-                          alt={screenshot.alt || `${project.title} screenshot`}
+                          alt={screenshot.alt || `${pageProject.title} screenshot`}
                           fill
                           className="object-cover"
                         />
@@ -135,28 +147,28 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 </section>
               ) : null}
 
-              <DetailBlock title="Limitations" text={project.limitations} />
+              <DetailBlock title="Limitations" text={pageProject.limitations} />
               <DetailBlock
                 title="Future Improvements"
-                text={project.futureImprovements}
+                text={pageProject.futureImprovements}
               />
 
-              {project.detailedContent ? (
+              {pageProject.detailedContent ? (
                 <section className="mt-12">
                   <h2 className="text-2xl font-bold text-slate-950">Details</h2>
-                  <PortableContent value={project.detailedContent} />
+                  <PortableContent value={pageProject.detailedContent} />
                 </section>
               ) : null}
             </article>
 
             <aside className="h-fit rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
-              {project.keyMetrics?.length ? (
+              {pageProject.keyMetrics?.length ? (
                 <div>
                   <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
                     Outcomes
                   </h2>
                   <ul className="mt-3 space-y-2">
-                    {project.keyMetrics.map((metric) => (
+                    {pageProject.keyMetrics.map((metric) => (
                       <li
                         key={metric}
                         className="rounded-md bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-950"
@@ -168,13 +180,13 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 </div>
               ) : null}
 
-              {project.technologies?.length ? (
+              {pageProject.technologies?.length ? (
                 <div className="mt-6">
                   <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
                     Technologies
                   </h2>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {project.technologies.map((technology) => (
+                    {pageProject.technologies.map((technology) => (
                       <span
                         key={technology}
                         className="rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1 text-sm text-slate-700"
@@ -187,9 +199,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               ) : null}
 
               <div className="mt-6 flex flex-col gap-3">
-                {project.githubUrl ? (
+                {pageProject.githubUrl ? (
                   <a
-                    href={project.githubUrl}
+                    href={pageProject.githubUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
@@ -198,9 +210,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                     GitHub
                   </a>
                 ) : null}
-                {project.demoUrl ? (
+                {pageProject.demoUrl ? (
                   <a
-                    href={project.demoUrl}
+                    href={pageProject.demoUrl}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center justify-center gap-2 rounded-md bg-teal-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-900"
@@ -214,7 +226,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           </div>
         </SectionShell>
       </main>
-      <Footer settings={settings} />
+      <Footer settings={pageSettings} />
     </div>
   );
 }

@@ -6,7 +6,7 @@ import { useState } from "react";
 import type { SiteSettings } from "@/sanity/types";
 
 const navItems = [
-  { label: "Home", href: "/" },
+  { label: "Home", href: "/#home" },
   { label: "About", href: "/#about" },
   { label: "Experience", href: "/#experience" },
   { label: "Projects", href: "/#projects" },
@@ -23,7 +23,7 @@ export function Header({ settings }: { settings?: SiteSettings | null }) {
   return (
     <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur">
       <nav className="mx-auto flex max-w-6xl items-center justify-between px-5 py-3 md:px-8">
-        <Link href="/" className="text-base font-bold text-slate-950">
+        <Link href="/#home" className="text-base font-bold text-slate-950">
           {name}
         </Link>
 

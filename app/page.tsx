@@ -10,6 +10,13 @@ import { Skills } from "@/components/Skills";
 import { TechnicalNotes } from "@/components/TechnicalNotes";
 import type { Metadata } from "next";
 import {
+  fallbackExperiences,
+  fallbackProjects,
+  fallbackSiteSettings,
+  fallbackSkillCategories,
+  toProjectSummaries
+} from "@/sanity/fallbackContent";
+import {
   getExperiences,
   getFeaturedProjects,
   getFeaturedTechnicalNotes,
@@ -45,21 +52,29 @@ export default async function Home() {
       getSkillCategories(),
       getFeaturedTechnicalNotes()
     ]);
+  const pageSettings = settings || fallbackSiteSettings;
+  const pageExperiences = experiences.length ? experiences : fallbackExperiences;
+  const pageProjects = projects.length
+    ? projects
+    : toProjectSummaries(fallbackProjects);
+  const pageSkillCategories = skillCategories.length
+    ? skillCategories
+    : fallbackSkillCategories;
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
-      <Header settings={settings} />
+      <Header settings={pageSettings} />
       <main>
-        <Hero settings={settings} />
-        <About settings={settings} />
-        <Experience experiences={experiences} />
-        <Projects projects={projects} />
-        <Skills categories={skillCategories} />
-        <ResumeSection settings={settings} />
+        <Hero settings={pageSettings} />
+        <About settings={pageSettings} />
+        <Experience experiences={pageExperiences} />
+        <Projects projects={pageProjects} />
+        <Skills categories={pageSkillCategories} />
+        <ResumeSection settings={pageSettings} />
         <TechnicalNotes notes={notes} />
-        <Contact settings={settings} />
+        <Contact settings={pageSettings} />
       </main>
-      <Footer settings={settings} />
+      <Footer settings={pageSettings} />
     </div>
   );
 }
