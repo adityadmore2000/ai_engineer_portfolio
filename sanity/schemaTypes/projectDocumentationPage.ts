@@ -91,7 +91,15 @@ export const projectDocumentationPage = defineType({
               }
             ]
           }
-        }
+        },
+        { type: "documentationCodeBlock" },
+        { type: "documentationMermaidDiagram" },
+        { type: "documentationCallout" },
+        { type: "documentationTable" },
+        { type: "documentationTimeline" },
+        { type: "documentationBadgeGroup" },
+        { type: "documentationCTAGroup" },
+        { type: "documentationImage" }
       ],
       validation: (Rule) => Rule.required().min(1)
     }),

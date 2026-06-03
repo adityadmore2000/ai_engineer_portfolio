@@ -1,3 +1,4 @@
+import { documentationBlockTypes } from "./documentationBlocks";
 import { experience } from "./experience";
 import { project } from "./project";
 import { projectDocumentationPage } from "./projectDocumentationPage";
@@ -10,6 +11,7 @@ export const schemaTypes = [
   experience,
   project,
   projectDocumentationPage,
+  ...documentationBlockTypes,
   skillCategory,
   technicalNote
 ];

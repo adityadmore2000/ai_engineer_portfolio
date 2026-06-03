@@ -57,6 +57,13 @@ a {
   margin: 1.5rem 0 0.5rem;
 }
 
+.prose-content h4 {
+  color: #111827;
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.5rem;
+}
+
 .prose-content p {
   margin: 0.85rem 0;
 }
@@ -75,4 +82,8 @@ a {
   color: var(--accent-strong);
   font-weight: 600;
   text-decoration: underline;
+}
+
+.prose-content pre {
+  max-width: 100%;
 }
