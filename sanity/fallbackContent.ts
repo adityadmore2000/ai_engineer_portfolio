@@ -103,7 +103,7 @@ export const fallbackExperiences: ExperienceItem[] = [
 
 export const fallbackProjects: ProjectDetail[] = [
   {
-    _id: "fallback.project.resume-tailoring",
+    _id: "project.resume-tailoring",
     title: "Evidence-Grounded Resume Tailoring Platform",
     slug: "evidence-grounded-resume-tailoring-platform",
     shortSummary:
@@ -124,7 +124,7 @@ export const fallbackProjects: ProjectDetail[] = [
       "Add richer evaluation dashboards, better role parsing, and collaborative review workflows."
   },
   {
-    _id: "fallback.project.parcel-monitoring",
+    _id: "project.parcel-monitoring",
     title: "Warehouse Parcel Monitoring System",
     slug: "warehouse-parcel-monitoring-system",
     shortSummary:
@@ -145,7 +145,7 @@ export const fallbackProjects: ProjectDetail[] = [
       "Improve multi-camera tracking, active learning loops, and dashboard workflows for operations teams."
   },
   {
-    _id: "fallback.project.math-mentor",
+    _id: "project.math-mentor",
     title: "Math Mentor AI",
     slug: "math-mentor-ai",
     shortSummary:

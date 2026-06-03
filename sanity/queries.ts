@@ -2,6 +2,7 @@ import { groq } from "next-sanity";
 import { sanityFetch } from "./client";
 import type {
   ExperienceItem,
+  ProjectDocumentationPage,
   ProjectDetail,
   ProjectSummary,
   SiteSettings,
@@ -101,6 +102,40 @@ export const projectBySlugQuery = groq`
   }
 `;
 
+export const projectDocumentationPagesByProjectSlugQuery = groq`
+  *[
+    _type == "projectDocumentationPage" &&
+    (
+      project->slug.current == $projectSlug ||
+      project._ref == $projectId
+    )
+  ] | order(coalesce(order, 0) asc, title asc) {
+    _id,
+    title,
+    "slug": slug.current,
+    description,
+    body,
+    "order": coalesce(order, 0),
+    "showInNavigation": coalesce(showInNavigation, true),
+    "showInExploreMore": coalesce(showInExploreMore, true),
+    statusLabel,
+    project->{
+      _id,
+      title,
+      "slug": slug.current
+    },
+    "projectRef": project._ref,
+    parentPage->{
+      _id,
+      title,
+      "slug": slug.current
+    },
+    seoTitle,
+    seoDescription,
+    socialImage{${imageFields}}
+  }
+`;
+
 export const skillCategoriesQuery = groq`
   *[_type == "skillCategory"] | order(coalesce(displayOrder, 999) asc, title asc) {
     _id,
@@ -165,6 +200,18 @@ export async function getProjectBySlug(slug: string) {
     query: projectBySlugQuery,
     params: { slug }
   });
+}
+
+export async function getProjectDocumentationPagesByProjectSlug(
+  projectSlug: string,
+  projectId = ""
+) {
+  return (
+    (await sanityFetch<ProjectDocumentationPage[]>({
+      query: projectDocumentationPagesByProjectSlugQuery,
+      params: { projectSlug, projectId }
+    })) || []
+  );
 }
 
 export async function getSkillCategories() {

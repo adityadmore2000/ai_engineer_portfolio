@@ -76,6 +76,32 @@ export type ProjectDetail = ProjectSummary & {
   detailedContent?: PortableTextBlock[];
 };
 
+export type ProjectDocumentationPage = {
+  _id: string;
+  title: string;
+  slug?: string;
+  description?: string;
+  body?: PortableTextBlock[];
+  order?: number;
+  showInNavigation?: boolean;
+  showInExploreMore?: boolean;
+  statusLabel?: string;
+  project?: {
+    _id: string;
+    title?: string;
+    slug?: string;
+  };
+  projectRef?: string;
+  parentPage?: {
+    _id: string;
+    title?: string;
+    slug?: string;
+  };
+  seoTitle?: string;
+  seoDescription?: string;
+  socialImage?: SanityImage;
+};
+
 export type SkillCategory = {
   _id: string;
   title: string;
