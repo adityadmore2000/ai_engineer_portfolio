@@ -71,10 +71,20 @@ a {
 .prose-content ul,
 .prose-content ol {
   margin: 0.85rem 0;
-  padding-left: 1.25rem;
+  padding-left: 1.5rem;
+}
+
+/* Restore bullets/numbers stripped by Tailwind v4 Preflight's `list-style: none`. */
+.prose-content ul {
+  list-style-type: disc;
+}
+
+.prose-content ol {
+  list-style-type: decimal;
 }
 
 .prose-content li {
+  display: list-item;
   margin: 0.35rem 0;
 }
 
