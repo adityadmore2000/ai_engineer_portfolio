@@ -1,4 +1,5 @@
 import type { SiteSettings } from "@/sanity/types";
+import { Markdown } from "./Markdown";
 import { SectionShell } from "./SectionShell";
 
 export function About({ settings }: { settings?: SiteSettings | null }) {
@@ -11,9 +12,13 @@ export function About({ settings }: { settings?: SiteSettings | null }) {
       id="about"
       eyebrow="About"
       title="Applied AI for production-minded teams"
-      description={settings.aboutSummary}
       className="bg-white"
     >
+      {settings.aboutSummary ? (
+        <Markdown className="mb-10 max-w-3xl text-lg text-slate-700">
+          {settings.aboutSummary}
+        </Markdown>
+      ) : null}
       {settings.focusAreas?.length ? (
         <div>
           <h3 className="text-xl font-bold text-slate-950">What I Focus On</h3>

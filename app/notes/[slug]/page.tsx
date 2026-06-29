@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { Markdown } from "@/components/Markdown";
 import { PortableContent } from "@/components/PortableContent";
 import { SectionShell } from "@/components/SectionShell";
 import { getAllTechnicalNotes, getSiteSettings, getTechnicalNoteBySlug } from "@/sanity/queries";
@@ -76,9 +77,9 @@ export default async function NotePage({ params }: NotePageProps) {
               {note.title}
             </h1>
             {note.shortSummary ? (
-              <p className="mt-5 text-lg leading-8 text-slate-700">
+              <Markdown className="mt-5 text-lg text-slate-700">
                 {note.shortSummary}
-              </p>
+              </Markdown>
             ) : null}
             {note.publishedDate ? (
               <p className="mt-4 text-sm text-slate-500">

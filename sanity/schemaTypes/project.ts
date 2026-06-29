@@ -27,8 +27,7 @@ export const project = defineType({
     defineField({
       name: "shortSummary",
       title: "Short Summary",
-      type: "text",
-      rows: 4
+      type: "markdown"
     }),
     defineField({
       name: "coverImage",
@@ -82,20 +81,17 @@ export const project = defineType({
     defineField({
       name: "problemStatement",
       title: "Problem Statement",
-      type: "text",
-      rows: 5
+      type: "markdown"
     }),
     defineField({
       name: "approach",
       title: "Approach",
-      type: "text",
-      rows: 6
+      type: "markdown"
     }),
     defineField({
       name: "results",
       title: "Results",
-      type: "text",
-      rows: 5
+      type: "markdown"
     }),
     defineField({
       name: "architectureImage",
@@ -131,14 +127,12 @@ export const project = defineType({
     defineField({
       name: "limitations",
       title: "Limitations",
-      type: "text",
-      rows: 4
+      type: "markdown"
     }),
     defineField({
       name: "futureImprovements",
       title: "Future Improvements",
-      type: "text",
-      rows: 4
+      type: "markdown"
     }),
     defineField({
       name: "detailedContent",

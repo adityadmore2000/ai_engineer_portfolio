@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Github, Linkedin, Mail } from "lucide-react";
 import type { SiteSettings } from "@/sanity/types";
+import { Markdown } from "./Markdown";
 
 export function Footer({ settings }: { settings?: SiteSettings | null }) {
   const currentYear = new Date().getFullYear();
@@ -11,9 +12,9 @@ export function Footer({ settings }: { settings?: SiteSettings | null }) {
         <div>
           <p className="font-bold text-slate-950">{settings?.name || "Aditya More"}</p>
           {settings?.shortBio ? (
-            <p className="mt-1 max-w-2xl text-sm text-slate-600">
+            <Markdown className="mt-1 max-w-2xl text-sm text-slate-600">
               {settings.shortBio}
-            </p>
+            </Markdown>
           ) : null}
           <p className="mt-2 text-sm text-slate-500">
             © {currentYear} {settings?.name || "Aditya More"}. All rights reserved.

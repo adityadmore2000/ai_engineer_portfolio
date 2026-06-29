@@ -1,4 +1,5 @@
 import type { ExperienceItem } from "@/sanity/types";
+import { Markdown } from "./Markdown";
 import { SectionShell } from "./SectionShell";
 
 export function Experience({ experiences }: { experiences: ExperienceItem[] }) {
@@ -33,9 +34,9 @@ export function Experience({ experiences }: { experiences: ExperienceItem[] }) {
               </p>
             </div>
             {experience.shortDescription ? (
-              <p className="mt-4 leading-7 text-slate-700">
+              <Markdown className="mt-4 text-slate-700">
                 {experience.shortDescription}
-              </p>
+              </Markdown>
             ) : null}
             {experience.bulletPoints?.length ? (
               <ul className="mt-4 list-disc space-y-2 pl-5 text-slate-700">

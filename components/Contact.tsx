@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { Github, Linkedin, Mail } from "lucide-react";
 import type { SiteSettings } from "@/sanity/types";
 import { getResumeHref } from "@/sanity/utils";
+import { Markdown } from "./Markdown";
 import { SectionShell } from "./SectionShell";
 
 export function Contact({ settings }: { settings?: SiteSettings | null }) {
@@ -18,8 +19,12 @@ export function Contact({ settings }: { settings?: SiteSettings | null }) {
       id="contact"
       eyebrow="Contact"
       title={settings.contactHeadline}
-      description={settings.contactDescription}
     >
+      {settings.contactDescription ? (
+        <Markdown className="mb-10 max-w-3xl text-lg text-slate-700">
+          {settings.contactDescription}
+        </Markdown>
+      ) : null}
       <div className="flex flex-wrap gap-3">
         {settings.email ? (
           <a

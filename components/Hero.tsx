@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { Github, Linkedin, Mail } from "lucide-react";
 import type { SiteSettings } from "@/sanity/types";
 import { getResumeHref } from "@/sanity/utils";
+import { Markdown } from "./Markdown";
 
 export function Hero({ settings }: { settings?: SiteSettings | null }) {
   const resumeHref = getResumeHref(settings);
@@ -37,9 +38,9 @@ export function Hero({ settings }: { settings?: SiteSettings | null }) {
             {settings.name}
           </h1>
           {settings.heroDescription ? (
-            <p className="mt-6 max-w-3xl text-xl leading-9 text-slate-700">
+            <Markdown className="mt-6 max-w-3xl text-xl text-slate-700">
               {settings.heroDescription}
-            </p>
+            </Markdown>
           ) : null}
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">

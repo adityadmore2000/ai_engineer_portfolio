@@ -22,14 +22,12 @@ export const siteSettings = defineType({
     defineField({
       name: "shortBio",
       title: "Short Bio",
-      type: "text",
-      rows: 3
+      type: "markdown"
     }),
     defineField({
       name: "heroDescription",
       title: "Hero Description",
-      type: "text",
-      rows: 4
+      type: "markdown"
     }),
     defineField({
       name: "profileImage",
@@ -120,8 +118,7 @@ export const siteSettings = defineType({
     defineField({
       name: "aboutSummary",
       title: "About Summary",
-      type: "text",
-      rows: 5
+      type: "markdown"
     }),
     defineField({
       name: "focusAreas",
@@ -137,8 +134,7 @@ export const siteSettings = defineType({
     defineField({
       name: "contactDescription",
       title: "Contact Description",
-      type: "text",
-      rows: 3
+      type: "markdown"
     }),
     defineField({
       name: "seoTitle",

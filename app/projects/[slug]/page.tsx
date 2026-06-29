@@ -1,18 +1,28 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, ExternalLink, Github } from "lucide-react";
+import { ArrowLeft, BookOpen, ExternalLink, Github } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
+import { LightboxImage } from "@/components/LightboxImage";
+import { Markdown } from "@/components/Markdown";
 import { PortableContent } from "@/components/PortableContent";
 import { SectionShell } from "@/components/SectionShell";
+import {
+  createProjectDocsSource,
+  getFirstDocumentationPage
+} from "@/lib/project-docs-source";
 import {
   fallbackProjects,
   fallbackSiteSettings,
   getFallbackProjectBySlug
 } from "@/sanity/fallbackContent";
-import { getAllProjects, getProjectBySlug, getSiteSettings } from "@/sanity/queries";
+import {
+  getAllProjects,
+  getProjectBySlug,
+  getProjectDocumentationPagesByProjectSlug,
+  getSiteSettings
+} from "@/sanity/queries";
 import type { SanityImage } from "@/sanity/types";
 
 export const revalidate = 60;
@@ -70,6 +80,17 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     notFound();
   }
 
+  const documentationPages = await getProjectDocumentationPagesByProjectSlug(
+    slug,
+    pageProject._id
+  );
+  const documentationSource = createProjectDocsSource({
+    project: pageProject,
+    pages: documentationPages,
+    docSlug: []
+  });
+  const firstDocumentationPage = getFirstDocumentationPage(documentationSource);
+
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <Header settings={pageSettings} />
@@ -92,14 +113,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 {pageProject.title}
               </h1>
               {pageProject.shortSummary ? (
-                <p className="mt-5 max-w-3xl text-lg leading-8 text-slate-700">
+                <Markdown className="mt-5 max-w-3xl text-lg text-slate-700">
                   {pageProject.shortSummary}
-                </p>
+                </Markdown>
               ) : null}
 
               {pageProject.coverImage?.url ? (
                 <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
-                  <Image
+                  <LightboxImage
                     src={pageProject.coverImage.url}
                     alt={pageProject.coverImage.alt || `${pageProject.title} cover image`}
                     fill
@@ -135,7 +156,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                         key={screenshot.url}
                         className="relative aspect-[4/3] overflow-hidden rounded-lg border border-slate-200 bg-slate-100"
                       >
-                        <Image
+                        <LightboxImage
                           src={screenshot.url}
                           alt={screenshot.alt || `${pageProject.title} screenshot`}
                           fill
@@ -199,6 +220,15 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
               ) : null}
 
               <div className="mt-6 flex flex-col gap-3">
+                {firstDocumentationPage ? (
+                  <Link
+                    href={firstDocumentationPage.url}
+                    className="inline-flex items-center justify-center gap-2 rounded-md bg-teal-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-900"
+                  >
+                    <BookOpen aria-hidden="true" size={17} />
+                    View Documentation
+                  </Link>
+                ) : null}
                 {pageProject.githubUrl ? (
                   <a
                     href={pageProject.githubUrl}
@@ -243,7 +273,7 @@ function DetailBlock({ title, text }: { title: string; text?: string }) {
   return (
     <section className="mt-12">
       <h2 className="text-2xl font-bold text-slate-950">{title}</h2>
-      <p className="mt-4 max-w-3xl leading-8 text-slate-700">{text}</p>
+      <Markdown className="mt-4 max-w-3xl text-slate-700">{text}</Markdown>
     </section>
   );
 }
@@ -261,7 +291,7 @@ function ImageBlock({
     <section className="mt-12">
       <h2 className="text-2xl font-bold text-slate-950">{title}</h2>
       <div className="relative mt-5 aspect-[16/9] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
-        <Image src={src} alt={alt} fill className="object-cover" />
+        <LightboxImage src={src} alt={alt} fill className="object-cover" />
       </div>
     </section>
   );

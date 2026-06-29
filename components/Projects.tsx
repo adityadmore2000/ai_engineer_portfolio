@@ -12,7 +12,6 @@ export function Projects({ projects }: { projects: ProjectSummary[] }) {
       id="projects"
       eyebrow="Projects"
       title="Selected AI systems"
-      description="A recruiter-friendly view of applied work across RAG, computer vision, OCR, LLM verification, and backend integration."
       className="bg-white"
     >
       <div className="grid gap-5 lg:grid-cols-3">

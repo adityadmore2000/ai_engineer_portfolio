@@ -11,6 +11,15 @@ import type {
   TechnicalNoteSummary
 } from "./types";
 
+type SanityFetchParams = Record<string, string | number | boolean>;
+type SanityFetcher = <QueryResponse>({
+  query,
+  params
+}: {
+  query: string;
+  params?: SanityFetchParams;
+}) => Promise<QueryResponse | null>;
+
 const imageFields = `
   "url": asset->url,
   "alt": coalesce(alt, asset->altText)
@@ -136,6 +145,34 @@ export const projectDocumentationPagesByProjectSlugQuery = groq`
   }
 `;
 
+export const allProjectDocumentationPagesQuery = groq`
+  *[_type == "projectDocumentationPage"] | order(coalesce(order, 0) asc, title asc) {
+    _id,
+    title,
+    "slug": slug.current,
+    description,
+    body,
+    "order": coalesce(order, 0),
+    "showInNavigation": coalesce(showInNavigation, true),
+    "showInExploreMore": coalesce(showInExploreMore, true),
+    statusLabel,
+    project->{
+      _id,
+      title,
+      "slug": slug.current
+    },
+    "projectRef": project._ref,
+    parentPage->{
+      _id,
+      title,
+      "slug": slug.current
+    },
+    seoTitle,
+    seoDescription,
+    socialImage{${imageFields}}
+  }
+`;
+
 export const skillCategoriesQuery = groq`
   *[_type == "skillCategory"] | order(coalesce(displayOrder, 999) asc, title asc) {
     _id,
@@ -175,28 +212,31 @@ export const technicalNoteBySlugQuery = groq`
   }
 `;
 
-export async function getSiteSettings() {
-  return sanityFetch<SiteSettings>({ query: siteSettingsQuery });
+export async function getSiteSettings(fetcher: SanityFetcher = sanityFetch) {
+  return fetcher<SiteSettings>({ query: siteSettingsQuery });
 }
 
-export async function getExperiences() {
+export async function getExperiences(fetcher: SanityFetcher = sanityFetch) {
   return (
-    (await sanityFetch<ExperienceItem[]>({ query: experiencesQuery })) || []
+    (await fetcher<ExperienceItem[]>({ query: experiencesQuery })) || []
   );
 }
 
-export async function getFeaturedProjects() {
+export async function getFeaturedProjects(fetcher: SanityFetcher = sanityFetch) {
   return (
-    (await sanityFetch<ProjectSummary[]>({ query: featuredProjectsQuery })) || []
+    (await fetcher<ProjectSummary[]>({ query: featuredProjectsQuery })) || []
   );
 }
 
-export async function getAllProjects() {
-  return (await sanityFetch<ProjectSummary[]>({ query: allProjectsQuery })) || [];
+export async function getAllProjects(fetcher: SanityFetcher = sanityFetch) {
+  return (await fetcher<ProjectSummary[]>({ query: allProjectsQuery })) || [];
 }
 
-export async function getProjectBySlug(slug: string) {
-  return sanityFetch<ProjectDetail>({
+export async function getProjectBySlug(
+  slug: string,
+  fetcher: SanityFetcher = sanityFetch
+) {
+  return fetcher<ProjectDetail>({
     query: projectBySlugQuery,
     params: { slug }
   });
@@ -204,40 +244,56 @@ export async function getProjectBySlug(slug: string) {
 
 export async function getProjectDocumentationPagesByProjectSlug(
   projectSlug: string,
-  projectId = ""
+  projectId = "",
+  fetcher: SanityFetcher = sanityFetch
 ) {
   return (
-    (await sanityFetch<ProjectDocumentationPage[]>({
+    (await fetcher<ProjectDocumentationPage[]>({
       query: projectDocumentationPagesByProjectSlugQuery,
       params: { projectSlug, projectId }
     })) || []
   );
 }
 
-export async function getSkillCategories() {
+export async function getAllProjectDocumentationPages(
+  fetcher: SanityFetcher = sanityFetch
+) {
   return (
-    (await sanityFetch<SkillCategory[]>({ query: skillCategoriesQuery })) || []
+    (await fetcher<ProjectDocumentationPage[]>({
+      query: allProjectDocumentationPagesQuery
+    })) || []
   );
 }
 
-export async function getFeaturedTechnicalNotes() {
+export async function getSkillCategories(fetcher: SanityFetcher = sanityFetch) {
   return (
-    (await sanityFetch<TechnicalNoteSummary[]>({
+    (await fetcher<SkillCategory[]>({ query: skillCategoriesQuery })) || []
+  );
+}
+
+export async function getFeaturedTechnicalNotes(
+  fetcher: SanityFetcher = sanityFetch
+) {
+  return (
+    (await fetcher<TechnicalNoteSummary[]>({
       query: featuredTechnicalNotesQuery
     })) || []
   );
 }
 
-export async function getAllTechnicalNotes() {
+export async function getAllTechnicalNotes(fetcher: SanityFetcher = sanityFetch) {
   return (
-    (await sanityFetch<TechnicalNoteSummary[]>({
+    (await fetcher<TechnicalNoteSummary[]>({
       query: allTechnicalNotesQuery
     })) || []
   );
 }
 
-export async function getTechnicalNoteBySlug(slug: string) {
-  return sanityFetch<TechnicalNoteDetail>({
+export async function getTechnicalNoteBySlug(
+  slug: string,
+  fetcher: SanityFetcher = sanityFetch
+) {
+  return fetcher<TechnicalNoteDetail>({
     query: technicalNoteBySlugQuery,
     params: { slug }
   });

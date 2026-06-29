@@ -33,8 +33,7 @@ export const technicalNote = defineType({
     defineField({
       name: "shortSummary",
       title: "Short Summary",
-      type: "text",
-      rows: 3
+      type: "markdown"
     }),
     defineField({
       name: "content",

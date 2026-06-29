@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { TechnicalNoteSummary } from "@/sanity/types";
+import { Markdown } from "./Markdown";
 import { SectionShell } from "./SectionShell";
 
 export function TechnicalNotes({ notes }: { notes: TechnicalNoteSummary[] }) {
@@ -30,7 +31,9 @@ export function TechnicalNotes({ notes }: { notes: TechnicalNoteSummary[] }) {
             ) : null}
             <h3 className="mt-2 text-xl font-bold text-slate-950">{note.title}</h3>
             {note.shortSummary ? (
-              <p className="mt-3 leading-7 text-slate-700">{note.shortSummary}</p>
+              <Markdown className="mt-3 text-slate-700">
+                {note.shortSummary}
+              </Markdown>
             ) : null}
             {note.tags?.length ? (
               <div className="mt-4 flex flex-wrap gap-2">

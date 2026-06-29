@@ -14,6 +14,7 @@ type ResolvedDocumentationPage = ProjectDocumentationPage & {
 export type ProjectDocsSource = {
   tree: Root;
   page: ResolvedDocumentationPage | null;
+  pages: ResolvedDocumentationPage[];
   toc: TOCItemType[];
   headingIdByBlockKey: Record<string, string>;
   previous?: Item;
@@ -89,6 +90,7 @@ export function createProjectDocsSource({
   return {
     tree,
     page,
+    pages: validPages,
     toc,
     headingIdByBlockKey,
     previous: currentIndex > 0 ? flatItems[currentIndex - 1] : undefined,
@@ -98,6 +100,21 @@ export function createProjectDocsSource({
         : undefined,
     isAmbiguousPath
   };
+}
+
+export function getFirstDocumentationPage(source: ProjectDocsSource) {
+  return source.pages
+    .filter(
+      (page) =>
+        page.showInNavigation !== false &&
+        page.showInExploreMore !== false &&
+        !page.parentPage?._id
+    )
+    .sort(comparePages)[0] || source.pages
+    .filter(
+      (page) => page.showInNavigation !== false && page.showInExploreMore !== false
+    )
+    .sort(comparePages)[0] || null;
 }
 
 function toPageRecord(page: ProjectDocumentationPage): PageRecord {

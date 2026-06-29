@@ -1,14 +1,15 @@
-import Image from "next/image";
 import Link from "next/link";
 import { ExternalLink, Github } from "lucide-react";
 import type { ProjectSummary } from "@/sanity/types";
+import { LightboxImage } from "./LightboxImage";
+import { Markdown } from "./Markdown";
 
 export function ProjectCard({ project }: { project: ProjectSummary }) {
   return (
     <article className="flex h-full flex-col overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       {project.coverImage?.url ? (
         <div className="relative aspect-[16/9] border-b border-slate-200 bg-slate-100">
-          <Image
+          <LightboxImage
             src={project.coverImage.url}
             alt={project.coverImage.alt || `${project.title} cover image`}
             fill
@@ -24,9 +25,9 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
       <div className="flex flex-1 flex-col p-5">
         <h3 className="text-xl font-bold text-slate-950">{project.title}</h3>
         {project.shortSummary ? (
-          <p className="mt-3 line-clamp-4 leading-7 text-slate-700">
+          <Markdown className="mt-3 text-slate-700">
             {project.shortSummary}
-          </p>
+          </Markdown>
         ) : null}
 
         {project.keyMetrics?.[0] ? (

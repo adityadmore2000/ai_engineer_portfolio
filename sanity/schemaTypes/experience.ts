@@ -44,8 +44,7 @@ export const experience = defineType({
     defineField({
       name: "shortDescription",
       title: "Short Description",
-      type: "text",
-      rows: 3
+      type: "markdown"
     }),
     defineField({
       name: "bulletPoints",

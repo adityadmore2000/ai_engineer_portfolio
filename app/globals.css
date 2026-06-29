@@ -87,3 +87,28 @@ a {
 .prose-content pre {
   max-width: 100%;
 }
+
+.prose-content strong {
+  font-weight: 700;
+  color: #111827;
+}
+
+.prose-content em {
+  font-style: italic;
+}
+
+.prose-content code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  background: var(--surface-subtle);
+  border-radius: 0.25rem;
+  padding: 0.1rem 0.35rem;
+}
+
+.prose-content :first-child {
+  margin-top: 0;
+}
+
+.prose-content :last-child {
+  margin-bottom: 0;
+}
