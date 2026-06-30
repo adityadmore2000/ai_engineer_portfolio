@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Hand, MousePointer2 } from "lucide-react";
 
 type ImageLightboxProps = {
   src: string;
@@ -8,6 +9,8 @@ type ImageLightboxProps = {
   isOpen: boolean;
   onClose: () => void;
 };
+
+type Tool = "pan" | "cursor";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 4;
@@ -20,16 +23,18 @@ export function ImageLightbox({ src, alt, isOpen, onClose }: ImageLightboxProps)
   const [scale, setScale] = useState(1);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
+  const [activeTool, setActiveTool] = useState<Tool>("cursor");
 
   const dragStart = useRef({ x: 0, y: 0 });
   const translateStart = useRef({ x: 0, y: 0 });
 
-  // Reset zoom/pan whenever the lightbox is (re)opened, including on a new image.
+  // Reset zoom/pan/tool whenever the lightbox is (re)opened, including on a new image.
   useEffect(() => {
     if (isOpen) {
       setScale(1);
       setTranslate({ x: 0, y: 0 });
       setIsDragging(false);
+      setActiveTool("cursor");
     }
   }, [isOpen, src]);
 
@@ -67,7 +72,8 @@ export function ImageLightbox({ src, alt, isOpen, onClose }: ImageLightboxProps)
 
   const handlePointerDown = useCallback(
     (event: React.PointerEvent<HTMLImageElement>) => {
-      if (scale <= MIN_SCALE) {
+      // Panning is gated on the explicit Pan tool, not on zoom level.
+      if (activeTool !== "pan") {
         return;
       }
       event.currentTarget.setPointerCapture(event.pointerId);
@@ -75,7 +81,7 @@ export function ImageLightbox({ src, alt, isOpen, onClose }: ImageLightboxProps)
       dragStart.current = { x: event.clientX, y: event.clientY };
       translateStart.current = { ...translate };
     },
-    [scale, translate]
+    [activeTool, translate]
   );
 
   const handlePointerMove = useCallback(
@@ -107,8 +113,28 @@ export function ImageLightbox({ src, alt, isOpen, onClose }: ImageLightboxProps)
     return null;
   }
 
-  const pannable = scale > MIN_SCALE;
-  const cursor = isDragging ? "grabbing" : pannable ? "grab" : "zoom-in";
+  const isPanMode = activeTool === "pan";
+  // In pan mode the cursor reflects grab/grabbing; otherwise the default
+  // zoom-affordance cursor (scroll-wheel zoom still works here).
+  const cursor = isPanMode
+    ? isDragging
+      ? "grabbing"
+      : "grab"
+    : "zoom-in";
+
+  const toolButtonStyle = (active: boolean): React.CSSProperties => ({
+    width: "2.75rem",
+    height: "2.75rem",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    color: "#ffffff",
+    background: active ? "var(--accent)" : "rgba(255,255,255,0.12)",
+    border: active ? "1px solid var(--accent-strong)" : "1px solid transparent",
+    borderRadius: "9999px",
+    cursor: "pointer",
+    zIndex: 1
+  });
 
   return (
     <div
@@ -127,41 +153,79 @@ export function ImageLightbox({ src, alt, isOpen, onClose }: ImageLightboxProps)
         overflow: "hidden"
       }}
     >
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onClose();
-        }}
-        aria-label="Close image preview"
+      <div
         style={{
           position: "absolute",
           top: "1rem",
           right: "1rem",
-          width: "2.75rem",
-          height: "2.75rem",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          fontSize: "1.75rem",
-          lineHeight: 1,
-          color: "#ffffff",
-          background: "rgba(255,255,255,0.12)",
-          border: "none",
-          borderRadius: "9999px",
-          cursor: "pointer",
+          gap: "0.5rem",
           zIndex: 1
         }}
+        onClick={(event) => event.stopPropagation()}
       >
-        ×
-      </button>
+        {/* Mutually exclusive tool toggle: exactly one of Pan / Cursor is active. */}
+        <div role="group" aria-label="Image tool" style={{ display: "flex", gap: "0.5rem" }}>
+          <button
+            type="button"
+            aria-label="Pan tool"
+            aria-pressed={isPanMode}
+            onClick={() => setActiveTool("pan")}
+            style={toolButtonStyle(isPanMode)}
+          >
+            <Hand aria-hidden="true" size={20} />
+          </button>
+          <button
+            type="button"
+            aria-label="Cursor tool"
+            aria-pressed={!isPanMode}
+            onClick={() => setActiveTool("cursor")}
+            style={toolButtonStyle(!isPanMode)}
+          >
+            <MousePointer2 aria-hidden="true" size={20} />
+          </button>
+        </div>
+
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close image preview"
+          style={{
+            width: "2.75rem",
+            height: "2.75rem",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "1.75rem",
+            lineHeight: 1,
+            color: "#ffffff",
+            background: "rgba(255,255,255,0.12)",
+            border: "1px solid transparent",
+            borderRadius: "9999px",
+            cursor: "pointer"
+          }}
+        >
+          ×
+        </button>
+      </div>
 
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={src}
         alt={alt}
         draggable={false}
-        onClick={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          // Always keep a click on the image from bubbling to the backdrop
+          // (which would close the lightbox). In pan mode, additionally
+          // suppress any click-driven image interactions — the user chose
+          // to drag/pan, not to click.
+          event.stopPropagation();
+          if (isPanMode) {
+            return;
+          }
+          // Cursor mode: existing click-based interactions run as before.
+        }}
         onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
