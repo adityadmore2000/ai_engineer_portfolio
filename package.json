@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "sanity": "sanity"
+    "sanity": "sanity",
+    "publish": "npx tsx scripts/publish.ts"
   },
   "dependencies": {
     "@portabletext/react": "^3.2.1",

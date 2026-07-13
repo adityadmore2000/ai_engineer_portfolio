@@ -10,3 +10,4 @@ coverage/
 .agents
 package-lock.json
 .env*
+.venv/
