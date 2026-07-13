@@ -63,6 +63,7 @@ export type ProjectSummary = {
   demoUrl?: string;
   featured?: boolean;
   displayOrder?: number;
+  published?: boolean;
 };
 
 export type ProjectDetail = ProjectSummary & {

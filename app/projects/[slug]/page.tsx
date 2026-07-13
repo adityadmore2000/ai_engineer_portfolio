@@ -12,6 +12,7 @@ import {
   createProjectDocsSource,
   getFirstDocumentationPage
 } from "@/lib/project-docs-source";
+import { isSanityConfigured } from "@/sanity/env";
 import {
   fallbackProjects,
   fallbackSiteSettings,
@@ -37,9 +38,11 @@ export async function generateStaticParams() {
   const sanityParams = projects
     .filter((project) => project.slug)
     .map((project) => ({ slug: project.slug }));
-  const fallbackParams = fallbackProjects.map((project) => ({
-    slug: project.slug || ""
-  }));
+  const fallbackParams = isSanityConfigured
+    ? []
+    : fallbackProjects.map((project) => ({
+        slug: project.slug || ""
+      }));
 
   return [...sanityParams, ...fallbackParams].filter((param) => param.slug);
 }
@@ -48,7 +51,8 @@ export async function generateMetadata({
   params
 }: ProjectPageProps): Promise<Metadata> {
   const { slug } = await params;
-  const project = (await getProjectBySlug(slug)) || getFallbackProjectBySlug(slug);
+  const sanityProject = await getProjectBySlug(slug);
+  const project = sanityProject || (!isSanityConfigured ? getFallbackProjectBySlug(slug) : null);
 
   if (!project) {
     return {
@@ -69,12 +73,12 @@ export async function generateMetadata({
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
   const { slug } = await params;
-  const [settings, project] = await Promise.all([
+  const [settings, sanityProject] = await Promise.all([
     getSiteSettings(),
     getProjectBySlug(slug)
   ]);
   const pageSettings = settings || fallbackSiteSettings;
-  const pageProject = project || getFallbackProjectBySlug(slug);
+  const pageProject = sanityProject || (!isSanityConfigured ? getFallbackProjectBySlug(slug) : null);
 
   if (!pageProject) {
     notFound();

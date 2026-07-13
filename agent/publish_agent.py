@@ -2,9 +2,8 @@
 
 """AI portfolio publishing agent.
 
-Natural-language interface for publishing projects to a Sanity CMS portfolio.
-The agent autonomously reads files, finds markdown documents, extracts
-project data via the LLM, and publishes through a side-effect bridge.
+Natural-language interface for managing projects in a Sanity CMS portfolio.
+Supports the full lifecycle: create, read, update, publish, unpublish, delete.
 """
 
 from __future__ import annotations
@@ -30,7 +29,7 @@ OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:4b")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# ── Tools ────────────────────────────────────────────────
+# ── Read-only tools ──────────────────────────────────────
 
 
 @tool
@@ -69,43 +68,21 @@ def list_dir(
 
 
 @tool
-def publish_project(
-    project_data: Annotated[
-        dict,
-        (
-            "Structured project data matching the Sanity project schema. "
-            "Fields: title (required), slug (required), shortSummary, "
-            "coverImage, coverImageAlt, technologies[], keyMetrics[], "
-            "githubUrl, demoUrl, featured, displayOrder, problemStatement, "
-            "approach, results, architectureImage, architectureImageAlt, "
-            "screenshots[], screenshotAlts[], limitations, futureImprovements. "
-            "Image paths must be relative to the markdown file's directory."
-        ),
-    ],
+def list_projects(
+    search: Annotated[
+        str | None,
+        "Optional search term to filter projects by title. Omit to list all projects.",
+    ] = None,
 ) -> str:
-    """Publish a project to the Sanity CMS portfolio."""
-    required = ("title", "slug")
-    missing = [f for f in required if not project_data.get(f)]
-    if missing:
-        return f"Error: missing required fields: {', '.join(missing)}"
-
-    fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="project_")
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(project_data, f, indent=2)
-
-        bridge = PROJECT_ROOT / "scripts" / "publish.ts"
-        result = subprocess.run(
-            ["npx", "tsx", str(bridge), tmp_path],
-            capture_output=True,
-            text=True,
-            cwd=PROJECT_ROOT,
-        )
-        if result.returncode != 0:
-            return f"Error publishing:\n{result.stderr.strip()}"
-        return result.stdout.strip()
-    finally:
-        os.unlink(tmp_path)
+    """List projects in the portfolio, optionally filtered by title."""
+    bridge = PROJECT_ROOT / "scripts" / "list-projects.ts"
+    args = ["npx", "tsx", str(bridge)]
+    if search:
+        args.append(search)
+    result = subprocess.run(args, capture_output=True, text=True, cwd=PROJECT_ROOT)
+    if result.returncode != 0:
+        return f"Error: {result.stderr.strip()}"
+    return result.stdout.strip()
 
 
 @tool
@@ -125,21 +102,116 @@ def read_project(
     return result.stdout.strip()
 
 
+# ── Lifecycle mutation tools ─────────────────────────────
+
+
 @tool
-def list_projects(
-    search: Annotated[
-        str | None,
-        "Optional search term to filter projects by title. Omit to list all projects.",
-    ] = None,
+def create_project(
+    project_data: Annotated[
+        dict,
+        (
+            "Structured project data for a NEW project. Fails if the slug already exists. "
+            "Fields: title (required), slug (required), shortSummary, "
+            "coverImage, coverImageAlt, technologies[], keyMetrics[], "
+            "githubUrl, demoUrl, featured, displayOrder, problemStatement, "
+            "approach, results, architectureImage, architectureImageAlt, "
+            "screenshots[], screenshotAlts[], limitations, futureImprovements. "
+            "Image paths must be relative to the markdown file's directory."
+        ),
+    ],
 ) -> str:
-    """List projects in the portfolio, optionally filtered by title."""
-    bridge = PROJECT_ROOT / "scripts" / "list-projects.ts"
-    args = ["npx", "tsx", str(bridge)]
-    if search:
-        args.append(search)
-    result = subprocess.run(args, capture_output=True, text=True, cwd=PROJECT_ROOT)
+    """Create a NEW project in the Sanity CMS portfolio. Fails if slug already exists."""
+    required = ("title", "slug")
+    missing = [f for f in required if not project_data.get(f)]
+    if missing:
+        return f"Error: missing required fields: {', '.join(missing)}"
+
+    fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="project_")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(project_data, f, indent=2)
+
+        bridge = PROJECT_ROOT / "scripts" / "create-project.ts"
+        result = subprocess.run(
+            ["npx", "tsx", str(bridge), tmp_path],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+        )
+        if result.returncode != 0:
+            return f"Error creating project:\n{result.stderr.strip()}"
+        return result.stdout.strip()
+    finally:
+        os.unlink(tmp_path)
+
+
+@tool
+def update_project(
+    slug: Annotated[str, "Slug of the existing project to update"],
+    project_data: Annotated[
+        dict,
+        (
+            "Partial project data with ONLY the fields to change. "
+            "The slug identifies which project to update. "
+            "Only the fields you include here will be modified; all others are preserved. "
+            "Fields: title, shortSummary, coverImage, coverImageAlt, technologies[], "
+            "keyMetrics[], githubUrl, demoUrl, featured, displayOrder, problemStatement, "
+            "approach, results, architectureImage, architectureImageAlt, "
+            "screenshots[], screenshotAlts[], limitations, futureImprovements."
+        ),
+    ],
+) -> str:
+    """Update specific fields of an EXISTING project. Fails if slug not found. True partial update — only included fields are changed."""
+    fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="project_")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(project_data, f, indent=2)
+
+        bridge = PROJECT_ROOT / "scripts" / "update-project.ts"
+        result = subprocess.run(
+            ["npx", "tsx", str(bridge), tmp_path, slug],
+            capture_output=True,
+            text=True,
+            cwd=PROJECT_ROOT,
+        )
+        if result.returncode != 0:
+            return f"Error updating project:\n{result.stderr.strip()}"
+        return result.stdout.strip()
+    finally:
+        os.unlink(tmp_path)
+
+
+@tool
+def publish_project(
+    slug: Annotated[str, "Slug of the project to publish"],
+) -> str:
+    """Publish an existing project, making it visible on the public portfolio site."""
+    bridge = PROJECT_ROOT / "scripts" / "publish-project.ts"
+    result = subprocess.run(
+        ["npx", "tsx", str(bridge), slug],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
     if result.returncode != 0:
-        return f"Error: {result.stderr.strip()}"
+        return f"Error publishing project:\n{result.stderr.strip()}"
+    return result.stdout.strip()
+
+
+@tool
+def unpublish_project(
+    slug: Annotated[str, "Slug of the project to unpublish"],
+) -> str:
+    """Unpublish an existing project, hiding it from the public portfolio site."""
+    bridge = PROJECT_ROOT / "scripts" / "unpublish-project.ts"
+    result = subprocess.run(
+        ["npx", "tsx", str(bridge), slug],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
+    if result.returncode != 0:
+        return f"Error unpublishing project:\n{result.stderr.strip()}"
     return result.stdout.strip()
 
 
@@ -161,56 +233,94 @@ def delete_project(
 
 
 tools = [
+    # Read-only
     read_file,
     find_markdown,
     list_dir,
     list_projects,
     read_project,
+    # Lifecycle mutations
+    create_project,
+    update_project,
     publish_project,
+    unpublish_project,
     delete_project,
 ]
 
 # ── LLM setup ────────────────────────────────────────────
 
 SYSTEM_PROMPT = """You are a portfolio management assistant. Your job is to help the user
-manage projects on their Sanity CMS portfolio website. You support creating,
-reading, updating, and deleting projects — all through natural language.
+manage projects on their Sanity CMS portfolio website. You support the full project
+lifecycle: create, read, update, publish, unpublish, and delete — all through natural
+language.
 
-Available tools:
+Available tools (read-only):
 - read_file(path) — read a file from disk
 - find_markdown(directory) — find .md files in a directory
 - list_dir(path) — list directory contents
 - list_projects(search?) — search portfolio projects by name, or list all
 - read_project(slug) — read a single project's full data
-- publish_project(data) — create or update a project
-- delete_project(slug) — delete a project and its documentation pages
 
-How to infer the user's intent:
+Available tools (mutations — each is a distinct lifecycle operation):
+- create_project(data) — CREATE a brand new project (fails if slug exists)
+- update_project(slug, data) — UPDATE specific fields of an existing project (fails if slug not found; partial patch — only fields you provide are changed)
+- publish_project(slug) — PUBLISH an existing project (sets it visible on public site)
+- unpublish_project(slug) — UNPUBLISH an existing project (hides it from public site)
+- delete_project(slug) — DELETE a project and its documentation pages forever
 
-"Add this project", "Publish this", "Create a new project" → CREATE
-  - Extract project data from what the user provides (raw markdown, file path, etc.)
-  - Map content to the schema fields
-  - Call publish_project(data) — it creates if the slug is new
+CRITICAL: Each operation has its OWN dedicated tool. Do NOT use one tool as a
+substitute for another. Read the intent carefully and pick the correct tool.
 
-"Update X", "Change the Y of Z", "Replace the Results section" → UPDATE
-  - First call list_projects() with a search term to find the project's slug
-  - If the name is ambiguous, show options and ask
-  - Then call read_project(slug) to get current data
-  - Modify only the fields the user wants changed
-  - Call publish_project(data) with title, slug, and the changed fields
-  - publish_project patches only the fields you send
+── INTENT → OPERATION MAPPING ─────────────────────────────
 
-"Delete X", "Remove the Y project" → DELETE
-  - First call list_projects() with a search term to find the slug
-  - If the name is ambiguous, show options and ask
-  - Then call delete_project(slug)
+User says "Create", "Add", "Make a new project", "Publish this" (when providing new content)
+  → This is CREATE. Call create_project(data) with all the project data extracted.
+    Do NOT call publish_project() — that is for toggling visibility on an existing project.
+    Do NOT call update_project() — that is for modifying an existing project.
+    create_project will fail if the slug already exists.
 
-"List projects", "What projects do I have?" → LIST
-  - Call list_projects() with no arguments
+User says "Update X", "Change the Y of Z", "Modify", "Replace the Results section",
+"Edit the approach section", "Change the cover image"
+  → This is UPDATE.
+    1. First call list_projects() with a search term to find the project's slug.
+       If the name is ambiguous, show options and ask the user to clarify.
+    2. Call read_project(slug) to see the current data.
+    3. Build a partial data object with ONLY the fields to change.
+    4. Call update_project(slug, data). Do NOT include fields that stay the same.
+    5. update_project does a true partial patch — only the fields you provide are changed.
 
-Schema fields for publish_project:
-- title (string, required): Project name.
-- slug (string, required): URL-friendly identifier.
+User says "Publish X", "Make X visible", "Put X live" (about an EXISTING project)
+  → This is PUBLISH (toggle visibility ON).
+    1. First call list_projects() with a search term to find the slug.
+       If ambiguous, show options and ask.
+    2. Call publish_project(slug). This sets the project as visible on the public site.
+    3. Do NOT call create_project or update_project — this is a visibility toggle.
+
+User says "Unpublish X", "Hide X", "Take X down", "Make X private" (about an EXISTING project)
+  → This is UNPUBLISH (toggle visibility OFF).
+    1. First call list_projects() with a search term to find the slug.
+       If ambiguous, show options and ask.
+    2. Call unpublish_project(slug). This hides the project from the public site.
+    3. Do NOT call create_project, update_project, or publish_project.
+       Unpublish is its own dedicated operation.
+
+User says "Delete X", "Remove X", "Delete the Y project", "Get rid of X"
+  → This is DELETE.
+    1. First call list_projects() with a search term to find the slug.
+       If ambiguous, show options and ask.
+    2. Call delete_project(slug). This permanently removes the project and all its
+       documentation pages.
+
+User says "List projects", "What projects do I have?", "Show me my projects"
+  → This is LIST. Call list_projects() with no arguments.
+
+User says "Read X", "Show me X", "What's in X", "Get the data for X"
+  → This is READ. Call read_project(slug).
+
+── SCHEMA FIELDS (for create_project and update_project) ──
+
+- title (string): Project name.
+- slug (string): URL-friendly identifier.
 - shortSummary (markdown): 1-3 sentence summary.
 - coverImage (string): Relative path to cover image.
 - coverImageAlt (string): Alt text for cover image.
@@ -218,7 +328,7 @@ Schema fields for publish_project:
 - keyMetrics (array of strings): Outcomes and metrics.
 - githubUrl (string): Repository URL.
 - demoUrl (string): Live demo URL.
-- featured (boolean): Whether to feature (default true).
+- featured (boolean): Whether to feature on homepage (default true).
 - displayOrder (number): Sort order (default 0).
 - problemStatement (markdown): Problem description.
 - approach (markdown): Solution approach.

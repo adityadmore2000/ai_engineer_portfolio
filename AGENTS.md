@@ -41,6 +41,8 @@ Required fields on `project` document: `title`, `slug`.
 
 Image fields (`coverImage`, `architectureImage`, `screenshots[]`) are Sanity image type with hotspot and `alt` string field.
 
+Visibility flag: `published` (boolean, default `true`) — controls whether the project appears on the public site. The agent's `publish_project` and `unpublish_project` tools toggle this field.
+
 ## Publishing Agent
 
 A Python-based agent (`agent/publish_agent.py`) that manages the full project lifecycle via natural language.
@@ -69,7 +71,7 @@ python3 agent/publish_agent.py
 ```
 agent/publish_agent.py   ← Python REPL with Ollama tool-calling
         ↓  (shells out)
-scripts/{publish,read-project,list-projects,delete-project}.ts   ← thin TypeScript bridges
+scripts/{create-project,update-project,publish-project,unpublish-project,read-project,list-projects,delete-project}.ts   ← thin TypeScript bridges
         ↓
 scripts/publish-tool.ts   ← pure side-effect layer (uploads, Sanity mutations)
 ```
@@ -78,7 +80,10 @@ scripts/publish-tool.ts   ← pure side-effect layer (uploads, Sanity mutations)
 
 | Bridge | What it does |
 |--------|-------------|
-| `scripts/publish.ts <json-file>` | Publishes project (creates or updates by slug) |
+| `scripts/create-project.ts <json-file>` | Creates a new project (fails if slug exists) |
+| `scripts/update-project.ts <json-file> <slug>` | Patches specific fields of an existing project (true partial update) |
+| `scripts/publish-project.ts <slug>` | Sets `published = true` on a project |
+| `scripts/unpublish-project.ts <slug>` | Sets `published = false` on a project |
 | `scripts/read-project.ts <slug>` | Returns JSON of existing project data |
 | `scripts/list-projects.ts [search]` | Lists projects, optionally filtered by title |
 | `scripts/delete-project.ts <slug>` | Deletes project + documentation pages |

@@ -33,6 +33,7 @@ export interface ProjectPublishInput {
   screenshotAlts?: string[];
   limitations?: string;
   futureImprovements?: string;
+  published?: boolean;
 }
 
 function getWriteClient() {
@@ -115,6 +116,7 @@ export type ProjectReadOutput = {
   coverImageAlt?: string;
   architectureImageAlt?: string;
   screenshotAlts?: string[];
+  published?: boolean;
 };
 
 const readProjectQuery = `*[_type == "project" && slug.current == $slug][0]{
@@ -135,7 +137,8 @@ const readProjectQuery = `*[_type == "project" && slug.current == $slug][0]{
   futureImprovements,
   coverImage{alt},
   architectureImage{alt},
-  screenshots[]{alt}
+  screenshots[]{alt},
+  published
 }`;
 
 export async function readProject(
@@ -166,28 +169,232 @@ export async function readProject(
     architectureImageAlt: ((doc.architectureImage as Record<string, string> | null)?.alt) ?? undefined,
     screenshotAlts: (doc.screenshots as Array<Record<string, string>> | undefined)
       ?.map((s) => s.alt) ?? undefined,
+    published: doc.published as boolean | undefined,
   };
 }
 
 export async function listProjects(
   search?: string
-): Promise<Array<{ title: string; slug: string }>> {
+): Promise<Array<{ title: string; slug: string; published?: boolean }>> {
   if (search) {
     const docs = await readClient.fetch<
-      Array<{ title: string; slug: string }>
+      Array<{ title: string; slug: string; published?: boolean }>
     >(
-      `*[_type == "project" && title match $search] | order(title asc) { title, "slug": slug.current }`,
+      `*[_type == "project" && title match $search] | order(title asc) { title, "slug": slug.current, published }`,
       { search: `*${search}*` }
     );
     return docs ?? [];
   }
   const docs = await readClient.fetch<
-    Array<{ title: string; slug: string }>
+    Array<{ title: string; slug: string; published?: boolean }>
   >(
-    `*[_type == "project"] | order(title asc) { title, "slug": slug.current }`
+    `*[_type == "project"] | order(title asc) { title, "slug": slug.current, published }`
   );
   return docs ?? [];
 }
+
+/* ── Image upload helpers ──────────────────────────────── */
+
+async function uploadCoverImage(
+  client: ReturnType<typeof getWriteClient>,
+  input: { coverImage?: string; coverImageAlt?: string },
+  markdownDir: string
+) {
+  if (!input.coverImage) return undefined;
+  const ref = await uploadImage(client, input.coverImage, markdownDir);
+  if (ref && input.coverImageAlt) {
+    ref.alt = input.coverImageAlt;
+  }
+  return ref;
+}
+
+async function uploadArchitectureImage(
+  client: ReturnType<typeof getWriteClient>,
+  input: { architectureImage?: string; architectureImageAlt?: string },
+  markdownDir: string
+) {
+  if (!input.architectureImage) return undefined;
+  const ref = await uploadImage(client, input.architectureImage, markdownDir);
+  if (ref && input.architectureImageAlt) {
+    ref.alt = input.architectureImageAlt;
+  }
+  return ref;
+}
+
+async function uploadScreenshots(
+  client: ReturnType<typeof getWriteClient>,
+  input: { screenshots?: string[]; screenshotAlts?: string[] },
+  markdownDir: string
+) {
+  const refs: ImageRef[] = [];
+  if (input.screenshots?.length) {
+    for (let i = 0; i < input.screenshots.length; i++) {
+      const ref = await uploadImage(client, input.screenshots[i], markdownDir);
+      if (ref) {
+        ref.alt = input.screenshotAlts?.[i] ?? "";
+        refs.push(ref);
+      }
+    }
+  }
+  return refs;
+}
+
+/* ── Create (fails if slug exists) ─────────────────────── */
+
+export async function createProject(
+  input: ProjectPublishInput,
+  markdownDir: string
+) {
+  console.log(`\n  Project: ${input.title}`);
+  console.log(`  Slug:    ${input.slug}`);
+
+  const client = getWriteClient();
+
+  const existing: { _id: string } | null = await client.fetch(
+    `*[_type == "project" && slug.current == $slug][0]{_id}`,
+    { slug: input.slug }
+  );
+  if (existing) {
+    throw new Error(
+      `Project with slug "${input.slug}" already exists (${existing._id}). Use update_project to modify it.`
+    );
+  }
+
+  console.log("  Images:");
+
+  const coverImageRef = await uploadCoverImage(client, input, markdownDir);
+  const architectureImageRef = await uploadArchitectureImage(client, input, markdownDir);
+  const screenshotRefs = await uploadScreenshots(client, input, markdownDir);
+
+  const doc: Record<string, unknown> & { _type: string } = {
+    _type: "project",
+    title: input.title,
+    slug: { _type: "slug", current: input.slug },
+    published: input.published ?? true,
+  };
+
+  if (input.shortSummary !== undefined) doc.shortSummary = input.shortSummary;
+  if (input.technologies !== undefined) doc.technologies = input.technologies;
+  if (input.keyMetrics !== undefined) doc.keyMetrics = input.keyMetrics;
+  if (input.githubUrl !== undefined) doc.githubUrl = input.githubUrl;
+  if (input.demoUrl !== undefined) doc.demoUrl = input.demoUrl;
+  if (input.featured !== undefined) doc.featured = input.featured;
+  if (input.displayOrder !== undefined) doc.displayOrder = input.displayOrder;
+  if (input.problemStatement !== undefined) doc.problemStatement = input.problemStatement;
+  if (input.approach !== undefined) doc.approach = input.approach;
+  if (input.results !== undefined) doc.results = input.results;
+  if (input.limitations !== undefined) doc.limitations = input.limitations;
+  if (input.futureImprovements !== undefined) doc.futureImprovements = input.futureImprovements;
+  if (coverImageRef) doc.coverImage = coverImageRef;
+  if (architectureImageRef) doc.architectureImage = architectureImageRef;
+  if (screenshotRefs.length) doc.screenshots = screenshotRefs;
+
+  const result = await client.create(doc);
+  console.log(`  ✅ Created project "${input.title}" (${result._id})`);
+}
+
+/* ── Update (fails if slug missing; partial patch) ────── */
+
+export async function updateProject(
+  slug: string,
+  input: Partial<Omit<ProjectPublishInput, "slug">>,
+  markdownDir: string
+) {
+  console.log(`\n  Slug:    ${slug}`);
+
+  const client = getWriteClient();
+
+  const existing: { _id: string } | null = await client.fetch(
+    `*[_type == "project" && slug.current == $slug][0]{_id}`,
+    { slug }
+  );
+  if (!existing) {
+    throw new Error(`Project with slug "${slug}" not found. Cannot update.`);
+  }
+
+  if (input.title) {
+    console.log(`  Title:   ${input.title}`);
+  }
+
+  console.log("  Images:");
+
+  const coverImageRef = await uploadCoverImage(client, input, markdownDir);
+  const architectureImageRef = await uploadArchitectureImage(client, input, markdownDir);
+  const screenshotRefs = await uploadScreenshots(client, input, markdownDir);
+
+  const patchData: Record<string, unknown> = {};
+  if (input.title !== undefined) patchData.title = input.title;
+  if (input.shortSummary !== undefined) patchData.shortSummary = input.shortSummary;
+  if (input.technologies !== undefined) patchData.technologies = input.technologies;
+  if (input.keyMetrics !== undefined) patchData.keyMetrics = input.keyMetrics;
+  if (input.githubUrl !== undefined) patchData.githubUrl = input.githubUrl;
+  if (input.demoUrl !== undefined) patchData.demoUrl = input.demoUrl;
+  if (input.featured !== undefined) patchData.featured = input.featured;
+  if (input.displayOrder !== undefined) patchData.displayOrder = input.displayOrder;
+  if (input.problemStatement !== undefined) patchData.problemStatement = input.problemStatement;
+  if (input.approach !== undefined) patchData.approach = input.approach;
+  if (input.results !== undefined) patchData.results = input.results;
+  if (input.limitations !== undefined) patchData.limitations = input.limitations;
+  if (input.futureImprovements !== undefined) patchData.futureImprovements = input.futureImprovements;
+  if (input.published !== undefined) patchData.published = input.published;
+  if (coverImageRef) patchData.coverImage = coverImageRef;
+  if (input.coverImageAlt !== undefined && !input.coverImage) {
+    patchData["coverImage.alt"] = input.coverImageAlt;
+  }
+  if (architectureImageRef) patchData.architectureImage = architectureImageRef;
+  if (input.architectureImageAlt !== undefined && !input.architectureImage) {
+    patchData["architectureImage.alt"] = input.architectureImageAlt;
+  }
+  if (screenshotRefs.length) patchData.screenshots = screenshotRefs;
+
+  if (Object.keys(patchData).length === 0) {
+    console.log("  No fields to update.");
+    return;
+  }
+
+  await client.patch(existing._id).set(patchData).commit();
+  console.log(`  ✅ Updated project "${slug}"`);
+}
+
+/* ── Publish (set published=true) ──────────────────────── */
+
+export async function publishProjectBySlug(slug: string) {
+  console.log(`\n  Publish: ${slug}`);
+
+  const client = getWriteClient();
+
+  const existing: { _id: string } | null = await client.fetch(
+    `*[_type == "project" && slug.current == $slug][0]{_id}`,
+    { slug }
+  );
+  if (!existing) {
+    throw new Error(`Project with slug "${slug}" not found.`);
+  }
+
+  await client.patch(existing._id).set({ published: true }).commit();
+  console.log(`  ✅ Published project "${slug}"`);
+}
+
+/* ── Unpublish (set published=false) ───────────────────── */
+
+export async function unpublishProjectBySlug(slug: string) {
+  console.log(`\n  Unpublish: ${slug}`);
+
+  const client = getWriteClient();
+
+  const existing: { _id: string } | null = await client.fetch(
+    `*[_type == "project" && slug.current == $slug][0]{_id}`,
+    { slug }
+  );
+  if (!existing) {
+    throw new Error(`Project with slug "${slug}" not found.`);
+  }
+
+  await client.patch(existing._id).set({ published: false }).commit();
+  console.log(`  ✅ Unpublished project "${slug}"`);
+}
+
+/* ── Delete ────────────────────────────────────────────── */
 
 export async function deleteProject(slug: string): Promise<{ deleted: string[] }> {
   const client = getWriteClient();
@@ -215,84 +422,13 @@ export async function deleteProject(slug: string): Promise<{ deleted: string[] }
   return { deleted: idsToDelete };
 }
 
+/* ── Original publish (upsert — kept for backward compat) ── */
+
 export async function publishProject(
   input: ProjectPublishInput,
   markdownDir: string
 ) {
-  console.log(`\n  Project: ${input.title}`);
-  console.log(`  Slug:    ${input.slug}`);
-
   const client = getWriteClient();
-
-  /* ── Upload images ────────────────────────────────── */
-
-  console.log("  Images:");
-
-  let coverImageRef = undefined;
-  if (input.coverImage) {
-    console.log(`    cover  → ${input.coverImage}`);
-    coverImageRef = await uploadImage(client, input.coverImage, markdownDir);
-    if (coverImageRef && input.coverImageAlt) {
-      coverImageRef.alt = input.coverImageAlt;
-    }
-  }
-
-  let architectureImageRef = undefined;
-  if (input.architectureImage) {
-    console.log(`    arch   → ${input.architectureImage}`);
-    architectureImageRef = await uploadImage(
-      client,
-      input.architectureImage,
-      markdownDir
-    );
-    if (architectureImageRef && input.architectureImageAlt) {
-      architectureImageRef.alt = input.architectureImageAlt;
-    }
-  }
-
-  const screenshotRefs: ImageRef[] = [];
-  if (input.screenshots?.length) {
-    for (let i = 0; i < input.screenshots.length; i++) {
-      console.log(`    ss[${i}] → ${input.screenshots[i]}`);
-      const ref = await uploadImage(
-        client,
-        input.screenshots[i],
-        markdownDir
-      );
-      if (ref) {
-        ref.alt = input.screenshotAlts?.[i] ?? "";
-        screenshotRefs.push(ref);
-      }
-    }
-  }
-
-  /* ── Build document ────────────────────────────────── */
-
-  const doc: { [key: string]: unknown; _type: string } = {
-    _type: "project",
-    title: input.title,
-    slug: { _type: "slug", current: input.slug },
-    shortSummary: input.shortSummary ?? "",
-    technologies: input.technologies ?? [],
-    keyMetrics: input.keyMetrics ?? [],
-    githubUrl: input.githubUrl ?? "",
-    demoUrl: input.demoUrl ?? "",
-    featured: input.featured ?? true,
-    displayOrder: input.displayOrder ?? 0,
-    problemStatement: input.problemStatement ?? "",
-    approach: input.approach ?? "",
-    results: input.results ?? "",
-    limitations: input.limitations ?? "",
-    futureImprovements: input.futureImprovements ?? "",
-  };
-
-  if (coverImageRef) doc.coverImage = coverImageRef;
-  if (architectureImageRef) doc.architectureImage = architectureImageRef;
-  if (screenshotRefs.length) doc.screenshots = screenshotRefs;
-
-  /* ── Check existence & create/patch ────────────────── */
-
-  console.log("  Looking up existing project…");
 
   const existing: { _id: string } | null = await client.fetch(
     `*[_type == "project" && slug.current == $slug][0]{_id}`,
@@ -300,15 +436,8 @@ export async function publishProject(
   );
 
   if (existing) {
-    console.log(`  Found — ${existing._id}`);
-    const { _type, slug, ...patchData } = doc;
-    void _type;
-    void slug;
-    await client.patch(existing._id).set(patchData).commit();
-    console.log(`  ✅ Updated project "${input.title}"`);
+    await updateProject(input.slug, input, markdownDir);
   } else {
-    console.log("  New project — creating…");
-    const result = await client.create(doc);
-    console.log(`  ✅ Created project "${input.title}" (${result._id})`);
+    await createProject(input, markdownDir);
   }
 }

@@ -82,23 +82,24 @@ const projectSummaryFields = `
   githubUrl,
   demoUrl,
   featured,
-  displayOrder
+  displayOrder,
+  published
 `;
 
 export const featuredProjectsQuery = groq`
-  *[_type == "project" && featured == true] | order(coalesce(displayOrder, 999) asc, title asc) {
+  *[_type == "project" && featured == true && published == true] | order(coalesce(displayOrder, 999) asc, title asc) {
     ${projectSummaryFields}
   }
 `;
 
 export const allProjectsQuery = groq`
-  *[_type == "project"] | order(coalesce(displayOrder, 999) asc, title asc) {
+  *[_type == "project" && published == true] | order(coalesce(displayOrder, 999) asc, title asc) {
     ${projectSummaryFields}
   }
 `;
 
 export const projectBySlugQuery = groq`
-  *[_type == "project" && slug.current == $slug][0] {
+  *[_type == "project" && slug.current == $slug && published == true][0] {
     ${projectSummaryFields},
     problemStatement,
     approach,

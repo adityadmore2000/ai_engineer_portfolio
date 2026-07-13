@@ -9,6 +9,7 @@ import { ResumeSection } from "@/components/ResumeSection";
 import { Skills } from "@/components/Skills";
 import { TechnicalNotes } from "@/components/TechnicalNotes";
 import type { Metadata } from "next";
+import { isSanityConfigured } from "@/sanity/env";
 import {
   fallbackExperiences,
   fallbackProjects,
@@ -54,9 +55,7 @@ export default async function Home() {
     ]);
   const pageSettings = settings || fallbackSiteSettings;
   const pageExperiences = experiences.length ? experiences : fallbackExperiences;
-  const pageProjects = projects.length
-    ? projects
-    : toProjectSummaries(fallbackProjects);
+  const pageProjects = isSanityConfigured ? projects : toProjectSummaries(fallbackProjects);
   const pageSkillCategories = skillCategories.length
     ? skillCategories
     : fallbackSkillCategories;

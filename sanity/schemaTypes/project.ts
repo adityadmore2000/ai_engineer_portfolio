@@ -135,6 +135,13 @@ export const project = defineType({
       type: "markdown"
     }),
     defineField({
+      name: "published",
+      title: "Published",
+      type: "boolean",
+      initialValue: true,
+      description: "When unchecked, the project is hidden from the public site."
+    }),
+    defineField({
       name: "detailedContent",
       title: "Detailed Rich Text Content",
       type: "array",

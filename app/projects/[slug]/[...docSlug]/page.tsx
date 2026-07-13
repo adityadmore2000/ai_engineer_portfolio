@@ -13,6 +13,7 @@ import {
 import {
   createProjectDocsSource
 } from "@/lib/project-docs-source";
+import { isSanityConfigured } from "@/sanity/env";
 import {
   fallbackSiteSettings,
   getFallbackProjectBySlug
@@ -161,7 +162,7 @@ async function getRouteProject(slug: string, isPreview: boolean) {
     ? await getProjectBySlug(slug, previewSanityFetch)
     : await getProjectBySlug(slug);
 
-  return project || getFallbackProjectBySlug(slug);
+  return project || (!isSanityConfigured ? getFallbackProjectBySlug(slug) : null);
 }
 
 function createPortableTextComponents(
