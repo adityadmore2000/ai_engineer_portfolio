@@ -64,14 +64,23 @@ python3 agent/publish_agent.py
 > Update the results section of warehouse-parcel-monitoring-system
 > Delete the old YOLOX project
 > What projects do I have?
+> Sync production to local.
+> Deploy my portfolio content.
 ```
+
+### Dataset Synchronization
+
+The agent can move an entire Sanity dataset between environments through natural language. No slugs are needed — these replace the whole dataset (`--replace`).
+
+- **Production → Local** ("Pull the latest production changes", "Refresh my local dataset", "Update my local dataset from production") → `sync_production_to_local()` — overwrites local with production.
+- **Local → Production** ("Promote development to production", "Publish my local changes to production", "Deploy my portfolio content") → `sync_local_to_production()` — overwrites production (destructive). Distinct from `publish_project()`, which toggles a single project's visibility.
 
 ### Architecture
 
 ```
 agent/publish_agent.py   ← Python REPL with Ollama tool-calling
         ↓  (shells out)
-scripts/{create-project,update-project,publish-project,unpublish-project,read-project,list-projects,delete-project}.ts   ← thin TypeScript bridges
+scripts/{create-project,update-project,publish-project,unpublish-project,read-project,list-projects,delete-project,sync-dataset}.ts   ← thin TypeScript bridges
         ↓
 scripts/publish-tool.ts   ← pure side-effect layer (uploads, Sanity mutations)
 ```
@@ -87,8 +96,9 @@ scripts/publish-tool.ts   ← pure side-effect layer (uploads, Sanity mutations)
 | `scripts/read-project.ts <slug>` | Returns JSON of existing project data |
 | `scripts/list-projects.ts [search]` | Lists projects, optionally filtered by title |
 | `scripts/delete-project.ts <slug>` | Deletes project + documentation pages |
+| `scripts/sync-dataset.ts <prod-to-local\|local-to-prod>` | Exports source dataset, imports into destination with `--replace` |
 
-Bridges auto-load `.env.local` via `scripts/load-env.ts`.
+Bridges auto-load `.env.local` via `scripts/load-env.ts`. The local dev dataset name defaults to `local` and is overridable via `SANITY_LOCAL_DATASET`.
 
 ## Noteworthy
 

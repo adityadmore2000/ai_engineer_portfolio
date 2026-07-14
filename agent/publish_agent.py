@@ -232,6 +232,44 @@ def delete_project(
     return result.stdout.strip()
 
 
+# ── Dataset synchronization tools ────────────────────────
+
+
+@tool
+def sync_production_to_local() -> str:
+    """Pull the latest content from the production Sanity dataset into the local
+    development dataset. Exports production, then imports it into local with
+    --replace. This OVERWRITES the local dataset. No slug is needed."""
+    bridge = PROJECT_ROOT / "scripts" / "sync-dataset.ts"
+    result = subprocess.run(
+        ["npx", "tsx", str(bridge), "prod-to-local"],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
+    if result.returncode != 0:
+        return f"Error syncing production → local:\n{result.stderr.strip()}"
+    return result.stdout.strip() or "Synced production → local."
+
+
+@tool
+def sync_local_to_production() -> str:
+    """Promote the local development dataset up to production. Exports local,
+    then imports it into production with --replace. This OVERWRITES the
+    production dataset (destructive). No slug is needed. Distinct from
+    publish_project(), which toggles a single project's visibility."""
+    bridge = PROJECT_ROOT / "scripts" / "sync-dataset.ts"
+    result = subprocess.run(
+        ["npx", "tsx", str(bridge), "local-to-prod"],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
+    if result.returncode != 0:
+        return f"Error syncing local → production:\n{result.stderr.strip()}"
+    return result.stdout.strip() or "Synced local → production."
+
+
 tools = [
     # Read-only
     read_file,
@@ -245,6 +283,9 @@ tools = [
     publish_project,
     unpublish_project,
     delete_project,
+    # Dataset synchronization
+    sync_production_to_local,
+    sync_local_to_production,
 ]
 
 # ── LLM setup ────────────────────────────────────────────
@@ -267,6 +308,10 @@ Available tools (mutations — each is a distinct lifecycle operation):
 - publish_project(slug) — PUBLISH an existing project (sets it visible on public site)
 - unpublish_project(slug) — UNPUBLISH an existing project (hides it from public site)
 - delete_project(slug) — DELETE a project and its documentation pages forever
+
+Available tools (dataset synchronization — replace an entire dataset):
+- sync_production_to_local() — pull production down into the local dev dataset (overwrites local)
+- sync_local_to_production() — promote local dev up to production (overwrites production; destructive)
 
 CRITICAL: Each operation has its OWN dedicated tool. Do NOT use one tool as a
 substitute for another. Read the intent carefully and pick the correct tool.
@@ -316,6 +361,24 @@ User says "List projects", "What projects do I have?", "Show me my projects"
 
 User says "Read X", "Show me X", "What's in X", "Get the data for X"
   → This is READ. Call read_project(slug).
+
+── DATASET SYNCHRONIZATION ─────────────────────────────
+
+User says "Sync production to local", "Update my local dataset from production",
+"Pull the latest production changes", "Refresh my local dataset",
+"Get the latest from prod", "Re-sync local"
+  → This is PULL (production → local). Call sync_production_to_local().
+    No slug is needed — this replaces the ENTIRE local dataset with production.
+
+User says "Sync local to production", "Publish my local changes to production",
+"Promote development to production", "Deploy my portfolio content",
+"Push local to prod", "Ship local edits"
+  → This is PUSH (local → production). Call sync_local_to_production().
+    No slug is needed — this replaces the ENTIRE production dataset.
+    IMPORTANT: This is a dataset-level operation, NOT the same as publish_project().
+    - publish_project(slug) toggles visibility of ONE project.
+    - sync_local_to_production() replaces the WHOLE production dataset (destructive).
+    Do not call publish_project() for "deploy"/"promote"/"ship my portfolio" requests.
 
 ── SCHEMA FIELDS (for create_project and update_project) ──
 
