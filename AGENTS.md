@@ -66,7 +66,83 @@ python3 agent/publish_agent.py
 > What projects do I have?
 > Sync production to local.
 > Deploy my portfolio content.
+> /home/me/repos/foo/PORTFOLIO_NOTES.md add project considering this spec
 ```
+
+### Spec-Driven Project Creation (`<path> add project considering this spec`)
+
+Turns a Markdown specification into a populated `project` document. The agent is
+a **schema-aware mapper, never an author**: it copies spec content verbatim into
+matching Sanity fields, coerces types, flags uncertainty, and asks for
+confirmation before writing. It does not rewrite, summarize, or invent content.
+
+**Spec format** — every project field is a labeled bullet:
+
+```markdown
+### Project Fields
+
+- **title**: Video Captioning Agent
+- **slug**: `video-captioning-agent`
+- **shortSummary**:
+  A hackathon project that watches…
+- **technologies**:
+  - Python
+  - OpenCV
+  - Docker
+- **keyMetrics**:
+  - "27 commits covering every major pipeline stage"
+- **githubUrl**: https://github.com/…
+- **demoUrl**: Not live yet - …
+- **featured**: `true`
+- **displayOrder**: `0`
+- **problemStatement**:
+  The brief was to…
+- **approach**: …
+- **results**: …
+- **coverImage**: Not set - …
+- **screenshots**: Not set - …
+- **limitations**: …
+- **futureImprovements**: …
+```
+
+`Not set - …` / `Not live yet - …` markers normalize to absent (never empty
+strings). Image paths MUST be absolute; relative paths are rejected.
+
+## Workflow tools
+
+| Tool | What it does |
+|------|-------------|
+| `parse_spec_file(path)` | Deterministic Markdown bullet parser → JSON `{fields, provenance, source_dir, warnings, spec_sha256}`. Rejects non-`.md`, oversized specs (> `SPEC_MAX_CHARS`, default 30000), and relative image paths. |
+| `describe_project_schema()` | Discovers the live `project` schema from `sanity/schemaTypes/project.ts` (the single source of truth) by executing each validation function against a mock `Rule`. Cache is mtime-keyed and auto-refreshes when the schema changes. |
+| `create_project_from_spec(spec_path)` | Orchestrator: parse → schema → deterministic map/validate → (1 LLM self-repair retry if validation fails) → stage `PENDING_CREATE` and return proposed payload + provenance for confirmation. Does NOT write to Sanity. |
+| `confirm_pending_create()` | After the user replies `yes`: writes the staged project to Sanity (via `create_project`) and an audit record to `.agents/spec-<slug>-<timestamp>.json`. |
+| `cancel_pending_create()` | Discards the staged payload. |
+
+## Determinism stance
+
+- **Happy path is fully deterministic.** Parse, schema discovery, type coercion,
+  and validation are all deterministic and schema-driven (no LLM in the loop).
+- **LLM is only a self-repair fallback.** When deterministic validation fails,
+  `create_project_from_spec` makes ONE `with_structured_output` call constrained
+  to the discovered-schema Pydantic model, then re-runs the SAME deterministic
+  validator on its output. If it still fails, the request is surfaced to the
+  user — nothing is written to Sanity.
+- **`published` defaults to `true`** for spec-driven creates, matching the
+  existing `create_project` behavior.
+- **Collision policy:** if the slug already exists in Sanity, the create fails
+  loudly; the agent suggests `update_project` instead.
+- **No `projectDocumentationPage` generation** in v1 — only the `project`
+  overview doc.
+
+## Adding / renaming / requiring a Sanity field
+
+Because the schema is discovered live: edit `sanity/schemaTypes/project.ts` (add
+a field, mark it `Rule.required()`, etc.), and the agent picks it up on the next
+`create_project_from_spec` call. No prompt, parser, or validation code changes
+are required. The agent also no longer carries a hardcoded field list in
+`scripts/publish-tool.ts` — non-image, non-meta fields are copied through
+generically via `setGenericFields`, so newly added scalar/markdown/array-of-string
+fields reach Sanity automatically.
 
 ### Dataset Synchronization
 
@@ -80,7 +156,7 @@ The agent can move an entire Sanity dataset between environments through natural
 ```
 agent/publish_agent.py   ← Python REPL with Ollama tool-calling
         ↓  (shells out)
-scripts/{create-project,update-project,publish-project,unpublish-project,read-project,list-projects,delete-project,sync-dataset}.ts   ← thin TypeScript bridges
+scripts/{create-project,update-project,publish-project,unpublish-project,read-project,list-projects,delete-project,sync-dataset,describe-schema}.ts   ← thin TypeScript bridges
         ↓
 scripts/publish-tool.ts   ← pure side-effect layer (uploads, Sanity mutations)
 ```
@@ -96,6 +172,7 @@ scripts/publish-tool.ts   ← pure side-effect layer (uploads, Sanity mutations)
 | `scripts/read-project.ts <slug>` | Returns JSON of existing project data |
 | `scripts/list-projects.ts [search]` | Lists projects, optionally filtered by title |
 | `scripts/delete-project.ts <slug>` | Deletes project + documentation pages |
+| `scripts/describe-schema.ts [project]` | Discovers the live `project` schema by executing each validation fn against a mock `Rule`; prints normalized JSON |  |
 | `scripts/sync-dataset.ts <prod-to-local\|local-to-prod>` | Exports source dataset, imports into destination with `--replace` |
 
 Bridges auto-load `.env.local` via `scripts/load-env.ts`. The local dev dataset name defaults to `local` and is overridable via `SANITY_LOCAL_DATASET`.

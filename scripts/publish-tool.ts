@@ -36,6 +36,37 @@ export interface ProjectPublishInput {
   published?: boolean;
 }
 
+// ── Field classification (schema-agnostic) ────────────────
+// Image and alt fields are special-cased (uploads / dotted-path patches).
+// The meta fields are set explicitly. Every other field in the payload is
+// copied through generically, so newly added Sanity fields map automatically
+// (the agent discovers them from the Studio schema; this layer sets them).
+
+const IMAGE_KEYS = new Set(["coverImage", "architectureImage", "screenshots"]);
+const ALT_KEYS = new Set([
+  "coverImageAlt",
+  "architectureImageAlt",
+  "screenshotAlts",
+]);
+const META_KEYS = new Set([
+  "_type",
+  "title",
+  "slug",
+  "published",
+  "__markdownDir__",
+]);
+
+function setGenericFields(
+  target: Record<string, unknown>,
+  source: object
+) {
+  for (const [key, value] of Object.entries(source)) {
+    if (META_KEYS.has(key) || IMAGE_KEYS.has(key) || ALT_KEYS.has(key)) continue;
+    if (value === undefined || value === null) continue;
+    target[key] = value;
+  }
+}
+
 function getWriteClient() {
   if (!writeToken) {
     throw new Error(
@@ -273,18 +304,8 @@ export async function createProject(
     published: input.published ?? true,
   };
 
-  if (input.shortSummary !== undefined) doc.shortSummary = input.shortSummary;
-  if (input.technologies !== undefined) doc.technologies = input.technologies;
-  if (input.keyMetrics !== undefined) doc.keyMetrics = input.keyMetrics;
-  if (input.githubUrl !== undefined) doc.githubUrl = input.githubUrl;
-  if (input.demoUrl !== undefined) doc.demoUrl = input.demoUrl;
-  if (input.featured !== undefined) doc.featured = input.featured;
-  if (input.displayOrder !== undefined) doc.displayOrder = input.displayOrder;
-  if (input.problemStatement !== undefined) doc.problemStatement = input.problemStatement;
-  if (input.approach !== undefined) doc.approach = input.approach;
-  if (input.results !== undefined) doc.results = input.results;
-  if (input.limitations !== undefined) doc.limitations = input.limitations;
-  if (input.futureImprovements !== undefined) doc.futureImprovements = input.futureImprovements;
+  setGenericFields(doc, input);
+
   if (coverImageRef) doc.coverImage = coverImageRef;
   if (architectureImageRef) doc.architectureImage = architectureImageRef;
   if (screenshotRefs.length) doc.screenshots = screenshotRefs;
@@ -324,19 +345,8 @@ export async function updateProject(
 
   const patchData: Record<string, unknown> = {};
   if (input.title !== undefined) patchData.title = input.title;
-  if (input.shortSummary !== undefined) patchData.shortSummary = input.shortSummary;
-  if (input.technologies !== undefined) patchData.technologies = input.technologies;
-  if (input.keyMetrics !== undefined) patchData.keyMetrics = input.keyMetrics;
-  if (input.githubUrl !== undefined) patchData.githubUrl = input.githubUrl;
-  if (input.demoUrl !== undefined) patchData.demoUrl = input.demoUrl;
-  if (input.featured !== undefined) patchData.featured = input.featured;
-  if (input.displayOrder !== undefined) patchData.displayOrder = input.displayOrder;
-  if (input.problemStatement !== undefined) patchData.problemStatement = input.problemStatement;
-  if (input.approach !== undefined) patchData.approach = input.approach;
-  if (input.results !== undefined) patchData.results = input.results;
-  if (input.limitations !== undefined) patchData.limitations = input.limitations;
-  if (input.futureImprovements !== undefined) patchData.futureImprovements = input.futureImprovements;
   if (input.published !== undefined) patchData.published = input.published;
+  setGenericFields(patchData, input);
   if (coverImageRef) patchData.coverImage = coverImageRef;
   if (input.coverImageAlt !== undefined && !input.coverImage) {
     patchData["coverImage.alt"] = input.coverImageAlt;

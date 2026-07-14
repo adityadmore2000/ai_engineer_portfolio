@@ -18,7 +18,16 @@ async function main() {
 
   const raw = fs.readFileSync(resolved, "utf-8");
   const input = JSON.parse(raw);
-  const markdownDir = path.dirname(resolved);
+  // Honor an explicit __markdownDir__ carried in the payload (used by the
+  // spec-driven agent flow) so image paths resolve against the spec's
+  // directory rather than this temp JSON's directory. Falls back to the
+  // JSON file's directory for legacy callers.
+  const payloadRecord = input as Record<string, unknown>;
+  const markdownDir =
+    typeof payloadRecord.__markdownDir__ === "string"
+      ? path.resolve(payloadRecord.__markdownDir__)
+      : path.dirname(resolved);
+  delete payloadRecord.__markdownDir__;
 
   await createProject(input, markdownDir);
 }
