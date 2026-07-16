@@ -4,7 +4,22 @@ import { Bot, User } from "lucide-react";
 import { Markdown } from "@/components/Markdown";
 import type { Message } from "./types";
 
-export function ChatMessage({ message }: { message: Message }) {
+function stripActionMarkers(text: string): string {
+  return text
+    .replace(/\[openResume\]/gi, "")
+    .replace(/\[openProject:[^\]]+\]/gi, "")
+    .replace(/\[scrollTo:[^\]]+\]/gi, "")
+    .replace(/\[navigate:[^\]]+\]/gi, "")
+    .trim();
+}
+
+export function ChatMessage({
+  message,
+  isStreaming,
+}: {
+  message: Message;
+  isStreaming?: boolean;
+}) {
   const isUser = message.role === "user";
 
   return (
@@ -31,8 +46,12 @@ export function ChatMessage({ message }: { message: Message }) {
         <Markdown
           className={`prose-sm ${isUser ? "text-white" : "text-slate-900"}`}
         >
-          {message.content}
+          {stripActionMarkers(message.content)}
         </Markdown>
+
+        {isStreaming && (
+          <span className="inline-block w-1.5 h-4 ml-0.5 bg-teal-600 animate-pulse" />
+        )}
 
         {message.evidence && message.evidence.length > 0 && !isUser && (
           <div className="mt-3 border-t border-slate-100 pt-2">

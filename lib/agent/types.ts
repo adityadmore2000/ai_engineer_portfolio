@@ -5,8 +5,15 @@ export type AgentAction = {
   payload: string;
 };
 
-export type AgentOutput = {
-  content: string;
-  evidence: SearchResult[];
-  actions: AgentAction[];
+export type EvidencePackage = {
+  context: string;
+  sources: SearchResult[];
+  truncated: boolean;
 };
+
+export type StreamEvent =
+  | { type: "token"; content: string }
+  | { type: "evidence"; data: SearchResult[] }
+  | { type: "actions"; data: AgentAction[] }
+  | { type: "error"; message: string }
+  | { type: "done" };

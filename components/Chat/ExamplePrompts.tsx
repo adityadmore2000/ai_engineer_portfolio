@@ -1,7 +1,7 @@
 "use client";
 
 const EXAMPLES = [
-  "Tell me about yourself",
+  "Summarize your work experience",
   "Show your AI projects",
   "Which project best demonstrates backend engineering?",
   "Explain your Video Captioning Agent",

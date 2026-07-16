@@ -5,14 +5,16 @@ import {
   useContext,
   useState,
   useCallback,
+  useRef,
   type ReactNode,
 } from "react";
-import type { Message, ChatAction } from "./types";
+import type { Message, ChatAction, SseEvent } from "./types";
 
 type ChatContextValue = {
   messages: Message[];
   isOpen: boolean;
   isLoading: boolean;
+  isStreaming: boolean;
   sendMessage: (text: string) => Promise<void>;
   toggleChat: () => void;
   closeChat: () => void;
@@ -29,6 +31,10 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
 
   const sendMessage = useCallback(async (text: string) => {
     const userMessage: Message = {
@@ -38,40 +44,103 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       createdAt: new Date(),
     };
 
+    const assistantId = generateId();
+
     setMessages((prev) => [...prev, userMessage]);
     setIsLoading(true);
+    setIsStreaming(false);
 
     try {
+      const apiMessages = [...messagesRef.current, userMessage].map((m) => ({
+        role: m.role,
+        content: m.content,
+      }));
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: [...messages, userMessage].map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        }),
+        body: JSON.stringify({ messages: apiMessages }),
       });
 
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
 
-      const data = await response.json();
-
       const assistantMessage: Message = {
-        id: generateId(),
+        id: assistantId,
         role: "assistant",
-        content: data.content || "I'm not sure how to respond to that.",
-        evidence: data.evidence || [],
-        actions: data.actions || [],
+        content: "",
         createdAt: new Date(),
       };
 
       setMessages((prev) => [...prev, assistantMessage]);
+      setIsLoading(false);
+      setIsStreaming(true);
 
-      if (data.actions?.length) {
-        executeClientActions(data.actions);
+      const reader = response.body!.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data: ")) continue;
+
+          try {
+            const event: SseEvent = JSON.parse(trimmed.slice(6));
+
+            switch (event.type) {
+              case "token":
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: m.content + event.content }
+                      : m
+                  )
+                );
+                break;
+              case "evidence":
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, evidence: event.data }
+                      : m
+                  )
+                );
+                break;
+              case "actions":
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, actions: event.data }
+                      : m
+                  )
+                );
+                if (event.data.length) {
+                  executeClientActions(event.data);
+                }
+                break;
+              case "error":
+                setMessages((prev) =>
+                  prev.map((m) =>
+                    m.id === assistantId
+                      ? { ...m, content: event.message }
+                      : m
+                  )
+                );
+                break;
+            }
+          } catch {
+            // skip malformed SSE lines
+          }
+        }
       }
     } catch (error) {
       console.error("Chat error:", error);
@@ -79,17 +148,17 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       setMessages((prev) => [
         ...prev,
         {
-          id: generateId(),
+          id: assistantId || generateId(),
           role: "assistant",
-          content:
-            "I'm sorry, I encountered an error. Please try again.",
+          content: "I'm sorry, I encountered an error. Please try again.",
           createdAt: new Date(),
         },
       ]);
     } finally {
       setIsLoading(false);
+      setIsStreaming(false);
     }
-  }, [messages]);
+  }, []);
 
   const toggleChat = useCallback(() => {
     setIsOpen((prev) => !prev);
@@ -109,6 +178,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         messages,
         isOpen,
         isLoading,
+        isStreaming,
         sendMessage,
         toggleChat,
         closeChat,

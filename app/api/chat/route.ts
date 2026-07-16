@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
-import { runAgent } from "@/lib/agent/graph";
+import { NextRequest } from "next/server";
+import { orchestrator } from "@/lib/agent/orchestrator";
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,25 +9,52 @@ export async function POST(request: NextRequest) {
     };
 
     if (!messages?.length) {
-      return NextResponse.json(
-        { error: "Messages array is required." },
-        { status: 400 }
+      return new Response(
+        JSON.stringify({ error: "Messages array is required." }),
+        { status: 400, headers: { "Content-Type": "application/json" } }
       );
     }
 
-    const result = await runAgent(messages);
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
 
-    return NextResponse.json(result);
+        try {
+          for await (const event of orchestrator(messages)) {
+            const data = `data: ${JSON.stringify(event)}\n\n`;
+            controller.enqueue(encoder.encode(data));
+          }
+        } catch {
+          const data = `data: ${JSON.stringify({
+            type: "error",
+            message: "I'm sorry, I encountered an error processing your request. Please try again.",
+          })}\n\n`;
+          controller.enqueue(encoder.encode(data));
+        } finally {
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
   } catch (error) {
     console.error("Chat API error:", error);
-    return NextResponse.json(
-      {
-        content:
+    return new Response(
+      JSON.stringify({
+        type: "error",
+        message:
           "I'm sorry, I encountered an error processing your request. Please try again.",
-        evidence: [],
-        actions: [],
-      },
-      { status: 500 }
+      }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      }
     );
   }
 }

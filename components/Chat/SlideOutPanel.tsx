@@ -8,7 +8,7 @@ import { ChatInput } from "./ChatInput";
 import { ExamplePrompts } from "./ExamplePrompts";
 
 export function SlideOutPanel() {
-  const { messages, isOpen, isLoading, closeChat, sendMessage, clearChat } =
+  const { messages, isOpen, isLoading, isStreaming, closeChat, sendMessage, clearChat } =
     useChat();
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -16,7 +16,12 @@ export function SlideOutPanel() {
     if (bottomRef.current) {
       bottomRef.current.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isLoading]);
+  }, [messages, isStreaming]);
+
+  const streamingMessageId =
+    isStreaming && messages.length > 0
+      ? messages[messages.length - 1]?.id
+      : undefined;
 
   return (
     <>
@@ -85,10 +90,14 @@ export function SlideOutPanel() {
           ) : (
             <div className="space-y-4">
               {messages.map((message) => (
-                <ChatMessage key={message.id} message={message} />
+                <ChatMessage
+                  key={message.id}
+                  message={message}
+                  isStreaming={message.id === streamingMessageId}
+                />
               ))}
 
-              {isLoading && (
+              {isLoading && !isStreaming && (
                 <div className="flex gap-3">
                   <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-slate-200">
                     <span className="text-xs font-bold text-slate-500">AI</span>
@@ -106,7 +115,7 @@ export function SlideOutPanel() {
           )}
         </div>
 
-        <ChatInput onSend={sendMessage} disabled={isLoading} />
+        <ChatInput onSend={sendMessage} disabled={isLoading || isStreaming} />
       </div>
     </>
   );

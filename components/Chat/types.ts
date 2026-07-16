@@ -12,6 +12,13 @@ export type ChatAction = {
   payload: string;
 };
 
+export type SseEvent =
+  | { type: "token"; content: string }
+  | { type: "evidence"; data: Evidence[] }
+  | { type: "actions"; data: ChatAction[] }
+  | { type: "error"; message: string }
+  | { type: "done" };
+
 export type Message = {
   id: string;
   role: "user" | "assistant";
@@ -25,4 +32,5 @@ export type ChatState = {
   messages: Message[];
   isOpen: boolean;
   isLoading: boolean;
+  isStreaming: boolean;
 };

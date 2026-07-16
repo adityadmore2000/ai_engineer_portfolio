@@ -55,6 +55,37 @@ A clean Next.js portfolio for an Applied AI Engineer, backed by Sanity Content L
    - Portfolio: `http://localhost:3000`
    - Sanity Studio: `http://localhost:3000/studio`
 
+## Docker Services (Ollama + Qdrant)
+
+The portfolio assistant agent requires a local LLM and a vector store. Start them with:
+
+```bash
+docker compose up -d
+```
+
+This starts:
+- **Ollama** on `localhost:11434` — local LLM runtime
+- **Qdrant** on `localhost:6333` — vector store for semantic search
+
+### Pull models
+
+```bash
+ollama pull qwen3:8b
+ollama pull qwen2.5:1.5b
+```
+
+- `qwen3:8b` — default chat model (set via `CHAT_MODEL` in `.env.local`)
+- `qwen2.5:1.5b` — lightweight model for intent classification (set via `INTENT_MODEL`)
+- `nomic-embed-text` — embedding model for semantic search (set via `EMBEDDING_MODEL`)
+
+### Run the app
+
+```bash
+npm run dev
+```
+
+Open `http://localhost:3000` — the portfolio assistant in the chat panel uses the Ollama models via the streaming pipeline.
+
 ## Full Sanity Setup To See Portfolio Data
 
 Follow these steps when the homepage shows:

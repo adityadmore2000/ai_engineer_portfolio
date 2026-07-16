@@ -177,6 +177,10 @@ scripts/publish-tool.ts   ← pure side-effect layer (uploads, Sanity mutations)
 
 Bridges auto-load `.env.local` via `scripts/load-env.ts`. The local dev dataset name defaults to `local` and is overridable via `SANITY_LOCAL_DATASET`.
 
+## Environment Files Policy
+
+Agents and automated workflows MUST NOT read `.env.local` or any `.env*` file unless the user explicitly instructs them to. Never echo, log, or expose environment variable values in responses — they contain secrets (Sanity tokens, API keys).
+
 ## Noteworthy
 
 - `.npmrc` sets `legacy-peer-deps=true`
