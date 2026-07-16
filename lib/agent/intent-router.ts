@@ -1,4 +1,4 @@
-import { ChatOllama } from "@langchain/ollama";
+import { getIntentModel } from "@/lib/ai";
 
 export type Intent = "portfolio" | "greeting" | "out_of_scope" | "ambiguous";
 
@@ -26,31 +26,6 @@ Message: {message}
 
 Category:`;
 
-function getIntentModel() {
-  const model = process.env.INTENT_MODEL || "qwen2.5:1.5b";
-  const baseUrl = process.env.CHAT_BASE_URL;
-
-  if (!baseUrl) {
-    throw new Error(
-      "CHAT_BASE_URL is required for intent classification (Ollama). Set it in .env.local"
-    );
-  }
-
-  return new ChatOllama({
-    model,
-    baseUrl,
-    temperature: 0,
-  });
-}
-
-function extractTextContent(
-  response: Awaited<ReturnType<ReturnType<typeof getIntentModel>["invoke"]>>
-): string {
-  if (typeof response === "string") return response;
-  if (typeof response?.content === "string") return response.content;
-  return "";
-}
-
 export async function classifyIntent(message: string): Promise<Intent> {
   const trimmed = message.trim().toLowerCase();
 
@@ -68,9 +43,15 @@ export async function classifyIntent(message: string): Promise<Intent> {
       { role: "user", content: prompt },
     ]);
 
-    const raw = extractTextContent(response).trim().toLowerCase();
+    const raw =
+      typeof response === "string"
+        ? response
+        : typeof response?.content === "string"
+          ? response.content
+          : "";
 
-    const matched = VALID_INTENTS.find((i) => raw.includes(i));
+    const label = raw.trim().toLowerCase();
+    const matched = VALID_INTENTS.find((i) => label.includes(i));
     return matched ?? "ambiguous";
   } catch {
     return "ambiguous";
