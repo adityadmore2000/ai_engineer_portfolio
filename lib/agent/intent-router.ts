@@ -26,12 +26,19 @@ Message: {message}
 
 Category:`;
 
-export async function classifyIntent(message: string): Promise<Intent> {
+export type ClassifierResult = {
+  intent: Intent;
+  rawOutput: string;
+};
+
+export async function classifyIntent(
+  message: string,
+): Promise<ClassifierResult> {
   const trimmed = message.trim().toLowerCase();
 
   for (const pattern of GREETING_PATTERNS) {
     if (pattern.test(trimmed)) {
-      return "greeting";
+      return { intent: "greeting", rawOutput: trimmed };
     }
   }
 
@@ -52,8 +59,8 @@ export async function classifyIntent(message: string): Promise<Intent> {
 
     const label = raw.trim().toLowerCase();
     const matched = VALID_INTENTS.find((i) => label.includes(i));
-    return matched ?? "ambiguous";
+    return { intent: matched ?? "ambiguous", rawOutput: raw.trim() };
   } catch {
-    return "ambiguous";
+    return { intent: "ambiguous", rawOutput: "" };
   }
 }
