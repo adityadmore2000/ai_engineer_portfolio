@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { orchestrator } from "@/lib/agent/orchestrator";
+import { createObservabilityService } from "@/lib/observability";
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,12 +16,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    const service = createObservabilityService();
+    const requestId = crypto.randomUUID();
+    service.startRequest(requestId, { messageCount: messages.length });
+
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
 
         try {
-          for await (const event of orchestrator(messages)) {
+          for await (const event of orchestrator(messages, {
+            requestId,
+            service,
+          })) {
             const data = `data: ${JSON.stringify(event)}\n\n`;
             controller.enqueue(encoder.encode(data));
           }
@@ -32,6 +40,8 @@ export async function POST(request: NextRequest) {
           controller.enqueue(encoder.encode(data));
         } finally {
           controller.close();
+          service.endRequest();
+          await service.flush();
         }
       },
     });

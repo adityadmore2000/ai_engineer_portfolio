@@ -1,4 +1,5 @@
-import { getIntentModel } from "@/lib/ai";
+import { ChatOllama } from "@langchain/ollama";
+import type { ObservabilityContext } from "@/lib/observability";
 
 export type Intent = "portfolio" | "greeting" | "out_of_scope" | "ambiguous";
 
@@ -35,7 +36,8 @@ export type ClassifierResult = {
 
 export async function classifyIntent(
   message: string,
-): Promise<ClassifierResult> {
+  context?: ObservabilityContext
+): Promise<Intent> {
   const trimmed = message.trim().toLowerCase();
 
   for (const pattern of GREETING_PATTERNS) {
@@ -51,35 +53,43 @@ export async function classifyIntent(
 
   const llm = getIntentModel();
   const prompt = CLASSIFICATION_PROMPT.replace("{message}", message.trim());
-  const messages: { role: string; content: string }[] = [
-    { role: "user", content: prompt },
-  ];
-  const model = process.env.CHAT_MODEL || "Qwen/Qwen3-4B-Instruct";
+
+  const gen = context?.service.startGeneration({
+    name: "intent-classification",
+    input: [{ role: "user", content: prompt }],
+    metadata: {
+      model: process.env.INTENT_MODEL || "qwen2.5:1.5b",
+      temperature: 0,
+    },
+  });
 
   try {
-    const response = await llm.invoke(messages);
+    const response = await llm.invoke([
+      { role: "user", content: prompt },
+    ]);
 
-    const raw =
-      typeof response === "string"
-        ? response
-        : typeof response?.content === "string"
-          ? response.content
-          : "";
+    const raw = extractTextContent(response).trim().toLowerCase();
 
-    const label = raw.trim().toLowerCase();
-    const matched = VALID_INTENTS.find((i) => label.includes(i));
-    return {
-      intent: matched ?? "ambiguous",
-      rawOutput: raw.trim(),
-      messages,
-      modelConfig: { model, temperature: 0 },
-    };
-  } catch (err) {
-    return {
-      intent: "ambiguous",
-      rawOutput: err instanceof Error ? err.message : String(err),
-      messages,
-      modelConfig: { model, temperature: 0 },
-    };
+    const matched = VALID_INTENTS.find((i) => raw.includes(i));
+    const intent = matched ?? "ambiguous";
+
+    const usage = (response as { usage_metadata?: { input_tokens?: number; output_tokens?: number; total_tokens?: number } }).usage_metadata;
+
+    gen?.end({
+      output: raw,
+      metadata: {
+        intent,
+        model: process.env.INTENT_MODEL || "qwen2.5:1.5b",
+        temperature: 0,
+        promptTokens: usage?.input_tokens,
+        completionTokens: usage?.output_tokens,
+        totalTokens: usage?.total_tokens,
+      },
+    });
+
+    return intent;
+  } catch {
+    gen?.end({ output: "error", metadata: { intent: "ambiguous", error: true } });
+    return "ambiguous";
   }
 }
