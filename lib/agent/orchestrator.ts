@@ -10,6 +10,7 @@ import {
   SYSTEM_PROMPT,
 } from "./prompts";
 import { MLflowLogger } from "./mlflow-logger";
+import { LangfuseTracer } from "./langfuse-tracer";
 import type { StreamEvent } from "./types";
 
 function getLlmParams(): Record<string, string> {
@@ -25,85 +26,118 @@ export async function* orchestrator(
 ): AsyncGenerator<StreamEvent> {
   const lastMessage = messages[messages.length - 1]?.content || "";
   const mlflow = new MLflowLogger();
+  const tracer = new LangfuseTracer();
 
   await mlflow.startRun();
-  mlflow.logArtifact(lastMessage, "artifacts/input/user_input.txt");
+  tracer.startTrace("user-request", { messages });
 
   // ── Intent classification ──────────────────────────────────────────
   const intentStart = performance.now();
-  const { intent, rawOutput } = await classifyIntent(lastMessage);
+  const classifierResult = await classifyIntent(lastMessage);
   const intentLatency = performance.now() - intentStart;
 
+  const intentGenId = tracer.startGeneration("intent-classification", {
+    messages: classifierResult.messages,
+    model: classifierResult.modelConfig.model,
+    modelParameters: { temperature: classifierResult.modelConfig.temperature },
+    systemPrompt: "",
+  });
+
+  tracer.endGeneration(intentGenId, {
+    response: classifierResult.rawOutput,
+    metadata: {
+      intent: classifierResult.intent,
+      latency_ms: intentLatency,
+      userMessage: lastMessage,
+    },
+  });
+
   mlflow.logMetric("intent_classifier_latency_ms", intentLatency);
-  mlflow.logArtifact(
-    JSON.stringify({ intent, rawOutput }, null, 2),
-    "artifacts/outputs/intent_classifier.json",
-  );
-  mlflow.logArtifact(SYSTEM_PROMPT, "artifacts/prompts/system_prompt.txt");
   mlflow.logParams(getLlmParams());
 
   // Guardrail intents — log what we have and return early
-  switch (intent) {
+  switch (classifierResult.intent) {
     case "greeting":
+      tracer.endTrace({ intent: classifierResult.intent, response: GUARDRAIL_GREETING });
       await mlflow.endRun("FINISHED");
       yield { type: "token", content: GUARDRAIL_GREETING };
       yield { type: "done" };
+      await tracer.flushAsync();
       return;
     case "out_of_scope":
+      tracer.endTrace({ intent: classifierResult.intent, response: GUARDRAIL_OUT_OF_SCOPE });
       await mlflow.endRun("FINISHED");
       yield { type: "token", content: GUARDRAIL_OUT_OF_SCOPE };
       yield { type: "done" };
+      await tracer.flushAsync();
       return;
     case "ambiguous":
+      tracer.endTrace({ intent: classifierResult.intent, response: GUARDRAIL_AMBIGUOUS });
       await mlflow.endRun("FINISHED");
       yield { type: "token", content: GUARDRAIL_AMBIGUOUS };
       yield { type: "done" };
+      await tracer.flushAsync();
       return;
   }
 
   // ── Retrieval ──────────────────────────────────────────────────────
   const retrievalStart = performance.now();
+  const retrievalSpanId = tracer.startSpan("retrieval", {
+    query: lastMessage,
+  });
   let results: Awaited<ReturnType<typeof searchPortfolio>>;
   try {
     results = await searchPortfolio(lastMessage);
-  } catch {
+  } catch (error) {
     mlflow.logMetric("retrieval_latency_ms", performance.now() - retrievalStart);
+    tracer.recordError(retrievalSpanId, error as Error);
+    tracer.endTrace({ error: "Retrieval failed" });
     await mlflow.endRun("FAILED");
     yield {
       type: "error",
       message:
         "I'm sorry, I encountered an error searching the portfolio. Please try again.",
     };
+    await tracer.flushAsync();
     return;
   }
 
   mlflow.logMetric("retrieval_latency_ms", performance.now() - retrievalStart);
-  mlflow.logArtifact(
-    JSON.stringify(results, null, 2),
-    "artifacts/retrieval/retrieved_chunks.json",
-  );
+
+  tracer.endSpan(retrievalSpanId, { resultCount: results.length, results });
 
   // ── Evidence building ──────────────────────────────────────────────
   const evidenceStart = performance.now();
+  const evidenceSpanId = tracer.startSpan("evidence-builder", {
+    retrievedDocumentCount: results.length,
+  });
   const evidencePackage = buildEvidencePackage(results);
   mlflow.logMetric(
     "evidence_builder_latency_ms",
     performance.now() - evidenceStart,
   );
-  mlflow.logArtifact(
-    JSON.stringify(evidencePackage, null, 2),
-    "artifacts/retrieval/evidence_package.json",
-  );
+
+  tracer.endSpan(evidenceSpanId, evidencePackage);
 
   if (evidencePackage.sources.length === 0) {
+    tracer.endTrace({ intent: classifierResult.intent, response: GUARDRAIL_NO_EVIDENCE });
     await mlflow.endRun("FINISHED");
     yield { type: "token", content: GUARDRAIL_NO_EVIDENCE };
     yield { type: "done" };
+    await tracer.flushAsync();
     return;
   }
 
   // ── LLM inference ──────────────────────────────────────────────────
   const llmStart = performance.now();
+  const llmParams = getLlmParams();
+  const llmGenId = tracer.startGeneration("llm-generation", {
+    messages: messages.slice(-10),
+    model: llmParams.llm_model,
+    modelParameters: { temperature: llmParams.temperature },
+    systemPrompt: SYSTEM_PROMPT,
+    evidence: evidencePackage.context,
+  });
   let fullText = "";
   let llmFailed = false;
 
@@ -120,11 +154,21 @@ export async function* orchestrator(
 
   mlflow.logMetric("llm_latency_ms", performance.now() - llmStart);
 
-  if (fullText) {
-    mlflow.logArtifact(fullText, "artifacts/outputs/llm_output.txt");
+  if (llmFailed) {
+    tracer.recordError(llmGenId, "LLM generation failed");
+  } else {
+    tracer.endGeneration(llmGenId, { response: fullText });
   }
 
+  tracer.endTrace({
+    intent: classifierResult.intent,
+    response: fullText || undefined,
+    evidenceCount: evidencePackage.sources.length,
+  });
+
   await mlflow.endRun(llmFailed ? "FAILED" : "FINISHED");
+
+  await tracer.flushAsync();
 
   if (llmFailed) {
     yield {

@@ -9,12 +9,7 @@ const VALID_INTENTS: Intent[] = [
   "ambiguous",
 ];
 
-const GREETING_PATTERNS = [
-  /^(hi|hello|hey|greetings|good morning|good evening)\b/i,
-  /^(how are you|how's it going|what's up|nice to meet you)\b/i,
-];
-
-const CLASSIFICATION_PROMPT = `Classify the following user message into exactly one of these categories.
+export const CLASSIFICATION_PROMPT = `Classify the following user message into exactly one of these categories.
 
 Categories:
 - portfolio: The user is asking about someone's projects, skills, experience, resume, contact info, technologies used, or work history.
@@ -26,9 +21,16 @@ Message: {message}
 
 Category:`;
 
+const GREETING_PATTERNS = [
+  /^(hi|hello|hey|greetings|good morning|good evening)\b/i,
+  /^(how are you|how's it going|what's up|nice to meet you)\b/i,
+];
+
 export type ClassifierResult = {
   intent: Intent;
   rawOutput: string;
+  messages: { role: string; content: string }[];
+  modelConfig: { model: string; temperature: number };
 };
 
 export async function classifyIntent(
@@ -38,17 +40,24 @@ export async function classifyIntent(
 
   for (const pattern of GREETING_PATTERNS) {
     if (pattern.test(trimmed)) {
-      return { intent: "greeting", rawOutput: trimmed };
+      return {
+        intent: "greeting",
+        rawOutput: trimmed,
+        messages: [{ role: "user", content: trimmed }],
+        modelConfig: { model: "rule-based", temperature: 0 },
+      };
     }
   }
 
   const llm = getIntentModel();
   const prompt = CLASSIFICATION_PROMPT.replace("{message}", message.trim());
+  const messages: { role: string; content: string }[] = [
+    { role: "user", content: prompt },
+  ];
+  const model = process.env.CHAT_MODEL || "Qwen/Qwen3-4B-Instruct";
 
   try {
-    const response = await llm.invoke([
-      { role: "user", content: prompt },
-    ]);
+    const response = await llm.invoke(messages);
 
     const raw =
       typeof response === "string"
@@ -59,8 +68,18 @@ export async function classifyIntent(
 
     const label = raw.trim().toLowerCase();
     const matched = VALID_INTENTS.find((i) => label.includes(i));
-    return { intent: matched ?? "ambiguous", rawOutput: raw.trim() };
-  } catch {
-    return { intent: "ambiguous", rawOutput: "" };
+    return {
+      intent: matched ?? "ambiguous",
+      rawOutput: raw.trim(),
+      messages,
+      modelConfig: { model, temperature: 0 },
+    };
+  } catch (err) {
+    return {
+      intent: "ambiguous",
+      rawOutput: err instanceof Error ? err.message : String(err),
+      messages,
+      modelConfig: { model, temperature: 0 },
+    };
   }
 }

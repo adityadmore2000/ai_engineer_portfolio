@@ -181,6 +181,27 @@ Bridges auto-load `.env.local` via `scripts/load-env.ts`. The local dev dataset 
 
 Agents and automated workflows MUST NOT read `.env.local` or any `.env*` file unless the user explicitly instructs them to. Never echo, log, or expose environment variable values in responses — they contain secrets (Sanity tokens, API keys).
 
+## Langfuse Observability
+
+- **Library:** `langfuse` (npm)
+- **Initialization:** Singleton `Langfuse` client in `lib/agent/langfuse-tracer.ts`; enabled when both
+  `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY` are set. A `LangfuseTracer` instance is created
+  per request inside the orchestrator.
+- **Trace structure (one trace per user request):**
+  ```
+  Trace: "user-request"
+  ├── Span: "intent-classification"
+  ├── Span: "retrieval"
+  ├── Span: "evidence-builder"
+  └── Generation: "llm-generation"  (model, temperature, prompt, response)
+  ```
+- **MLflow relationship:** Langfuse and MLflow are independent side-effects.
+  MLflow owns runs/metrics/params/artifacts; Langfuse owns traces/spans/prompt inspection/
+  execution hierarchy/latency visualization. Neither depends on the other. Both are best-effort
+  and never fail user requests.
+- **No-op when unconfigured:** If env vars are missing, `LangfuseTracer` disables itself and all
+  calls become no-ops.
+
 ## Noteworthy
 
 - `.npmrc` sets `legacy-peer-deps=true`

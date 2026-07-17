@@ -1,7 +1,6 @@
-import fs from "node:fs/promises";
-import path from "node:path";
-
 type MlflowRunStatus = "FINISHED" | "FAILED";
+
+let cachedExperimentId: string | null = null;
 
 /**
  * Thin wrapper over the MLflow Tracking REST API.
@@ -10,14 +9,13 @@ type MlflowRunStatus = "FINISHED" | "FAILED";
  * warnings.  The logger is a no-op when MLFLOW_TRACKING_URI is unset.
  *
  * Metrics are staged in memory and flushed as a batch on endRun().
- * Params and artifacts are written immediately (fire-and-forget).
+ * Params are logged eagerly before endRun (staged, then flushed).
  */
 class MLflowLogger {
   private enabled: boolean;
   private trackingUri: string;
   private runId: string | null = null;
   private experimentId: string | null = null;
-  private artifactUri: string | null = null;
   private params: Record<string, string> = {};
   private metrics: Record<string, number> = {};
 
@@ -54,16 +52,23 @@ class MLflowLogger {
         tags: [{ key: "mlflow.runName", value: `chat-${Date.now()}` }],
       };
 
-      const res = await this.mlflowFetch("/api/2.0/mlflow/runs/create", body);
+      const res = await this.mlflowFetch("/api/2.0/mlflow/runs/create", {
+        method: "POST",
+        body,
+      });
       if (!res.ok) {
-        console.warn("MLflow: failed to create run", await res.text());
+        this.logMlflowError(
+          "/api/2.0/mlflow/runs/create",
+          "POST",
+          res.status,
+          await res.text(),
+        );
         this.enabled = false;
         return;
       }
 
       const data = await res.json();
       this.runId = data.run.info.run_id;
-      this.artifactUri = data.run.info.artifact_uri;
     } catch (err) {
       console.warn("MLflow: startRun failed", err);
       this.enabled = false;
@@ -82,24 +87,14 @@ class MLflowLogger {
     this.metrics[key] = value;
   }
 
-  /** Write content to an artifact file under the run's artifact_uri. */
-  logArtifact(content: string, artifactPath: string): void {
-    if (!this.enabled || !this.runId || !this.artifactUri) return;
-
-    this.writeArtifactFile(content, artifactPath).catch((err) =>
-      console.warn("MLflow: logArtifact failed", err),
-    );
-  }
-
   async endRun(status: MlflowRunStatus = "FINISHED"): Promise<void> {
     if (!this.enabled || !this.runId) return;
 
     try {
       await this.flushBatch();
       await this.mlflowFetch("/api/2.0/mlflow/runs/update", {
-        run_id: this.runId,
-        status,
-        end_time: Date.now(),
+        method: "POST",
+        body: { run_id: this.runId, status, end_time: Date.now() },
       });
     } catch (err) {
       console.warn("MLflow: endRun failed", err);
@@ -114,37 +109,114 @@ class MLflowLogger {
   // Private helpers
   // ---------------------------------------------------------------------------
 
-  private mlflowFetch(path: string, body: unknown): Promise<Response> {
-    return fetch(`${this.trackingUri}${path}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+  private async mlflowFetch(
+    endpoint: string,
+    options: { method: "GET" | "POST"; body?: unknown },
+  ): Promise<Response> {
+    const { method, body } = options;
+    const url = new URL(`${this.trackingUri}${endpoint}`);
+
+    if (method === "GET" && body !== undefined) {
+      for (const [key, value] of Object.entries(
+        body as Record<string, string>,
+      )) {
+        if (value !== undefined) {
+          url.searchParams.append(key, value);
+        }
+      }
+    }
+
+    const init: RequestInit = { method };
+    if (method !== "GET" && body !== undefined) {
+      init.headers = { "Content-Type": "application/json" };
+      init.body = JSON.stringify(body);
+    }
+
+    return fetch(url.toString(), init);
+  }
+
+  private logMlflowError(
+    endpoint: string,
+    method: string,
+    status: number,
+    responseText: string,
+  ): void {
+    console.warn(
+      `MLflow request failed\nEndpoint: ${endpoint}\nMethod: ${method}\nStatus: ${status}\nResponse: ${responseText}`,
+    );
   }
 
   private async resolveExperimentId(name: string): Promise<string | null> {
+    if (cachedExperimentId) return cachedExperimentId;
+
     const getRes = await this.mlflowFetch(
       "/api/2.0/mlflow/experiments/get-by-name",
-      { experiment_name: name },
+      { method: "GET", body: { experiment_name: name } },
     );
 
     if (getRes.ok) {
       const data = await getRes.json();
-      return data.experiment.experiment_id;
+      cachedExperimentId = data.experiment.experiment_id;
+      return cachedExperimentId;
     }
 
-    const createRes = await this.mlflowFetch("/api/2.0/mlflow/experiments/create", {
-      name,
-      artifact_location: process.env.MLFLOW_ARTIFACT_LOCATION || undefined,
-    });
-
-    if (!createRes.ok) {
-      console.warn("MLflow: failed to create experiment", await createRes.text());
+    if (getRes.status !== 404) {
+      this.logMlflowError(
+        "/api/2.0/mlflow/experiments/get-by-name",
+        "GET",
+        getRes.status,
+        await getRes.text(),
+      );
       return null;
     }
 
-    const data = await createRes.json();
-    return data.experiment.experiment_id;
+    const createRes = await this.mlflowFetch(
+      "/api/2.0/mlflow/experiments/create",
+      {
+        method: "POST",
+        body: {
+          name,
+          artifact_location:
+            process.env.MLFLOW_ARTIFACT_LOCATION || undefined,
+        },
+      },
+    );
+
+    if (createRes.ok) {
+      const data = await createRes.json();
+      cachedExperimentId = data.experiment.experiment_id;
+      return cachedExperimentId;
+    }
+
+    if (createRes.status === 400 || createRes.status === 409) {
+      const errBody = await createRes.json().catch(() => null);
+      if (errBody?.error_code === "RESOURCE_ALREADY_EXISTS") {
+        const retryRes = await this.mlflowFetch(
+          "/api/2.0/mlflow/experiments/get-by-name",
+          { method: "GET", body: { experiment_name: name } },
+        );
+        if (retryRes.ok) {
+          const data = await retryRes.json();
+          cachedExperimentId = data.experiment.experiment_id;
+          return cachedExperimentId;
+        }
+        this.logMlflowError(
+          "/api/2.0/mlflow/experiments/get-by-name",
+          "GET",
+          retryRes.status,
+          await retryRes.text(),
+        );
+        return null;
+      }
+    }
+
+    this.logMlflowError(
+      "/api/2.0/mlflow/experiments/create",
+      "POST",
+      createRes.status,
+      await createRes.text(),
+    );
+    return null;
   }
 
   private async flushBatch(): Promise<void> {
@@ -171,24 +243,20 @@ class MLflowLogger {
       }));
     }
 
-    const res = await this.mlflowFetch("/api/2.0/mlflow/runs/log-batch", body);
+    const res = await this.mlflowFetch("/api/2.0/mlflow/runs/log-batch", {
+      method: "POST",
+      body,
+    });
     if (!res.ok) {
-      console.warn("MLflow: log-batch failed", await res.text());
+      this.logMlflowError(
+        "/api/2.0/mlflow/runs/log-batch",
+        "POST",
+        res.status,
+        await res.text(),
+      );
     }
   }
 
-  private async writeArtifactFile(
-    content: string,
-    artifactPath: string,
-  ): Promise<void> {
-    let baseDir = this.artifactUri!;
-    if (baseDir.startsWith("file://")) {
-      baseDir = baseDir.slice(7);
-    }
-    const fullPath = path.join(baseDir, artifactPath);
-    await fs.mkdir(path.dirname(fullPath), { recursive: true });
-    await fs.writeFile(fullPath, content, "utf-8");
-  }
 }
 
 export { MLflowLogger };
