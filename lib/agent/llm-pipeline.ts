@@ -1,4 +1,5 @@
 import { getChatModel } from "@/lib/ai";
+import type { ObservabilityContext } from "@/lib/observability";
 import { SYSTEM_PROMPT } from "./prompts";
 import type { EvidencePackage, StreamEvent, AgentAction } from "./types";
 
@@ -27,7 +28,8 @@ function extractActions(text: string): AgentAction[] {
 
 export async function* runLLMPipeline(
   messages: { role: string; content: string }[],
-  evidencePackage: EvidencePackage
+  evidencePackage: EvidencePackage,
+  context?: ObservabilityContext
 ): AsyncGenerator<StreamEvent> {
   const llm = getChatModel();
 
@@ -43,23 +45,43 @@ export async function* runLLMPipeline(
     })),
   ];
 
+  const gen = context?.service.startGeneration({
+    name: "chat-generation",
+    input: llmMessages,
+    metadata: {
+      model: process.env.CHAT_MODEL || "qwen3:8b",
+      temperature: 0,
+      streamEnabled: true,
+    },
+  });
+
   let fullText = "";
+  let finalUsage: { input_tokens?: number; output_tokens?: number; total_tokens?: number } | undefined;
 
   try {
     const stream = await llm.stream(llmMessages);
 
     for await (const chunk of stream) {
-      const token = typeof chunk === "string"
-        ? chunk
-        : typeof chunk?.content === "string"
-          ? chunk.content
-          : "";
+      const chunkWithUsage = chunk as { usage_metadata?: typeof finalUsage };
+      if (chunkWithUsage.usage_metadata) {
+        finalUsage = chunkWithUsage.usage_metadata;
+      }
+      const token =
+        typeof chunk === "string"
+          ? chunk
+          : typeof chunk?.content === "string"
+            ? chunk.content
+            : "";
       if (token) {
         fullText += token;
         yield { type: "token", content: token } as StreamEvent;
       }
     }
   } catch {
+    gen?.end({
+      output: "",
+      metadata: { error: true },
+    });
     yield {
       type: "error",
       message: "I'm sorry, I encountered an error processing your request. Please try again.",
@@ -70,6 +92,18 @@ export async function* runLLMPipeline(
   if (!fullText.trim()) {
     yield { type: "token", content: "I couldn't find that information in Aditya's portfolio." };
   }
+
+  gen?.end({
+    output: fullText,
+    metadata: {
+      model: process.env.CHAT_MODEL || "qwen3:8b",
+      temperature: 0,
+      streamEnabled: true,
+      promptTokens: finalUsage?.input_tokens,
+      completionTokens: finalUsage?.output_tokens,
+      totalTokens: finalUsage?.total_tokens,
+    },
+  });
 
   const actions = extractActions(fullText);
   yield { type: "evidence", data: evidencePackage.sources };

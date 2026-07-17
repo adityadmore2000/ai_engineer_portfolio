@@ -1,4 +1,5 @@
 import { ChatOllama } from "@langchain/ollama";
+import type { ObservabilityContext } from "@/lib/observability";
 
 export type Intent = "portfolio" | "greeting" | "out_of_scope" | "ambiguous";
 
@@ -51,7 +52,10 @@ function extractTextContent(
   return "";
 }
 
-export async function classifyIntent(message: string): Promise<Intent> {
+export async function classifyIntent(
+  message: string,
+  context?: ObservabilityContext
+): Promise<Intent> {
   const trimmed = message.trim().toLowerCase();
 
   for (const pattern of GREETING_PATTERNS) {
@@ -63,6 +67,15 @@ export async function classifyIntent(message: string): Promise<Intent> {
   const llm = getIntentModel();
   const prompt = CLASSIFICATION_PROMPT.replace("{message}", message.trim());
 
+  const gen = context?.service.startGeneration({
+    name: "intent-classification",
+    input: [{ role: "user", content: prompt }],
+    metadata: {
+      model: process.env.INTENT_MODEL || "qwen2.5:1.5b",
+      temperature: 0,
+    },
+  });
+
   try {
     const response = await llm.invoke([
       { role: "user", content: prompt },
@@ -71,8 +84,25 @@ export async function classifyIntent(message: string): Promise<Intent> {
     const raw = extractTextContent(response).trim().toLowerCase();
 
     const matched = VALID_INTENTS.find((i) => raw.includes(i));
-    return matched ?? "ambiguous";
+    const intent = matched ?? "ambiguous";
+
+    const usage = (response as { usage_metadata?: { input_tokens?: number; output_tokens?: number; total_tokens?: number } }).usage_metadata;
+
+    gen?.end({
+      output: raw,
+      metadata: {
+        intent,
+        model: process.env.INTENT_MODEL || "qwen2.5:1.5b",
+        temperature: 0,
+        promptTokens: usage?.input_tokens,
+        completionTokens: usage?.output_tokens,
+        totalTokens: usage?.total_tokens,
+      },
+    });
+
+    return intent;
   } catch {
+    gen?.end({ output: "error", metadata: { intent: "ambiguous", error: true } });
     return "ambiguous";
   }
 }
