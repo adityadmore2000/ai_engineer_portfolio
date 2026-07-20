@@ -1,5 +1,5 @@
-import { ChatOllama } from "@langchain/ollama";
 import type { ObservabilityContext } from "@/lib/observability";
+import { getIntentModel } from "@/lib/ai";
 
 export type Intent = "portfolio" | "greeting" | "out_of_scope" | "ambiguous";
 
@@ -42,12 +42,7 @@ export async function classifyIntent(
 
   for (const pattern of GREETING_PATTERNS) {
     if (pattern.test(trimmed)) {
-      return {
-        intent: "greeting",
-        rawOutput: trimmed,
-        messages: [{ role: "user", content: trimmed }],
-        modelConfig: { model: "rule-based", temperature: 0 },
-      };
+      return "greeting";
     }
   }
 
@@ -68,7 +63,7 @@ export async function classifyIntent(
       { role: "user", content: prompt },
     ]);
 
-    const raw = extractTextContent(response).trim().toLowerCase();
+    const raw = (typeof response.content === "string" ? response.content : "").trim().toLowerCase();
 
     const matched = VALID_INTENTS.find((i) => raw.includes(i));
     const intent = matched ?? "ambiguous";
