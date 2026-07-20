@@ -22,6 +22,7 @@
     "@qdrant/js-client-rest": "^1.18.0",
     "@sanity/image-url": "^1.1.0",
     "@sanity/vision": "^3.88.3",
+    "@vercel/analytics": "^2.0.1",
     "easymde": "^2.21.0",
     "fumadocs-core": "^15.8.5",
     "fumadocs-ui": "^15.8.5",

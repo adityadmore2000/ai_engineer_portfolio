@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { ChatProvider, FloatingButton, SlideOutPanel } from "@/components/Chat";
+import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -46,6 +47,7 @@ export default function RootLayout({
             <SlideOutPanel />
           </ChatProvider>
         </RootProvider>
+          <Analytics />
       </body>
     </html>
   );
