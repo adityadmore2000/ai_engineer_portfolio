@@ -7,26 +7,19 @@ import {
   GUARDRAIL_GREETING,
   GUARDRAIL_OUT_OF_SCOPE,
   GUARDRAIL_AMBIGUOUS,
-  GUARDRAIL_NO_EVIDENCE,
-  SYSTEM_PROMPT,
 } from "./prompts";
-import { MLflowLogger } from "./mlflow-logger";
 import { LangfuseTracer } from "./langfuse-tracer";
 import type { StreamEvent } from "./types";
 
-function getLlmParams(): Record<string, string> {
-  const params: Record<string, string> = {
-    llm_model: process.env.CHAT_MODEL || "Qwen/Qwen3-4B-Instruct",
-    temperature: "0",
-  };
-  return params;
-}
+const tracer = new LangfuseTracer();
 
 export async function* orchestrator(
   messages: { role: string; content: string }[],
   context?: ObservabilityContext
 ): AsyncGenerator<StreamEvent> {
   const lastMessage = messages[messages.length - 1]?.content || "";
+
+  tracer.startTrace("chat-request", { messageCount: messages.length });
 
   const intent = await classifyIntent(lastMessage, context);
 
@@ -35,18 +28,21 @@ export async function* orchestrator(
       context?.service.updateRequest({ terminationReason: "greeting" });
       yield { type: "token", content: GUARDRAIL_GREETING };
       yield { type: "done" };
+      tracer.endTrace({ intent: "greeting" });
       await tracer.flushAsync();
       return;
     case "out_of_scope":
       context?.service.updateRequest({ terminationReason: "out_of_scope" });
       yield { type: "token", content: GUARDRAIL_OUT_OF_SCOPE };
       yield { type: "done" };
+      tracer.endTrace({ intent: "out_of_scope" });
       await tracer.flushAsync();
       return;
     case "ambiguous":
       context?.service.updateRequest({ terminationReason: "ambiguous" });
       yield { type: "token", content: GUARDRAIL_AMBIGUOUS };
       yield { type: "done" };
+      tracer.endTrace({ intent: "ambiguous" });
       await tracer.flushAsync();
       return;
   }
@@ -65,12 +61,16 @@ export async function* orchestrator(
     });
     results = await searchPortfolio(lastMessage);
     span?.end({ output: { documentCount: results.length } });
-  } catch {
+    tracer.endSpan(retrievalSpanId, { documentCount: results.length });
+  } catch (err) {
+    console.error("[orchestrator] searchPortfolio failed:", err);
+    tracer.endSpan(retrievalSpanId, { error: true });
     yield {
       type: "error",
       message:
         "I'm sorry, I encountered an error searching the portfolio. Please try again.",
     };
+    tracer.endTrace({ error: "searchPortfolio" });
     await tracer.flushAsync();
     return;
   }
@@ -97,9 +97,12 @@ export async function* orchestrator(
       content: "I couldn't find that information in Aditya's portfolio.",
     };
     yield { type: "done" };
+    tracer.endTrace({ termination: "no_evidence" });
     await tracer.flushAsync();
     return;
   }
 
   yield* runLLMPipeline(messages, evidencePackage, context);
+  tracer.endTrace({ intent: "portfolio" });
+  await tracer.flushAsync();
 }

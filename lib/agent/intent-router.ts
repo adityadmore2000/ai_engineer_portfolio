@@ -83,7 +83,12 @@ export async function classifyIntent(
     });
 
     return intent;
-  } catch {
+  } catch (err) {
+    console.error("[classifyIntent] LLM invocation failed:", {
+      error: err instanceof Error ? { name: err.name, message: err.message } : String(err),
+      model: process.env.CHAT_MODEL || "Qwen/Qwen3-4B-Instruct",
+      query: message.trim(),
+    });
     gen?.end({ output: "error", metadata: { intent: "ambiguous", error: true } });
     return "ambiguous";
   }
