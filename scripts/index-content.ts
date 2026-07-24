@@ -379,7 +379,7 @@ async function main() {
 
   console.log("Connecting to Qdrant...");
 
-  const embeddings = getEmbeddings();
+  const embeddings = await getEmbeddings();
 
   try {
     await QdrantVectorStore.fromDocuments(documents, embeddings, {

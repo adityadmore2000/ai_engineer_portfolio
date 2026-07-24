@@ -1,18 +1,32 @@
-import { HuggingFaceTransformersEmbeddings } from "@langchain/community/embeddings/huggingface_transformers";
-import { OllamaEmbeddings } from "@langchain/ollama";
 import type { Embeddings } from "@langchain/core/embeddings";
 
-export function getEmbeddings(): Embeddings {
-  const provider = process.env.EMBEDDING_PROVIDER || "huggingface";
+export async function getEmbeddings(): Promise<Embeddings> {
+  const provider = process.env.EMBEDDING_PROVIDER || "ollama";
 
-  if (provider === "ollama") {
-    return new OllamaEmbeddings({
-      model: process.env.EMBEDDING_MODEL || "nomic-embed-text",
-      baseUrl: process.env.EMBEDDING_BASE_URL || "http://localhost:11434",
+  if (provider === "openai") {
+    const { OpenAIEmbeddings } = await import("@langchain/openai");
+    return new OpenAIEmbeddings({
+      model: process.env.EMBEDDING_MODEL || "text-embedding-3-small",
+      apiKey: process.env.OPENAI_API_KEY || process.env.CHAT_API_KEY,
+      configuration: {
+        baseURL: process.env.OPENAI_BASE_URL || process.env.CHAT_BASE_URL
+          ? `${(process.env.OPENAI_BASE_URL || process.env.CHAT_BASE_URL || "").replace(/\/+$/, "")}/v1`
+          : undefined,
+      },
     });
   }
 
-  return new HuggingFaceTransformersEmbeddings({
-    model: process.env.EMBEDDING_MODEL || "Xenova/nomic-embed-text-v1.5",
+  if (provider === "huggingface") {
+    throw new Error(
+      "HuggingFace embeddings are deprecated for serverless. " +
+      "Use EMBEDDING_PROVIDER=ollama or EMBEDDING_PROVIDER=openai instead. " +
+      "To restore HuggingFace support, install @langchain/community and @huggingface/transformers as optional dependencies."
+    );
+  }
+
+  const { OllamaEmbeddings } = await import("@langchain/ollama");
+  return new OllamaEmbeddings({
+    model: process.env.EMBEDDING_MODEL || "nomic-embed-text",
+    baseUrl: process.env.EMBEDDING_BASE_URL || "http://localhost:11434",
   });
 }

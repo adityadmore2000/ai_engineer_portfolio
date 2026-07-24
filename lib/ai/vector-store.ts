@@ -4,7 +4,7 @@ import { getEmbeddings } from "./embeddings";
 const DEFAULT_COLLECTION = "portfolio_chunks";
 
 export async function getVectorStore() {
-  const embeddings = getEmbeddings();
+  const embeddings = await getEmbeddings();
   const url = process.env.VECTOR_URL || "http://localhost:6333";
   const apiKey = process.env.VECTOR_API_KEY;
   const collectionName = process.env.QDRANT_COLLECTION || DEFAULT_COLLECTION;
