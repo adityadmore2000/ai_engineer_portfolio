@@ -16,6 +16,7 @@ export interface ProjectPublishInput {
   title: string;
   slug: string;
   shortSummary?: string;
+  status?: string;
   coverImage?: string;
   coverImageAlt?: string;
   technologies?: string[];
@@ -24,15 +25,29 @@ export interface ProjectPublishInput {
   demoUrl?: string;
   featured?: boolean;
   displayOrder?: number;
-  problemStatement?: string;
-  approach?: string;
-  results?: string;
+  whyIBuiltIt?: string;
+  theProblem?: string;
+  theSolution?: string;
   architectureImage?: string;
   architectureImageAlt?: string;
+  engineeringDecisions?: string;
+  interestingChallenges?: { problem?: string; solution?: string; outcome?: string }[];
+  results?: string;
+  whatThisDemonstrates?: string;
   screenshots?: string[];
   screenshotAlts?: string[];
+  demoVideo?: string;
+  beforeAfterComparisons?: {
+    beforeImage?: string;
+    afterImage?: string;
+    caption?: string;
+  }[];
+  exampleInputsOutputs?: string;
+  lessonsLearned?: string;
   limitations?: string;
   futureImprovements?: string;
+  timeline?: string;
+  faq?: { question?: string; answer?: string }[];
   published?: boolean;
 }
 
@@ -133,17 +148,25 @@ export type ProjectReadOutput = {
   title: string;
   slug: string;
   shortSummary?: string;
+  status?: string;
   technologies?: string[];
   keyMetrics?: string[];
   githubUrl?: string;
   demoUrl?: string;
   featured?: boolean;
   displayOrder?: number;
-  problemStatement?: string;
-  approach?: string;
+  whyIBuiltIt?: string;
+  theProblem?: string;
+  theSolution?: string;
+  engineeringDecisions?: string;
   results?: string;
+  whatThisDemonstrates?: string;
+  demoVideo?: string;
+  exampleInputsOutputs?: string;
+  lessonsLearned?: string;
   limitations?: string;
   futureImprovements?: string;
+  timeline?: string;
   coverImageAlt?: string;
   architectureImageAlt?: string;
   screenshotAlts?: string[];
@@ -155,17 +178,25 @@ const readProjectQuery = `*[_type == "project" && slug.current == $slug][0]{
   title,
   "slug": slug.current,
   shortSummary,
+  status,
   technologies,
   keyMetrics,
   githubUrl,
   demoUrl,
   featured,
   displayOrder,
-  problemStatement,
-  approach,
+  whyIBuiltIt,
+  theProblem,
+  theSolution,
+  engineeringDecisions,
   results,
+  whatThisDemonstrates,
+  demoVideo,
+  exampleInputsOutputs,
+  lessonsLearned,
   limitations,
   futureImprovements,
+  timeline,
   coverImage{alt},
   architectureImage{alt},
   screenshots[]{alt},
@@ -185,17 +216,25 @@ export async function readProject(
     title: doc.title as string,
     slug: doc.slug as string,
     shortSummary: (doc.shortSummary as string) ?? undefined,
+    status: (doc.status as string) ?? undefined,
     technologies: (doc.technologies as string[]) ?? undefined,
     keyMetrics: (doc.keyMetrics as string[]) ?? undefined,
     githubUrl: (doc.githubUrl as string) ?? undefined,
     demoUrl: (doc.demoUrl as string) ?? undefined,
     featured: doc.featured as boolean | undefined,
     displayOrder: doc.displayOrder as number | undefined,
-    problemStatement: (doc.problemStatement as string) ?? undefined,
-    approach: (doc.approach as string) ?? undefined,
+    whyIBuiltIt: (doc.whyIBuiltIt as string) ?? undefined,
+    theProblem: (doc.theProblem as string) ?? undefined,
+    theSolution: (doc.theSolution as string) ?? undefined,
+    engineeringDecisions: (doc.engineeringDecisions as string) ?? undefined,
     results: (doc.results as string) ?? undefined,
+    whatThisDemonstrates: (doc.whatThisDemonstrates as string) ?? undefined,
+    demoVideo: (doc.demoVideo as string) ?? undefined,
+    exampleInputsOutputs: (doc.exampleInputsOutputs as string) ?? undefined,
+    lessonsLearned: (doc.lessonsLearned as string) ?? undefined,
     limitations: (doc.limitations as string) ?? undefined,
     futureImprovements: (doc.futureImprovements as string) ?? undefined,
+    timeline: (doc.timeline as string) ?? undefined,
     coverImageAlt: ((doc.coverImage as Record<string, string> | null)?.alt) ?? undefined,
     architectureImageAlt: ((doc.architectureImage as Record<string, string> | null)?.alt) ?? undefined,
     screenshotAlts: (doc.screenshots as Array<Record<string, string>> | undefined)

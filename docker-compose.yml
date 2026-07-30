@@ -1,18 +1,18 @@
 services:
-  vllm:
-    image: vllm/vllm-openai:latest
-    ports:
-      - "8000:8000"
-    volumes:
-      - vllm_models:/root/.cache/huggingface
-    command:
-      - "--model"
-      - "Qwen/Qwen3-4B-Instruct"
-      - "--max-model-len"
-      - "8192"
-      - "--gpu-memory-utilization"
-      - "0.90"
-    restart: unless-stopped
+  # vllm:
+  #   image: vllm/vllm-openai:latest
+  #   ports:
+  #     - "8000:8000"
+  #   volumes:
+  #     - vllm_models:/root/.cache/huggingface
+  #   command:
+  #     - "--model"
+  #     - "Qwen/Qwen3-4B-Instruct"
+  #     - "--max-model-len"
+  #     - "8192"
+  #     - "--gpu-memory-utilization"
+  #     - "0.90"
+  #   restart: unless-stopped
 
   qdrant:
     image: qdrant/qdrant:latest
@@ -45,4 +45,6 @@ services:
 volumes:
   vllm_models:
   qdrant_data:
+    name: ai_engineer_qdrant_data
   mlflow_data:
+    name: ai_engineer_mlflow_data

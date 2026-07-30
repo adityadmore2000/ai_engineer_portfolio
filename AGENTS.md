@@ -33,15 +33,41 @@ npm run build
 | `lib/project-docs-source.ts` | fumadocs tree builder for doc page navigation |
 | `.env.example` | All required env vars documented |
 
-## Project Schema (to match when publishing)
+## Project Schema (layered storytelling approach)
 
-All text fields except `detailedContent` are `markdown` type (rendered via `<Markdown>` component). `detailedContent` is Portable Text (`block[]`).
+Projects follow a progressive disclosure hierarchy. All text fields except `detailedContent` are `markdown` type (rendered via `<Markdown>` component). `detailedContent` is Portable Text (`block[]`).
 
 Required fields on `project` document: `title`, `slug`.
 
-Image fields (`coverImage`, `architectureImage`, `screenshots[]`) are Sanity image type with hotspot and `alt` string field.
+Image fields (`coverImage`, `architectureImage`, `screenshots[]`, `beforeAfterComparisons[].beforeImage`, `beforeAfterComparisons[].afterImage`) are Sanity image type with hotspot and `alt` string field.
 
 Visibility flag: `published` (boolean, default `true`) — controls whether the project appears on the public site. The agent's `publish_project` and `unpublish_project` tools toggle this field.
+
+### Field order (storytelling hierarchy)
+
+| Section | Fields | Audience |
+|---------|--------|----------|
+| **Hero** | `title`, `shortSummary`, `status`, `technologies`, `githubUrl`, `demoUrl`, `keyMetrics`, `coverImage` | All |
+| **Why I Built It** | `whyIBuiltIt` — personal, engineering-driven motivation | All |
+| **The Problem** | `theProblem` — what engineering problem existed | Recruiter+ |
+| **The Solution** | `theSolution` — high-level system explanation | Recruiter+ |
+| **System Architecture** | `architectureImage` — diagram + alt text | Recruiter+ |
+| **Engineering Decisions** | `engineeringDecisions` — design decisions and rationale | Hiring Manager+ |
+| **Interesting Challenges** | `interestingChallenges[]` — array of `{problem, solution, outcome}` objects | Hiring Manager+ |
+| **Results** | `results` — measurable outcomes | All |
+| **What This Demonstrates** | `whatThisDemonstrates` — engineering skills summary | Recruiter+ |
+
+### Optional fields (when available)
+
+`screenshots[]`, `demoVideo` (url), `beforeAfterComparisons[]` (array of `{beforeImage, afterImage, caption}`), `exampleInputsOutputs`, `lessonsLearned`, `limitations`, `futureImprovements`, `timeline`, `faq[]` (array of `{question, answer}`), `detailedContent` (Portable Text)
+
+### Status values
+
+`active`, `completed`, `archived`, `poc`, `in-development`
+
+### Deprecated fields (hidden in Studio, may be removed)
+
+`problemStatement`, `approach` — replaced by the storytelling fields above.
 
 ## Publishing Agent
 

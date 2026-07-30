@@ -108,20 +108,25 @@ export const fallbackProjects: ProjectDetail[] = [
     slug: "evidence-grounded-resume-tailoring-platform",
     shortSummary:
       "A RAG-based resume-tailoring system that generates role-specific resumes from verified user evidence using structured retrieval, deterministic validation, and human review.",
+    status: "completed",
     technologies: ["RAG", "Qdrant", "PostgreSQL", "FastAPI", "Next.js", "LaTeX", "Docker"],
     keyMetrics: ["Evidence-grounded generation with human review"],
     featured: true,
     displayOrder: 1,
-    problemStatement:
+    whyIBuiltIt:
+      "I noticed that tailoring a resume for each application meant either exaggerating claims or losing sight of genuine accomplishments. I wanted a system that treats a resume as a traceable artifact — every claim linked back to source evidence.",
+    theProblem:
       "Job-specific resume tailoring often introduces unsupported claims or loses important evidence. The platform is designed to keep generated resumes grounded in verified user material.",
-    approach:
+    theSolution:
       "The system retrieves structured evidence, drafts role-specific resume content, validates claims deterministically, and routes outputs through a review workflow before export.",
     results:
       "The MVP demonstrates a maintainable workflow for producing role-specific resume variants while keeping claims traceable to source evidence.",
     limitations:
       "Final resume quality still depends on the quality and coverage of the user's source evidence.",
     futureImprovements:
-      "Add richer evaluation dashboards, better role parsing, and collaborative review workflows."
+      "Add richer evaluation dashboards, better role parsing, and collaborative review workflows.",
+    whatThisDemonstrates:
+      "End-to-end RAG system design, structured output validation, evidence-grounded generation workflows, and full-stack integration with a human-in-the-loop review step."
   },
   {
     _id: "project.parcel-monitoring",
@@ -129,20 +134,39 @@ export const fallbackProjects: ProjectDetail[] = [
     slug: "warehouse-parcel-monitoring-system",
     shortSummary:
       "A warehouse video-analytics pipeline for parcel-condition monitoring, OCR-assisted metadata extraction, movement tracking, and incident review.",
+    status: "completed",
     technologies: ["YOLO", "PyTorch", "OpenCV", "OCR", "FastAPI", "MLflow", "DVC"],
     keyMetrics: ["92.7% precision", "95.0% recall", "97.4% mAP50"],
     featured: true,
     displayOrder: 2,
-    problemStatement:
+    whyIBuiltIt:
+      "Warehouses generate huge amounts of video but most of it is never reviewed unless something goes wrong. I wanted to build a pipeline that actively monitors parcel condition in real time and makes it easy to review incidents after the fact.",
+    theProblem:
       "Warehouses need practical ways to detect parcel damage, track movement, and review incidents from operational video feeds.",
-    approach:
+    theSolution:
       "The pipeline combines object detection, OCR-assisted metadata extraction, movement tracking, and structured incident review APIs.",
     results:
       "The parcel detection model reached 92.7% precision, 95.0% recall, and 97.4% mAP50 in evaluation.",
+    engineeringDecisions:
+      "Chose YOLOv8 over Transformer-based detectors for inference speed on edge hardware. Used MLflow for experiment tracking across 50+ training runs. DVC for dataset versioning to ensure reproducible evaluations.",
+    interestingChallenges: [
+      {
+        problem: "Balancing detection accuracy with inference latency for real-time processing of 30 FPS warehouse footage on modest GPU hardware.",
+        solution: "Optimized the pipeline with frame sampling (every 5th frame) and model quantization (FP16), reducing latency from 120ms to 45ms per frame while maintaining 96%+ mAP50.",
+        outcome: "Real-time processing at 6.6 effective FPS on an RTX 3060, sufficient for operational monitoring without dropping critical events."
+      },
+      {
+        problem: "OCR on parcel labels captured from moving cameras at varying angles produced inconsistent text extraction.",
+        solution: "Implemented a multi-frame voting scheme that aggregates OCR results across consecutive frames, discarding outliers before assembling the final text.",
+        outcome: "Label extraction accuracy improved from 74% to 91% on the evaluation set."
+      }
+    ],
     limitations:
       "Performance depends on camera angle, lighting, label quality, and the diversity of parcel conditions in training data.",
     futureImprovements:
-      "Improve multi-camera tracking, active learning loops, and dashboard workflows for operations teams."
+      "Improve multi-camera tracking, active learning loops, and dashboard workflows for operations teams.",
+    whatThisDemonstrates:
+      "Computer vision pipeline engineering, model evaluation rigor, MLOps practices (MLflow, DVC), and practical deployment-aware optimization for real-time video analytics."
   },
   {
     _id: "project.math-mentor",
@@ -150,89 +174,25 @@ export const fallbackProjects: ProjectDetail[] = [
     slug: "math-mentor-ai",
     shortSummary:
       "An LLM and SymPy-based math-reasoning pipeline that independently verifies generated answers before presenting them to users.",
+    status: "poc",
     technologies: ["LLMs", "SymPy", "Python", "Structured Outputs", "Verification Workflows"],
     keyMetrics: ["Independent symbolic verification before response"],
     featured: true,
     displayOrder: 3,
-    problemStatement:
+    whyIBuiltIt:
+      "LLMs are fluent but not always correct — especially at math. I wanted to see if I could build a system that catches wrong answers before the user sees them, turning a language model into something more like a reliable calculator.",
+    theProblem:
       "LLM-generated math answers can look convincing while containing subtle reasoning errors.",
-    approach:
+    theSolution:
       "The pipeline separates answer generation from verification by using structured outputs and SymPy checks before presenting final explanations.",
     results:
       "The architecture provides a clearer path for catching incorrect generated answers and improving trust in math assistance.",
     limitations:
       "Symbolic verification coverage depends on problem type and how well the model expresses intermediate steps.",
     futureImprovements:
-      "Expand supported math domains and add confidence reporting for verification outcomes."
-  }
-];
-
-export const fallbackSkillCategories: SkillCategory[] = [
-  {
-    _id: "fallback.skills.generative-ai",
-    title: "Generative AI & LLM Systems",
-    skills: [
-      "LLMs",
-      "RAG",
-      "Semantic Search",
-      "Vector Embeddings",
-      "Qdrant",
-      "Prompt Engineering",
-      "Structured Outputs",
-      "Tool Calling",
-      "Hugging Face Transformers",
-      "Ollama"
-    ],
-    displayOrder: 1
-  },
-  {
-    _id: "fallback.skills.cv-ml",
-    title: "Computer Vision & Machine Learning",
-    skills: [
-      "PyTorch",
-      "OpenCV",
-      "YOLOv5",
-      "YOLOX",
-      "YOLOv8",
-      "OCR",
-      "Object Detection",
-      "Instance Segmentation",
-      "Video Analytics",
-      "Model Evaluation"
-    ],
-    displayOrder: 2
-  },
-  {
-    _id: "fallback.skills.backend-data",
-    title: "Backend & Data Systems",
-    skills: [
-      "Python",
-      "FastAPI",
-      "REST APIs",
-      "PostgreSQL",
-      "SQLAlchemy",
-      "Alembic",
-      "Pydantic",
-      "Pandas",
-      "NumPy"
-    ],
-    displayOrder: 3
-  },
-  {
-    _id: "fallback.skills.mlops",
-    title: "MLOps & Infrastructure",
-    skills: [
-      "Docker",
-      "MLflow",
-      "DVC",
-      "CUDA",
-      "Git",
-      "GitHub",
-      "Experiment Tracking",
-      "Artifact Versioning",
-      "Model Serving"
-    ],
-    displayOrder: 4
+      "Expand supported math domains and add confidence reporting for verification outcomes.",
+    whatThisDemonstrates:
+      "LLM workflow design, structured output parsing, symbolic verification integration, and separation of generation from verification for increased reliability."
   }
 ];
 

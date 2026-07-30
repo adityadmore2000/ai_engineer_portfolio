@@ -27,13 +27,28 @@ function extractProjectFields(project: SanityDoc): SearchResult[] {
       toSearchResult(project, "Short Summary", project.shortSummary as string)
     );
   }
-  if (project.problemStatement) {
+  if (project.whyIBuiltIt) {
     results.push(
-      toSearchResult(project, "Problem Statement", project.problemStatement as string)
+      toSearchResult(project, "Why I Built It", project.whyIBuiltIt as string)
     );
   }
-  if (project.approach) {
-    results.push(toSearchResult(project, "Approach", project.approach as string));
+  if (project.theProblem) {
+    results.push(
+      toSearchResult(project, "The Problem", project.theProblem as string)
+    );
+  }
+  if (project.theSolution) {
+    results.push(toSearchResult(project, "The Solution", project.theSolution as string));
+  }
+  if (project.engineeringDecisions) {
+    results.push(
+      toSearchResult(project, "Engineering Decisions", project.engineeringDecisions as string)
+    );
+  }
+  if (project.whatThisDemonstrates) {
+    results.push(
+      toSearchResult(project, "What This Demonstrates", project.whatThisDemonstrates as string)
+    );
   }
   if (project.results) {
     results.push(toSearchResult(project, "Results", project.results as string));
@@ -78,9 +93,12 @@ export async function searchByTechnology(tech: string): Promise<SearchResult[]> 
       shortSummary,
       technologies,
       keyMetrics,
-      problemStatement,
-      approach,
+      whyIBuiltIt,
+      theProblem,
+      theSolution,
+      engineeringDecisions,
       results,
+      whatThisDemonstrates,
       limitations,
       futureImprovements
     }
@@ -261,9 +279,12 @@ export async function getProjectBySlugFromSanity(slug: string): Promise<SearchRe
       shortSummary,
       technologies,
       keyMetrics,
-      problemStatement,
-      approach,
+      whyIBuiltIt,
+      theProblem,
+      theSolution,
+      engineeringDecisions,
       results,
+      whatThisDemonstrates,
       limitations,
       futureImprovements
     }
