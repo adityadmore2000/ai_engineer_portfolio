@@ -196,6 +196,75 @@ export const fallbackProjects: ProjectDetail[] = [
   }
 ];
 
+export const fallbackSkillCategories: SkillCategory[] = [
+  {
+    _id: "fallback.skills.generative-ai",
+    title: "Generative AI & LLM Systems",
+    skills: [
+      "LLMs",
+      "RAG",
+      "Semantic Search",
+      "Vector Embeddings",
+      "Qdrant",
+      "Prompt Engineering",
+      "Structured Outputs",
+      "Tool Calling",
+      "Hugging Face Transformers",
+      "Ollama"
+    ],
+    displayOrder: 1
+  },
+  {
+    _id: "fallback.skills.cv-ml",
+    title: "Computer Vision & Machine Learning",
+    skills: [
+      "PyTorch",
+      "OpenCV",
+      "YOLOv5",
+      "YOLOX",
+      "YOLOv8",
+      "OCR",
+      "Object Detection",
+      "Instance Segmentation",
+      "Video Analytics",
+      "Model Evaluation"
+    ],
+    displayOrder: 2
+  },
+  {
+    _id: "fallback.skills.backend-data",
+    title: "Backend & Data Systems",
+    skills: [
+      "Python",
+      "FastAPI",
+      "REST APIs",
+      "PostgreSQL",
+      "SQLAlchemy",
+      "Alembic",
+      "Pydantic",
+      "Pandas",
+      "NumPy"
+    ],
+    displayOrder: 3
+  },
+  {
+    _id: "fallback.skills.mlops",
+    title: "MLOps & Infrastructure",
+    skills: [
+      "Docker",
+      "MLflow",
+      "DVC",
+      "CUDA",
+      "Git",
+      "GitHub",
+      "Experiment Tracking",
+      "Artifact Versioning",
+      "Model Serving"
+    ],
+    displayOrder: 4
+  }
+];
+
 export function getFallbackProjectBySlug(slug: string) {
   return fallbackProjects.find((project) => project.slug === slug) || null;
 }
