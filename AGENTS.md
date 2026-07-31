@@ -18,6 +18,35 @@ npm run build
 - Incremental Static Regeneration: `export const revalidate = 60` on all pages
 - No custom backend — Sanity Content Lake is the only data source
 
+## Transactional Indexing (Qdrant)
+
+Qdrant is a deterministic projection of Sanity, never an authoritative store.
+`npm run index-content` (`scripts/index-content.ts`) rebuilds it through an
+application-level transaction managed by `lib/indexing/transaction/manager.ts`
+(`IndexTransactionManager`), modeled after blue-green deployments:
+
+1. **Content transaction** — only mutates Sanity (the publishing agent's job).
+2. **Index transaction** — after content commits, the manager:
+   - creates a temp collection `portfolio_temp_txn_<id>` (e.g. `txn_20260801_001`),
+   - builds the full index from Sanity into it,
+   - validates it (collection exists, expected vs indexed count, embedding
+     dimensions, semantic retrieval probe),
+   - atomically promotes it via Qdrant aliases (the stable `QDRANT_COLLECTION`
+     name becomes an alias pointing at the new backing collection),
+   - cleans up the previous backing collection outside the committed txn.
+
+Transaction metadata is persisted as JSON in `.agents/index-txns/` (gitignored).
+On restart, `recover()` inspects that journal, aborts/resumes incomplete
+transactions, and sweeps orphaned temp collections — production always points
+at a fully validated index and is never exposed to a partial build. Failed
+transactions never touch production.
+
+Retrieval (`lib/ai/vector-store.ts`) wraps the Qdrant client to be alias-aware
+so the production name resolves whether it is a real collection or an alias.
+
+The publishing agent only *triggers* indexing via the `reindex_content` tool
+(it shells out to `scripts/index-content.ts`); it contains no indexing logic.
+
 ## Key Files
 
 | File | Purpose |

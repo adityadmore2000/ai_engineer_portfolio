@@ -256,6 +256,28 @@ def delete_project(
     return result.stdout.strip()
 
 
+@tool
+def reindex_content() -> str:
+    """Rebuild the semantic search index (Qdrant) from the current Sanity
+    content using a transactional, atomic index swap. Builds a temporary
+    collection, validates it (count, dimensions, retrieval probe), atomically
+    promotes it to production, then cleans up the previous index. Production
+    search stays available throughout. Call this AFTER any content mutation
+    (create_project, update_project, publish_project, unpublish_project,
+    delete_project) so the vector index stays in sync with Sanity."""
+    bridge = PROJECT_ROOT / "scripts" / "index-content.ts"
+    result = subprocess.run(
+        ["npx", "tsx", str(bridge)],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+        timeout=900,
+    )
+    if result.returncode != 0:
+        return f"Error reindexing:\n{result.stderr.strip() or result.stdout.strip()}"
+    return result.stdout.strip() or "Reindex complete."
+
+
 # ── Dataset synchronization tools ────────────────────────
 
 
@@ -924,6 +946,8 @@ tools = [
     publish_project,
     unpublish_project,
     delete_project,
+    # Indexing trigger (transactional rebuild; no indexing logic lives here)
+    reindex_content,
     # Dataset synchronization
     sync_production_to_local,
     sync_local_to_production,
@@ -956,6 +980,11 @@ Available tools (mutations — each is a distinct lifecycle operation):
 - unpublish_project(slug) — UNPUBLISH an existing project (hides it from public site)
 - delete_project(slug) — DELETE a project and its documentation pages forever
 
+Available tools (indexing — keep Qdrant in sync with Sanity):
+- reindex_content() — transactionally rebuild the semantic search index from
+  Sanity (temporary collection → validate → atomic promote → cleanup).
+  Call it AFTER any successful content mutation so search reflects the new state.
+
 Available tools (dataset synchronization — replace an entire dataset):
 - sync_production_to_local() — pull production down into the local dev dataset (overwrites local)
 - sync_local_to_production() — promote local dev up to production (overwrites production; destructive)
@@ -969,6 +998,11 @@ Available tools (spec-driven creation — `<path> add project considering this s
 
 CRITICAL: Each operation has its OWN dedicated tool. Do NOT use one tool as a
 substitute for another. Read the intent carefully and pick the correct tool.
+
+After any successful content mutation (create_project, update_project,
+publish_project, unpublish_project, delete_project), call reindex_content()
+so the semantic search index stays in sync with Sanity. The indexing itself is
+transactional — production search is never interrupted or partially rebuilt.
 
 ── SPEC-FILE WORKFLOW (mapper, not author) ──────────────
 

@@ -9,8 +9,8 @@ import {
   chunkTechnicalNote,
   getContent,
   QdrantConnectionError,
-  writeDocumentsToQdrant,
 } from "../lib/indexing";
+import { IndexTransactionManager } from "../lib/indexing/transaction";
 
 async function main() {
   const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
@@ -60,8 +60,18 @@ async function main() {
 
   const embeddings = await getEmbeddings();
 
+  const manager = new IndexTransactionManager({
+    qdrant: {
+      url: vectorUrl,
+      apiKey: process.env.VECTOR_API_KEY,
+    },
+    productionCollection: collectionName,
+    tempCollectionPrefix: process.env.QDRANT_TEMP_COLLECTION_PREFIX,
+    journalDir: process.env.QDRANT_TXN_JOURNAL_DIR,
+  });
+
   try {
-    await writeDocumentsToQdrant(documents, embeddings, { url: vectorUrl, collectionName });
+    await manager.run({ documents, embeddings });
 
     console.log(`\n✅ Indexed ${documents.length} chunks into Qdrant collection "${collectionName}".`);
   } catch (error) {

@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "sanity": "sanity",
-    "publish": "npx tsx scripts/publish.ts"
+    "publish": "npx tsx scripts/publish.ts",
+    "index-content": "npx tsx scripts/index-content.ts"
   },
   "dependencies": {
     "@langchain/core": "^1.2.3",
