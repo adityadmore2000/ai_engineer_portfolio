@@ -8,7 +8,9 @@ export type {
 } from "./manager";
 export { FileTransactionJournal } from "./journal";
 export type {
+  SemanticProbe,
   TransactionJournal,
+  TransactionProvenance,
   TransactionRecord,
   TransactionState,
 } from "./types";

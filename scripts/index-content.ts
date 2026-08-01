@@ -1,6 +1,7 @@
 import "./load-env";
+import { createHash } from "node:crypto";
 import { Document } from "@langchain/core/documents";
-import { getEmbeddings } from "../lib/ai/embeddings";
+import { getEmbeddingModel, getEmbeddings } from "../lib/ai/embeddings";
 import {
   chunkExperience,
   chunkProject,
@@ -11,6 +12,26 @@ import {
   QdrantConnectionError,
 } from "../lib/indexing";
 import { IndexTransactionManager } from "../lib/indexing/transaction";
+import type { SemanticProbe } from "../lib/indexing/transaction";
+
+function computeContentRevision(content: unknown): string {
+  return createHash("sha256")
+    .update(JSON.stringify(content))
+    .digest("hex");
+}
+
+function buildSemanticProbes(
+  projects: Awaited<ReturnType<typeof getContent>>[0]
+): SemanticProbe[] {
+  const probes: SemanticProbe[] = [];
+  for (const project of projects || []) {
+    const title = project.title?.trim();
+    if (title) {
+      probes.push({ label: `project:${title}`, query: title, expected: title });
+    }
+  }
+  return probes.slice(0, 5);
+}
 
 async function main() {
   const projectId = process.env.NEXT_PUBLIC_SANITY_PROJECT_ID;
@@ -60,6 +81,20 @@ async function main() {
 
   const embeddings = await getEmbeddings();
 
+  const semanticProbes = buildSemanticProbes(projects);
+  const provenance = {
+    trigger: process.env.INDEX_TRIGGER || "manual",
+    initiatedBy: process.env.INDEX_INITIATED_BY || "index-content",
+    embeddingModel: getEmbeddingModel(),
+    sanityRevision: computeContentRevision([
+      projects,
+      settings,
+      experiences,
+      skillCategories,
+      technicalNotes,
+    ]),
+  };
+
   const manager = new IndexTransactionManager({
     qdrant: {
       url: vectorUrl,
@@ -71,7 +106,12 @@ async function main() {
   });
 
   try {
-    await manager.run({ documents, embeddings });
+    await manager.run({
+      documents,
+      embeddings,
+      provenance,
+      semanticProbes,
+    });
 
     console.log(`\n✅ Indexed ${documents.length} chunks into Qdrant collection "${collectionName}".`);
   } catch (error) {

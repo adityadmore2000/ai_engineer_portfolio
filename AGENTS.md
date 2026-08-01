@@ -30,19 +30,42 @@ application-level transaction managed by `lib/indexing/transaction/manager.ts`
    - creates a temp collection `portfolio_temp_txn_<id>` (e.g. `txn_20260801_001`),
    - builds the full index from Sanity into it,
    - validates it (collection exists, expected vs indexed count, embedding
-     dimensions, semantic retrieval probe),
+     dimensions, generic + content-aware semantic retrieval probes),
    - atomically promotes it via Qdrant aliases (the stable `QDRANT_COLLECTION`
      name becomes an alias pointing at the new backing collection),
    - cleans up the previous backing collection outside the committed txn.
 
-Transaction metadata is persisted as JSON in `.agents/index-txns/` (gitignored).
-On restart, `recover()` inspects that journal, aborts/resumes incomplete
-transactions, and sweeps orphaned temp collections — production always points
-at a fully validated index and is never exposed to a partial build. Failed
-transactions never touch production.
+Transaction metadata is persisted as JSON in `.state/index-transactions/`
+(gitignored runtime state, migrated automatically from the legacy
+`.agents/index-txns/` location). On restart, `recover()` inspects that journal,
+aborts/resumes incomplete transactions, and sweeps orphaned temp collections —
+production always points at a fully validated index and is never exposed to a
+partial build. Failed transactions never touch production.
+
+Guarantees:
+
+- **Zero-downtime migration** — a legacy real collection is converted to the
+  alias atomically via Qdrant's batch operations endpoint
+  (`POST /collections/operations`); production search never disappears. Ongoing
+  promotions are single-call alias swaps (delete + create in one request).
+- **Single-writer** — a lock file in the journal dir (`acquireLock`/`releaseLock`)
+  ensures only one transaction mutates the production index at a time. Stale
+  locks (dead pid or > 30 min old) are broken automatically. Suitable for the
+  current single-agent workflow; a real lease mechanism is required before
+  concurrent API-driven publishing.
+- **Provenance** — every record stores `trigger`, `initiatedBy`,
+  `sanityRevision` (sha256 of indexed content), `embeddingModel`, `startedAt`,
+  `promotedAt`, `completedAt` for traceability between content changes and index
+  versions.
+- **Semantic validation** — `scripts/index-content.ts` derives content-aware
+  probes (e.g. query a project's title, expect the top-3 results' payloads to
+  reference it). Promotion is refused if expected content is not retrievable.
 
 Retrieval (`lib/ai/vector-store.ts`) wraps the Qdrant client to be alias-aware
 so the production name resolves whether it is a real collection or an alias.
+Application code always references the stable `QDRANT_COLLECTION` name and never
+a versioned backing collection, so it is permanently decoupled from physical
+collection names.
 
 The publishing agent only *triggers* indexing via the `reindex_content` tool
 (it shells out to `scripts/index-content.ts`); it contains no indexing logic.

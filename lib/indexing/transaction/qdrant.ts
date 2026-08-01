@@ -119,8 +119,56 @@ export async function deleteCollectionIfExists(
   }
 }
 
+/**
+ * Atomically converts a legacy real collection into an alias via Qdrant's
+ * batch operations endpoint (`POST /collections/operations`). The legacy
+ * collection is deleted and the production alias created in a single
+ * server-side operation, so search availability is never interrupted.
+ * Returns `false` when the endpoint is not supported by the Qdrant server,
+ * letting the caller fall back to a sequential migration.
+ */
+export async function atomicMigrateLegacyToAlias(
+  config: QdrantConfig,
+  opts: {
+    legacyCollection: string;
+    tempCollection: string;
+    aliasName: string;
+  }
+): Promise<boolean> {
+  const baseUrl = config.url.replace(/\/+$/, "");
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (config.apiKey) headers["api-key"] = config.apiKey;
+
+  const res = await fetch(`${baseUrl}/collections/operations`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      operations: [
+        { delete_collection: { collection_name: opts.legacyCollection } },
+        {
+          create_alias: {
+            collection_name: opts.tempCollection,
+            alias_name: opts.aliasName,
+          },
+        },
+      ],
+    }),
+  });
+
+  if (res.status === 200) return true;
+  if (res.status === 404 || res.status === 405) {
+    // Endpoint not supported by this Qdrant server version.
+    return false;
+  }
+  const body = await res.text();
+  throw new Error(
+    `Qdrant batch migration failed (HTTP ${res.status}): ${body}`
+  );
+}
+
 export async function bootstrapPromote(
   client: QdrantClient,
+  config: QdrantConfig,
   opts: {
     tempCollection: string;
     productionCollection: string;
@@ -128,6 +176,15 @@ export async function bootstrapPromote(
   }
 ): Promise<void> {
   if (opts.legacyCollection) {
+    const migrated = await atomicMigrateLegacyToAlias(config, {
+      legacyCollection: opts.legacyCollection,
+      tempCollection: opts.tempCollection,
+      aliasName: opts.productionCollection,
+    });
+    if (migrated) return;
+    // Fallback for servers without the batch endpoint: the validated
+    // replacement already exists, so delete-then-alias still never removes
+    // the index before a replacement is available.
     await deleteCollectionIfExists(client, opts.legacyCollection);
   }
   await client.updateCollectionAliases({

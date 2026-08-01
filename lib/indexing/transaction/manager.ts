@@ -18,7 +18,12 @@ import {
   swapProductionAlias,
 } from "./qdrant";
 import type { QdrantConfig, VectorParams } from "./qdrant";
-import type { TransactionJournal, TransactionRecord } from "./types";
+import type {
+  SemanticProbe,
+  TransactionJournal,
+  TransactionProvenance,
+  TransactionRecord,
+} from "./types";
 import { isTerminal } from "./types";
 
 export interface IndexTransactionManagerConfig {
@@ -33,6 +38,8 @@ export interface RunOptions {
   documents: Document[];
   embeddings: Embeddings;
   expectedCount?: number;
+  provenance?: TransactionProvenance;
+  semanticProbes?: SemanticProbe[];
 }
 
 export type RecoveryAction = "aborted" | "resumed" | "completed";
@@ -49,6 +56,8 @@ export interface RecoveryResult {
 }
 
 const DEFAULT_TEMP_PREFIX = "portfolio_temp_";
+const LEGACY_JOURNAL_DIR = path.resolve(".agents", "index-txns");
+const DEFAULT_JOURNAL_DIR = path.resolve(".state", "index-transactions");
 
 export class IndexTransactionManager {
   private readonly qdrant: QdrantConfig;
@@ -56,85 +65,126 @@ export class IndexTransactionManager {
   private readonly tempPrefix: string;
   private readonly journal: TransactionJournal;
   private readonly log: (message: string) => void;
+  private lockDepth = 0;
 
   constructor(config: IndexTransactionManagerConfig) {
     this.qdrant = config.qdrant;
     this.productionCollection = config.productionCollection;
     this.tempPrefix = config.tempCollectionPrefix ?? DEFAULT_TEMP_PREFIX;
-    const journalDir =
-      config.journalDir ??
-      path.resolve(process.cwd(), ".agents", "index-txns");
-    this.journal = new FileTransactionJournal(journalDir);
+    const journalDir = config.journalDir ?? DEFAULT_JOURNAL_DIR;
+    const journal = new FileTransactionJournal(journalDir);
+    journal.migrateFrom(LEGACY_JOURNAL_DIR);
+    this.journal = journal;
     this.log = config.logger ?? ((message) => console.log(message));
   }
 
+  /**
+   * Single-writer guard: only one transaction manager may mutate the production
+   * index at a time. Reentrant so `run()` may call `recover()` while holding
+   * the lock.
+   */
+  private acquireLock(): void {
+    if (this.lockDepth > 0) {
+      this.lockDepth += 1;
+      return;
+    }
+    if (!this.journal.acquireLock()) {
+      throw new Error(
+        "Another indexing transaction is already in progress; " +
+          "refusing to run concurrently (single-writer)."
+      );
+    }
+    this.lockDepth = 1;
+  }
+
+  private releaseLock(): void {
+    if (this.lockDepth === 0) return;
+    this.lockDepth -= 1;
+    if (this.lockDepth === 0) this.journal.releaseLock();
+  }
+
   async recover(): Promise<RecoveryResult> {
-    const outcomes: RecoveryOutcome[] = [];
-    const client = createQdrantClient(this.qdrant);
-    const status = await resolveProductionStatus(
-      client,
-      this.productionCollection
-    );
+    this.acquireLock();
+    try {
+      const outcomes: RecoveryOutcome[] = [];
+      const client = createQdrantClient(this.qdrant);
+      const status = await resolveProductionStatus(
+        client,
+        this.productionCollection
+      );
 
-    const active = this.journal.list().filter((record) => !isTerminal(record));
+      const active = this.journal.list().filter((record) => !isTerminal(record));
 
-    for (const record of active) {
-      if (record.state === "committed") {
-        if (!record.cleanedAt) {
-          await this.cleanup(client, record);
-          record.cleanedAt = new Date().toISOString();
-          this.journal.save(record);
+      for (const record of active) {
+        if (record.state === "committed") {
+          if (!record.cleanedAt) {
+            await this.cleanup(client, record);
+            record.cleanedAt = new Date().toISOString();
+            this.journal.save(record);
+          }
+          outcomes.push({ transactionId: record.id, action: "completed", record });
+          continue;
         }
-        outcomes.push({ transactionId: record.id, action: "completed", record });
-        continue;
+
+        if (record.state === "promoting") {
+          const productionBacking =
+            status.kind === "alias" ? status.backingCollection : null;
+          if (productionBacking === record.tempCollection) {
+            record.state = "committed";
+            record.promotedAt = new Date().toISOString();
+            record.completedAt = record.promotedAt;
+            this.journal.save(record);
+            await this.cleanup(client, record);
+            record.cleanedAt = new Date().toISOString();
+            this.journal.save(record);
+            outcomes.push({ transactionId: record.id, action: "resumed", record });
+          } else {
+            record.state = "aborted";
+            record.error =
+              "Promotion did not apply before restart; recovered as aborted.";
+            this.journal.save(record);
+            await this.discardTemp(record);
+            outcomes.push({ transactionId: record.id, action: "aborted", record });
+          }
+          continue;
+        }
+
+        record.state = "aborted";
+        record.error =
+          "Transaction interrupted before promotion; recovered as aborted.";
+        this.journal.save(record);
+        await this.discardTemp(record);
+        outcomes.push({ transactionId: record.id, action: "aborted", record });
       }
 
-      if (record.state === "promoting") {
-        const productionBacking =
-          status.kind === "alias" ? status.backingCollection : null;
-        if (productionBacking === record.tempCollection) {
-          record.state = "committed";
-          record.promotedAt = new Date().toISOString();
-          this.journal.save(record);
-          await this.cleanup(client, record);
-          record.cleanedAt = new Date().toISOString();
-          this.journal.save(record);
-          outcomes.push({ transactionId: record.id, action: "resumed", record });
-        } else {
-          record.state = "aborted";
-          record.error =
-            "Promotion did not apply before restart; recovered as aborted.";
-          this.journal.save(record);
-          await this.discardTemp(record);
-          outcomes.push({ transactionId: record.id, action: "aborted", record });
-        }
-        continue;
+      const protectedNames = new Set<string>();
+      for (const record of this.journal.list()) {
+        if (!isTerminal(record)) protectedNames.add(record.tempCollection);
       }
+      if (status.kind === "alias") protectedNames.add(status.backingCollection);
+      protectedNames.add(this.productionCollection);
 
-      record.state = "aborted";
-      record.error =
-        "Transaction interrupted before promotion; recovered as aborted.";
-      this.journal.save(record);
-      await this.discardTemp(record);
-      outcomes.push({ transactionId: record.id, action: "aborted", record });
+      const deletedOrphans = await sweepOrphanedTempCollections(client, {
+        tempPrefix: this.tempPrefix,
+        protectedNames,
+      });
+
+      return { outcomes, deletedOrphans };
+    } finally {
+      this.releaseLock();
     }
-
-    const protectedNames = new Set<string>();
-    for (const record of this.journal.list()) {
-      protectedNames.add(record.tempCollection);
-    }
-    if (status.kind === "alias") protectedNames.add(status.backingCollection);
-    protectedNames.add(this.productionCollection);
-
-    const deletedOrphans = await sweepOrphanedTempCollections(client, {
-      tempPrefix: this.tempPrefix,
-      protectedNames,
-    });
-
-    return { outcomes, deletedOrphans };
   }
 
   async run(options: RunOptions): Promise<TransactionRecord> {
+    this.acquireLock();
+    try {
+      return await this.runLocked(options);
+    } finally {
+      this.releaseLock();
+    }
+  }
+
+  private async runLocked(options: RunOptions): Promise<TransactionRecord> {
     await this.recover();
 
     const expectedCount = options.expectedCount ?? options.documents.length;
@@ -156,6 +206,7 @@ export class IndexTransactionManager {
       documentsExpected: expectedCount,
       documentsIndexed: null,
       bootstrap: false,
+      ...options.provenance,
     };
     this.journal.save(record);
 
@@ -194,6 +245,7 @@ export class IndexTransactionManager {
 
       record.state = "committed";
       record.promotedAt = new Date().toISOString();
+      record.completedAt = record.promotedAt;
       this.journal.save(record);
 
       this.log(`[txn ${id}] Cleaning up previous index...`);
@@ -286,14 +338,56 @@ export class IndexTransactionManager {
       );
     }
 
-    const queryResult = await client.query(record.tempCollection, {
-      query: probe,
-      limit: 1,
-      with_payload: false,
+    await this.assertRetrievable(
+      client,
+      record,
+      probe,
+      "generic-embedding-probe",
+      null
+    );
+
+    for (const semanticProbe of options.semanticProbes ?? []) {
+      const vector = await options.embeddings.embedQuery(semanticProbe.query);
+      await this.assertRetrievable(
+        client,
+        record,
+        vector,
+        semanticProbe.label,
+        semanticProbe.expected
+      );
+    }
+  }
+
+  private async assertRetrievable(
+    client: ReturnType<typeof createQdrantClient>,
+    record: TransactionRecord,
+    queryVector: number[],
+    label: string,
+    expected: string | null
+  ): Promise<void> {
+    const result = await client.query(record.tempCollection, {
+      query: queryVector,
+      limit: expected ? 3 : 1,
+      with_payload: true,
     });
-    if (!queryResult.points?.length) {
+    if (!result.points?.length) {
       throw new Error(
-        "Semantic retrieval probe returned no results; refusing to promote."
+        `Semantic retrieval probe "${label}" returned no results; refusing to promote.`
+      );
+    }
+
+    if (!expected) return;
+
+    const match = result.points.find((point) => {
+      const payload = point.payload;
+      if (!payload) return false;
+      return JSON.stringify(payload).includes(expected);
+    });
+    if (!match) {
+      throw new Error(
+        `Semantic retrieval probe "${label}" failed: expected content ` +
+          `referencing "${expected}" was not retrievable from the temporary ` +
+          `collection; refusing to promote.`
       );
     }
   }
@@ -310,7 +404,7 @@ export class IndexTransactionManager {
     if (status.kind === "real" || status.kind === "missing") {
       record.previousCollection = null;
       record.bootstrap = status.kind === "real";
-      await bootstrapPromote(client, {
+      await bootstrapPromote(client, this.qdrant, {
         tempCollection: record.tempCollection,
         productionCollection: this.productionCollection,
         legacyCollection:

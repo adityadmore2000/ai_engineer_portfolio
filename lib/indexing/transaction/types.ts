@@ -6,7 +6,14 @@ export type TransactionState =
   | "failed"
   | "aborted";
 
-export interface TransactionRecord {
+export interface TransactionProvenance {
+  trigger?: string;
+  initiatedBy?: string;
+  sanityRevision?: string;
+  embeddingModel?: string;
+}
+
+export interface TransactionRecord extends TransactionProvenance {
   id: string;
   state: TransactionState;
   tempCollection: string;
@@ -18,7 +25,14 @@ export interface TransactionRecord {
   bootstrap: boolean;
   promotedAt?: string;
   cleanedAt?: string;
+  completedAt?: string;
   error?: string;
+}
+
+export interface SemanticProbe {
+  label: string;
+  query: string;
+  expected: string;
 }
 
 export interface TransactionJournal {
@@ -26,6 +40,8 @@ export interface TransactionJournal {
   load(id: string): TransactionRecord | null;
   save(record: TransactionRecord): void;
   delete(id: string): void;
+  acquireLock(maxAgeMs?: number): boolean;
+  releaseLock(): void;
 }
 
 export const TERMINAL_STATES: ReadonlySet<TransactionState> = new Set([
