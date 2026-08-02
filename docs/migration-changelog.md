@@ -144,12 +144,45 @@ Phase 2 already landed). Remaining items made fallbacks metadata-only.
 
 ---
 
+## Phase 4 — `publish-docs` bridge (T8) — DONE
+
+**Objective:** a bridge that discovers a project's `docs/` directory,
+deterministically serializes each Markdown document to Portable Text, uploads
+images, and patches `project.content` as a replace with stable keys — without
+touching metadata.
+
+### Files added
+- `scripts/publish-docs.ts` — CLI bridge:
+  - `discoverDocs(docsDir, { filenameOrder })` — canonical doc order via a
+    filename map (overview → … → faq), falling back to front-matter `order`,
+    then alphabetical.
+  - `serializeMarkdown(raw, { heading, resolveImage })` — per-document PT
+    serialization; `resolveImage` uploads absolute image paths via the shared
+    `uploadImage` (setting alt) and enforces absolute-path rules.
+  - `client.patch(id).set({ content })` — replace with stable keys; metadata
+    untouched.
+  - `--check` flag performs a no-write serialization pass and reports block
+    counts + serialization errors.
+
+### Decisions / notes
+- Image resolution happens inside serialization via the shared `resolveImage`
+  callback (R5: alt always set when supplied).
+- Fractional doc ordering: `filenameOrder` overrides `order` front-matter for
+  the canonical sequence (migration-plan §3.2 / §3.8). New documents default to
+  alphabetical order.
+- Errors abort before any write — content is never partially published.
+
+### Verification
+- typecheck clean, lint clean (beyond the 3 pre-existing unrelated warnings),
+  tests (28) pass. (Runtime round-trip against the local dataset is exercised
+  in T10/T14.)
+
+---
+
 ## TODO (remaining phases)
 
 | Task | Status |
 |------|--------|
-| T7 | metadata-only fallbacks (this phase) |
-| T8 | `scripts/publish-docs.ts` bridge |
 | T9 | agent `publish_docs` + `content` exclusion + prompt cleanup |
 | T10 | `scripts/migrate-legacy-content.ts` → committed `docs/` → `content` |
 | T11 | renderer rewrite (`app/projects/[slug]/page.tsx`, `DocumentationBlocks.tsx`) |
