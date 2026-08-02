@@ -14,27 +14,12 @@ import type {
 export function fallbackToSanityProject(
   fb: (typeof fallbackProjects)[number]
 ): SanityProject {
-  // Fallback projects are metadata-only (Decision 3): they carry no narrative
-  // `content` and no legacy narrative fields. The legacy narrative properties
-  // below are pinned to null to keep the shared SanityProject shape; they are
-  // removed entirely when the legacy fields are dropped (Phase 8 / T15).
   return {
     _id: fb._id,
     title: fb.title,
     slug: fb.slug || null,
     shortSummary: fb.shortSummary || null,
     status: fb.status || null,
-    whyIBuiltIt: null,
-    theProblem: null,
-    theSolution: null,
-    engineeringDecisions: null,
-    results: null,
-    whatThisDemonstrates: null,
-    exampleInputsOutputs: null,
-    lessonsLearned: null,
-    limitations: null,
-    futureImprovements: null,
-    timeline: null,
     technologies: fb.technologies || null,
     keyMetrics: fb.keyMetrics || null,
   };

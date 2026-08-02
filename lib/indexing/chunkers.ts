@@ -1,5 +1,6 @@
 import { Document } from "@langchain/core/documents";
 import { generateHeadingId } from "@/lib/content/headings";
+import { splitSectionsByHeading } from "@/lib/content/portable-text";
 import type {
   SanityExperience,
   SanityProject,
@@ -13,31 +14,35 @@ export function chunkProject(project: SanityProject, baseUrl: string): Document[
   const slug = project.slug || "";
   const projectUrl = slug ? `${baseUrl}/projects/${slug}` : baseUrl;
 
-  const sections: { name: string; content: string }[] = [
-    { name: "Short Summary", content: project.shortSummary || "" },
-    { name: "Why I Built It", content: project.whyIBuiltIt || "" },
-    { name: "The Problem", content: project.theProblem || "" },
-    { name: "The Solution", content: project.theSolution || "" },
-    { name: "Engineering Decisions", content: project.engineeringDecisions || "" },
-    { name: "Results", content: project.results || "" },
-    { name: "What This Demonstrates", content: project.whatThisDemonstrates || "" },
-    { name: "Example Inputs / Outputs", content: project.exampleInputsOutputs || "" },
-    { name: "Lessons Learned", content: project.lessonsLearned || "" },
-    { name: "Limitations", content: project.limitations || "" },
-    { name: "Future Improvements", content: project.futureImprovements || "" },
-    { name: "Timeline", content: project.timeline || "" },
-  ];
+  // Content-derived sections from the project's Portable Text, split on
+  // heading blocks. Headings are slugified via the shared `generateHeadingId()`
+  // (bare mode) so anchors agree with the renderer and the migrated docs.
+  const sections = splitSectionsByHeading(project.content || []);
 
   for (const section of sections) {
-    if (!section.content) continue;
+    if (!section.text) continue;
     docs.push(
       new Document({
-        pageContent: section.content,
+        pageContent: section.text,
         metadata: {
           projectTitle: project.title,
           slug,
-          section: section.name,
-          url: `${projectUrl}#${generateHeadingId(section.name)}`,
+          section: section.heading || "Overview",
+          url: section.id ? `${projectUrl}#${section.id}` : projectUrl,
+        },
+      })
+    );
+  }
+
+  if (project.shortSummary) {
+    docs.push(
+      new Document({
+        pageContent: project.shortSummary,
+        metadata: {
+          projectTitle: project.title,
+          slug,
+          section: "Short Summary",
+          url: `${projectUrl}#${generateHeadingId("Short Summary")}`,
         },
       })
     );

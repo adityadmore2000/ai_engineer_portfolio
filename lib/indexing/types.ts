@@ -1,4 +1,5 @@
 import { groq } from "next-sanity";
+import type { PortableTextBlock } from "next-sanity";
 
 export type SanityProject = {
   _id: string;
@@ -6,19 +7,9 @@ export type SanityProject = {
   slug: string | null;
   shortSummary: string | null;
   status: string | null;
-  whyIBuiltIt: string | null;
-  theProblem: string | null;
-  theSolution: string | null;
-  engineeringDecisions: string | null;
-  results: string | null;
-  whatThisDemonstrates: string | null;
-  exampleInputsOutputs: string | null;
-  lessonsLearned: string | null;
-  limitations: string | null;
-  futureImprovements: string | null;
-  timeline: string | null;
   technologies: string[] | null;
   keyMetrics: string[] | null;
+  content?: PortableTextBlock[] | null;
 };
 
 export type SanitySiteSettings = {
@@ -54,7 +45,7 @@ export type SanityTechnicalNote = {
   tags: string[] | null;
 };
 
-export const projectsQuery = groq`*[_type == "project" && published == true] { _id, title, "slug": slug.current, shortSummary, status, whyIBuiltIt, theProblem, theSolution, engineeringDecisions, results, whatThisDemonstrates, exampleInputsOutputs, lessonsLearned, limitations, futureImprovements, timeline, technologies, keyMetrics }`;
+export const projectsQuery = groq`*[_type == "project" && published == true] { _id, title, "slug": slug.current, shortSummary, status, technologies, keyMetrics, content }`;
 
 export const siteSettingsQuery = groq`*[_type == "siteSettings"][0] { name, shortBio, aboutSummary, focusAreas, contactHeadline, contactDescription, heroDescription }`;
 
