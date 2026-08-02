@@ -85,41 +85,55 @@ The publishing agent only *triggers* indexing via the `reindex_content` tool
 | `lib/project-docs-source.ts` | fumadocs tree builder for doc page navigation |
 | `.env.example` | All required env vars documented |
 
-## Project Schema (layered storytelling approach)
+## Project Schema (metadata + docs narrative)
 
-Projects follow a progressive disclosure hierarchy. All text fields except `detailedContent` are `markdown` type (rendered via `<Markdown>` component). `detailedContent` is Portable Text (`block[]`).
+Projects separate **structured metadata** (Sanity fields) from **narrative**
+(Markdown authored in the repo, rendered from `project.content`). Markdown docs
+in the repository are the source of truth; Portable Text on `content` is a
+derived, overwritten-on-publish representation. The renderer and retrieval read
+`content` only — there are no legacy flat narrative fields.
 
 Required fields on `project` document: `title`, `slug`.
 
-Image fields (`coverImage`, `architectureImage`, `screenshots[]`, `beforeAfterComparisons[].beforeImage`, `beforeAfterComparisons[].afterImage`) are Sanity image type with hotspot and `alt` string field.
+Image fields (`coverImage`, `screenshots[]`, `beforeAfterComparisons[].beforeImage`,
+`beforeAfterComparisons[].afterImage`) are Sanity image type with hotspot and
+`alt` string field.
 
-Visibility flag: `published` (boolean, default `true`) — controls whether the project appears on the public site. The agent's `publish_project` and `unpublish_project` tools toggle this field.
+Visibility flag: `published` (boolean, default `true`) — controls whether the
+project appears on the public site. The agent's `publish_project` and
+`unpublish_project` tools toggle this field.
 
-### Field order (storytelling hierarchy)
+### Metadata fields
 
-| Section | Fields | Audience |
-|---------|--------|----------|
-| **Hero** | `title`, `shortSummary`, `status`, `technologies`, `githubUrl`, `demoUrl`, `keyMetrics`, `coverImage` | All |
-| **Why I Built It** | `whyIBuiltIt` — personal, engineering-driven motivation | All |
-| **The Problem** | `theProblem` — what engineering problem existed | Recruiter+ |
-| **The Solution** | `theSolution` — high-level system explanation | Recruiter+ |
-| **System Architecture** | `architectureImage` — diagram + alt text | Recruiter+ |
-| **Engineering Decisions** | `engineeringDecisions` — design decisions and rationale | Hiring Manager+ |
-| **Interesting Challenges** | `interestingChallenges[]` — array of `{problem, solution, outcome}` objects | Hiring Manager+ |
-| **Results** | `results` — measurable outcomes | All |
-| **What This Demonstrates** | `whatThisDemonstrates` — engineering skills summary | Recruiter+ |
+`title`, `slug`, `shortSummary`, `status`, `technologies[]`, `githubUrl`,
+`demoUrl`, `keyMetrics[]`, `coverImage`, `featured`, `displayOrder`,
+`screenshots[]`, `demoVideo`, `beforeAfterComparisons[]`, `published`.
 
-### Optional fields (when available)
+### Narrative `content`
 
-`screenshots[]`, `demoVideo` (url), `beforeAfterComparisons[]` (array of `{beforeImage, afterImage, caption}`), `exampleInputsOutputs`, `lessonsLearned`, `limitations`, `futureImprovements`, `timeline`, `faq[]` (array of `{question, answer}`), `detailedContent` (Portable Text)
+The narrative lives as Markdown under `projects/<slug>/docs/*.md` (each file an
+engineering document, ordered via `order` front-matter). The Publishing Agent
+publishes it to `project.content` (Portable Text) through `publish_docs` — a
+deterministic serializer that never mutates metadata.
+
+Storytelling sections for the docs (order is illustrative; any heading renders):
+
+| Section (docs file) | Purpose | Anchor |
+|-----|---------|--------|
+| `overview.md` | Why I built it / problem / solution | `#why-i-built-it`, `#the-problem`, `#the-solution` |
+| `architecture.md` | system diagram | `#system-architecture` |
+| `engineering-decisions.md` | design decisions + rationale | `#engineering-decisions` |
+| `challenges.md` | `**Problem:**/`**Solution:**/`**Outcome:**` cards | `#interesting-challenges` |
+| `results.md` | measurable outcomes | `#results` |
+| `future-improvements.md` | what's next | `#future-improvements` |
+
+Sections beyond these render automatically — the serializer is schema-free.
+Anchor/heading ids come from the shared `generateHeadingId()` so chat citations
+and deep links agree.
 
 ### Status values
 
 `active`, `completed`, `archived`, `poc`, `in-development`
-
-### Deprecated fields (hidden in Studio, may be removed)
-
-`problemStatement`, `approach` — replaced by the storytelling fields above.
 
 ## Publishing Agent
 
@@ -173,18 +187,15 @@ confirmation before writing. It does not rewrite, summarize, or invent content.
 - **demoUrl**: Not live yet - …
 - **featured**: `true`
 - **displayOrder**: `0`
-- **problemStatement**:
-  The brief was to…
-- **approach**: …
-- **results**: …
 - **coverImage**: Not set - …
 - **screenshots**: Not set - …
-- **limitations**: …
-- **futureImprovements**: …
 ```
 
 `Not set - …` / `Not live yet - …` markers normalize to absent (never empty
 strings). Image paths MUST be absolute; relative paths are rejected.
+
+Narrative is NOT a spec field — author it as Markdown under
+`projects/<slug>/docs/*.md` and publish with `publish_docs`.
 
 ## Workflow tools
 
