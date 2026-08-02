@@ -1,16 +1,9 @@
 import { createClient } from "@sanity/client";
 import { apiVersion, dataset, projectId } from "../sanity/env";
 import { client as readClient } from "../sanity/client";
-import fs from "node:fs";
-import path from "node:path";
+import { uploadImage, type ImageRef } from "./lib/upload";
 
 const writeToken = process.env.SANITY_API_WRITE_TOKEN;
-
-type ImageRef = {
-  _type: "image";
-  asset: { _type: "reference"; _ref: string };
-  alt?: string;
-};
 
 export interface ProjectPublishInput {
   title: string;
@@ -100,47 +93,6 @@ function getWriteClient() {
     useCdn: false,
     token: writeToken,
   });
-}
-
-async function uploadImage(
-  client: ReturnType<typeof getWriteClient>,
-  imagePath: string,
-  markdownDir: string
-) {
-  const resolved = path.resolve(markdownDir, imagePath);
-
-  if (!fs.existsSync(resolved)) {
-    console.warn(`  ⚠  Image not found: ${resolved}`);
-    return undefined;
-  }
-
-  const filename = path.basename(resolved);
-  const mimeType =
-    filename.endsWith(".png")
-      ? "image/png"
-      : filename.endsWith(".webp")
-        ? "image/webp"
-        : filename.endsWith(".jpg") || filename.endsWith(".jpeg")
-          ? "image/jpeg"
-          : filename.endsWith(".gif")
-            ? "image/gif"
-            : filename.endsWith(".svg")
-              ? "image/svg+xml"
-              : "image/png";
-
-  const stream = fs.createReadStream(resolved);
-  const asset = await client.assets.upload("image", stream, {
-    filename,
-    contentType: mimeType,
-  });
-
-  return {
-    _type: "image" as const,
-    asset: {
-      _type: "reference" as const,
-      _ref: asset._id,
-    },
-  } as ImageRef;
 }
 
 export type ProjectReadOutput = {

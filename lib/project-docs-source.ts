@@ -1,6 +1,7 @@
 import type { PortableTextBlock } from "next-sanity";
 import type { Folder, Item, Node, Root } from "fumadocs-core/page-tree";
 import type { TOCItemType } from "fumadocs-core/toc";
+import { generateHeadingId } from "@/lib/content/headings";
 import type {
   ProjectDocumentationPage,
   ProjectSummary
@@ -280,13 +281,7 @@ export function createToc(blocks: PortableTextBlock[]) {
       continue;
     }
 
-    const baseId = slugify(title) || "section";
-    const stableSuffix = block._key ? `-${block._key.slice(0, 8)}` : "";
-    const preferredId = `${baseId}${stableSuffix}`;
-    const count = usedIds.get(preferredId) || 0;
-    const id = count ? `${preferredId}-${count + 1}` : preferredId;
-
-    usedIds.set(preferredId, count + 1);
+    const id = generateHeadingId(title, { key: block._key, used: usedIds });
 
     if (block._key) {
       headingIdByBlockKey[block._key] = id;
@@ -334,12 +329,4 @@ function comparePages(
   }
 
   return first.title.localeCompare(second.title);
-}
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
 }

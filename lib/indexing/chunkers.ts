@@ -1,4 +1,5 @@
 import { Document } from "@langchain/core/documents";
+import { generateHeadingId } from "@/lib/content/headings";
 import type {
   SanityExperience,
   SanityProject,
@@ -36,7 +37,7 @@ export function chunkProject(project: SanityProject, baseUrl: string): Document[
           projectTitle: project.title,
           slug,
           section: section.name,
-          url: `${projectUrl}#${section.name.toLowerCase().replace(/\s+/g, "-")}`,
+          url: `${projectUrl}#${generateHeadingId(section.name)}`,
         },
       })
     );
@@ -50,7 +51,7 @@ export function chunkProject(project: SanityProject, baseUrl: string): Document[
           projectTitle: project.title,
           slug,
           section: "Technologies",
-          url: `${projectUrl}#technologies`,
+          url: `${projectUrl}#${generateHeadingId("Technologies")}`,
         },
       })
     );
@@ -64,7 +65,7 @@ export function chunkProject(project: SanityProject, baseUrl: string): Document[
           projectTitle: project.title,
           slug,
           section: "Key Metrics",
-          url: `${projectUrl}#key-metrics`,
+          url: `${projectUrl}#${generateHeadingId("Key Metrics")}`,
         },
       })
     );
