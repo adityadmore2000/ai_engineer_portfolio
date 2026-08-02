@@ -292,15 +292,118 @@ render the one-off schema types the serializer emits.
 
 ---
 
+## Phase 8 — T12: index rewrite (content-derived sections) — DONE
+
+**Objective:** the index layer reads `content` Portable Text and derives
+sections by heading via the shared PT utilities; metadata chunks preserved.
+
+### Files modified
+- `lib/indexing/types.ts` — `SanityProject.content?: PortableTextBlock[] | null`;
+  dropped the 11 legacy narrative fields; `projectsQuery` selects `content`.
+- `lib/indexing/adapters.ts` — `fallbackToSanityProject` maps metadata only.
+- `lib/indexing/chunkers.ts` — `chunkProject` reuses `splitSectionsByHeading()`
+  (no inline section-splitting) with `generateHeadingId()` (bare-mode) anchors;
+  keeps the short-summary / technologies / key-metrics metadata chunks.
+
+### Files added
+- `lib/indexing/chunkers.test.ts`.
+
+### Verification
+- `npm test` (31), typecheck, lint (pre-existing warnings), build green.
+- Commit: `0f9f1d4 feat(indexing): derive project chunks from content Portable Text sections`.
+
+---
+
+## Phase 9 — T13: document-oriented retrieval + heading probes — DONE
+
+**Files:** `lib/retrieval/structured.ts`, `scripts/index-content.ts`.
+
+- `searchByTechnology` / `getProjectBySlugFromSanity` select `content`;
+  `projectToSearchResults()` builds sections from `content` via
+  `splitSectionsByHeading()` plus metadata short-summary/tech/metrics summaries.
+  No predefined-section reads; no legacy flat fields.
+- `buildSemanticProbes` adds one probe per canonical content heading (mirrors
+  the existing title probe).
+
+### Verification
+- `npm test` (31), typecheck, lint, build green.
+- Commit: `507881d feat(retrieval): document-oriented project retrieval + heading probes`.
+
+---
+
+## Phase 14 — T14: manual verification — DONE (embedding backend unavailable)
+
+**Performed:** build green with both published `/projects/<slug>` prerendered
+from `content`; verified live content-derived chunking against the **local**
+dataset (legacy anchors `#results`, `#lessons-and-limitations`,
+`#future-improvements` preserved; metadata-only projects yield only
+summary/tech chunks); full gate (typecheck/test 32/lint/build) green.
+
+**Not run (environment prerequisite):** full `npm run index-content` with
+semantic probes requires the embedding backend (Ollama at `localhost:11434`),
+which was not running; the chunk-fetch step (20 chunks) succeeded and the probe
+path is code-verified. Publishing-Agent interactive REPL round-trip was not
+exercised headless.
+
+---
+
+## Phase 15a — T15a: remove legacy code references — DONE
+
+**Files:** `sanity/types.ts` (slim `ProjectDetail`, drop
+`Challenge`/`BeforeAfterComparison`/`FaqItem`), `sanity/queries.ts`
+(`projectBySlugQuery` metadata + `content` only), `scripts/publish-tool.ts`
+(metadata-only publish/read types, drop `uploadArchitectureImage`),
+`agent/publish_agent.py` (remove `architectureImage` from image/alt sets,
+tool-arg lists, `_IMAGE_FIELD_NAMES`, `SYSTEM_PROMPT`). `scripts/migrate-legacy-content.ts`
+intentionally keeps reading the legacy dataset fields (one-off migration tool).
+
+**Verification:** typecheck, test (31), lint, build green.
+Commit: `ae7b1be refactor(content): remove legacy narrative fields from code surfaces`.
+
+---
+
+## Phase 16 — T15b: remove legacy schema fields — DONE
+
+**File:** `sanity/schemaTypes/project.ts` — dropped `whyIBuiltIt`, `theProblem`,
+`theSolution`, `architectureImage`, `engineeringDecisions`,
+`interestingChallenges`, `results`, `whatThisDemonstrates`,
+`exampleInputsOutputs`, `lessonsLearned`, `limitations`,
+`futureImprovements`, `timeline`, `faq`, `detailedContent`,
+`problemStatement`, `approach`. Metadata unchanged. `AGENTS.md` rewritten for
+the metadata + `content` model, `publish_docs`, and the `docs/` narrative
+convention.
+
+**Verification:** typecheck, test (31), lint, build green.
+Commits: `0853040 refactor(schema): remove legacy narrative fields from project document`, `eecb173 docs(agents): update project schema for metadata + docs/ content model`.
+
+---
+
+## Phase 16 — T15c: unset local dataset fields + serializer list fix — DONE
+
+**Prep (verification surfaced + fixed):**
+- Populated `project.content` for all three local projects via `publish-docs`
+  over the committed `projects/<slug>/docs/` directories.
+- Fixed a serializer bug: mdast list items wrap inline content in a `paragraph`
+  node that the inline walk skipped, yielding **empty list children**. Fixed by
+  recursing into `paragraph`; added regression tests. This surfaced on the
+  bullet-list-heavy `candidate-ranking-system` content.
+- Pinned `candidate-ranking-system/docs/architecture.md` to a committed local
+  asset (`architecture-diagram.png`) instead of a remote CDN URL so it
+  round-trips (Risk R9/R5).
+- Commits: `bf787d4 fix(content): preserve inline text in list-item blocks`, `19019c3 feat(agent): add T15c bridge to unset legacy project fields locally`.
+
+**Files added:** `scripts/unset-legacy-project-fields.ts`.
+
+**Data change (local dataset only):** ran the bridge — cleared 17 legacy
+fields on all 3 published projects. Verified no `whyIBuiltIt` remains; `content`
+block counts intact (19/6/6); metadata unchanged.
+
+**Verification:** typecheck, test (32), lint, build green.
+
+---
+
 ## TODO (remaining phases)
 
 | Task | Status |
 |------|--------|
-| T9 | agent `publish_docs` + `content` exclusion + prompt cleanup |
-| T10 | `scripts/migrate-legacy-content.ts` → committed `docs/` → `content` |
-| T11 | renderer rewrite (`app/projects/[slug]/page.tsx`, `DocumentationBlocks.tsx`) |
-| T12 | `lib/indexing/types.ts`, `chunkers.ts`, `adapters.ts`, `scripts/index-content.ts` |
-| T13 | structured retrieval rewrite (`lib/retrieval/structured.ts`) + probes |
-| T14 | manual verification (pages, agent e2e, index, gate) |
-| T15 | legacy cleanup (code → schema → dataset) |
-| T16 | promote local→prod |
+| T16 | Promote local dataset → production, deploy code, reindex, expanded smoke |
