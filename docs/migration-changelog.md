@@ -213,6 +213,47 @@ agent's tool args + `SYSTEM_PROMPT` (Risk R8 minimal trim).
 
 ---
 
+## Phase 6 — Data migration: legacy fields → committed `docs/` (T10) — DONE
+
+**Objective:** read the legacy flat narrative fields from the **local** dataset,
+emit committed Markdown docs under `projects/<slug>/docs/` preserving legacy
+anchor headings, and validate the round-trip into `project.content`.
+
+### Files added
+- `scripts/migrate-legacy-content.ts` — reads every project's legacy narrative
+  fields via a raw GROQ projection and emits `projects/<slug>/docs/*.md` in the
+  canonical order (overview → architecture → engineering-decisions → challenges
+  → results → demonstrates → examples → lessons-and-limitations →
+  future-improvements → timeline → faq), each with `order` front-matter and the
+  legacy heading that produces the preserve legacy anchor via the shared
+  `generateHeadingId()`. Stale docs (fields cleared) are removed so the docs
+  dir is an exact mirror. `architectureImage`, `interestingChallenges`
+  (problem/solution/outcome triplets), and `faq` (Q/A) are emitted using the
+  serializer's expected syntax.
+- `projects/<slug>/docs/*.md` — committed authored source of truth (the plan's
+  Step-3.8 repo convention).
+
+### Files modified
+- None (changelog).
+
+### Decisions / notes
+- The migration reads **all** projects (not just those with `whyIBuiltIt`);
+  docs are emitted only for fields that are present, so metadata-only projects
+  get no `/docs` (plan §3.8).
+- `architectureImage` emitted as `![alt](cdn-url)`; because the serializer
+  enforces absolute local image paths, re-publishing a project whose emitted
+  docs reference a remote CDN asset will surface a structural error (never a
+  partial write). Local image files committed beside the docs round-trip
+  cleanly. This matches Risk R5 (alt required) and the serializer's validation.
+
+### Verification
+- Typecheck/lint clean; `migrate-legacy-content.ts` generated docs for all 3
+  projects; `publish-docs.ts` round-tripped `video-captioning-agent` into the
+  **local** dataset (6 blocks) with metadata untouched; re-run confirmed stable
+  content-hash `_key`s (idempotent, no block churn).
+
+---
+
 ## TODO (remaining phases)
 
 | Task | Status |
