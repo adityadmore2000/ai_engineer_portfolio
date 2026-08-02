@@ -2,6 +2,7 @@ import "./load-env";
 import { createHash } from "node:crypto";
 import { Document } from "@langchain/core/documents";
 import { getEmbeddingModel, getEmbeddings } from "../lib/ai/embeddings";
+import { splitSectionsByHeading } from "../lib/content/portable-text";
 import {
   chunkExperience,
   chunkProject,
@@ -28,6 +29,20 @@ function buildSemanticProbes(
     const title = project.title?.trim();
     if (title) {
       probes.push({ label: `project:${title}`, query: title, expected: title });
+    }
+
+    // Canonical heading probes — each content section must be retrievable via
+    // its own heading text (mirrors the title probe).
+    const sections = splitSectionsByHeading(project.content || []);
+    for (const section of sections) {
+      const heading = section.heading?.trim();
+      if (heading) {
+        probes.push({
+          label: `project:${title}:heading:${heading}`,
+          query: heading,
+          expected: heading,
+        });
+      }
     }
   }
   return probes.slice(0, 5);

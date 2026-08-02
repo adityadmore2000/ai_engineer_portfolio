@@ -1,85 +1,74 @@
 import { client } from "@/sanity/client";
 import { groq } from "next-sanity";
+import type { PortableTextBlock } from "next-sanity";
+import { splitSectionsByHeading } from "@/lib/content/portable-text";
 import type { SearchResult } from "./types";
 
 type SanityDoc = Record<string, unknown>;
 
-function toSearchResult(
-  project: SanityDoc,
-  section: string,
-  content: string
-): SearchResult {
-  return {
-    content,
-    projectTitle: project.title as string,
-    slug: (project.slug as string) ?? undefined,
-    section,
-    url: project.slug ? `/projects/${project.slug}` : undefined,
-  };
-}
+const metadataSectionAnchor: Record<string, string> = {
+  "Short Summary": "short-summary",
+  Technologies: "technologies",
+  "Key Metrics": "key-metrics",
+};
 
-function extractProjectFields(project: SanityDoc): SearchResult[] {
+/**
+ * Build SearchResults for a project doc from its `content` Portable Text,
+ * deriving sections from the document structure by heading. No assumption of
+ * predefined section names (no "Engineering Decisions" / "Results" field
+ * reads). Tech/metrics/short-summary summaries come from unchanged metadata.
+ */
+function projectToSearchResults(project: SanityDoc): SearchResult[] {
   const results: SearchResult[] = [];
   const title = project.title as string;
+  const slug = (project.slug as string) || undefined;
+  const projectUrl = slug ? `/projects/${slug}` : undefined;
 
   if (project.shortSummary) {
-    results.push(
-      toSearchResult(project, "Short Summary", project.shortSummary as string)
-    );
+    results.push({
+      content: project.shortSummary as string,
+      projectTitle: title,
+      slug,
+      section: "Short Summary",
+      url: projectUrl ? `${projectUrl}#${metadataSectionAnchor["Short Summary"]}` : undefined,
+    });
   }
-  if (project.whyIBuiltIt) {
-    results.push(
-      toSearchResult(project, "Why I Built It", project.whyIBuiltIt as string)
-    );
+
+  const content = project.content as PortableTextBlock[] | undefined;
+  if (Array.isArray(content)) {
+    const sections = splitSectionsByHeading(content);
+
+    for (const section of sections) {
+      if (!section.text) continue;
+      results.push({
+        content: section.text,
+        projectTitle: title,
+        slug,
+        section: section.heading || "Overview",
+        url:
+          projectUrl && section.id ? `${projectUrl}#${section.id}` : projectUrl,
+      });
+    }
   }
-  if (project.theProblem) {
-    results.push(
-      toSearchResult(project, "The Problem", project.theProblem as string)
-    );
+
+  if (Array.isArray(project.technologies) && project.technologies.length) {
+    results.push({
+      content: `${title} uses: ${(project.technologies as string[]).join(", ")}`,
+      projectTitle: title,
+      slug,
+      section: "Technologies",
+      url: projectUrl ? `${projectUrl}#${metadataSectionAnchor.Technologies}` : undefined,
+    });
   }
-  if (project.theSolution) {
-    results.push(toSearchResult(project, "The Solution", project.theSolution as string));
-  }
-  if (project.engineeringDecisions) {
-    results.push(
-      toSearchResult(project, "Engineering Decisions", project.engineeringDecisions as string)
-    );
-  }
-  if (project.whatThisDemonstrates) {
-    results.push(
-      toSearchResult(project, "What This Demonstrates", project.whatThisDemonstrates as string)
-    );
-  }
-  if (project.results) {
-    results.push(toSearchResult(project, "Results", project.results as string));
-  }
-  if (project.limitations) {
-    results.push(
-      toSearchResult(project, "Limitations", project.limitations as string)
-    );
-  }
-  if (project.futureImprovements) {
-    results.push(
-      toSearchResult(project, "Future Improvements", project.futureImprovements as string)
-    );
-  }
-  if (project.technologies) {
-    results.push(
-      toSearchResult(
-        project,
-        "Technologies",
-        `${title} uses: ${(project.technologies as string[]).join(", ")}`
-      )
-    );
-  }
-  if (project.keyMetrics) {
-    results.push(
-      toSearchResult(
-        project,
-        "Key Metrics",
-        `${title} outcomes: ${(project.keyMetrics as string[]).join(", ")}`
-      )
-    );
+
+  if (Array.isArray(project.keyMetrics) && project.keyMetrics.length) {
+    results.push({
+      content: `${title} outcomes: ${(project.keyMetrics as string[]).join(", ")}`,
+      projectTitle: title,
+      slug,
+      section: "Key Metrics",
+      url: projectUrl ? `${projectUrl}#${metadataSectionAnchor["Key Metrics"]}` : undefined,
+    });
   }
 
   return results;
@@ -93,21 +82,14 @@ export async function searchByTechnology(tech: string): Promise<SearchResult[]> 
       shortSummary,
       technologies,
       keyMetrics,
-      whyIBuiltIt,
-      theProblem,
-      theSolution,
-      engineeringDecisions,
-      results,
-      whatThisDemonstrates,
-      limitations,
-      futureImprovements
+      content
     }
   `;
 
   const projects = await client.fetch<SanityDoc[]>(query, { tech });
   if (!projects?.length) return [];
 
-  return projects.flatMap(extractProjectFields);
+  return projects.flatMap(projectToSearchResults);
 }
 
 export async function getContactInfo(): Promise<SearchResult[]> {
@@ -279,19 +261,12 @@ export async function getProjectBySlugFromSanity(slug: string): Promise<SearchRe
       shortSummary,
       technologies,
       keyMetrics,
-      whyIBuiltIt,
-      theProblem,
-      theSolution,
-      engineeringDecisions,
-      results,
-      whatThisDemonstrates,
-      limitations,
-      futureImprovements
+      content
     }
   `;
 
   const project = await client.fetch<SanityDoc>(query, { slug });
   if (!project) return [];
 
-  return extractProjectFields(project);
+  return projectToSearchResults(project);
 }
