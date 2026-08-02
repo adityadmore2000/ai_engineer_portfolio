@@ -44,13 +44,20 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.8",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.15.29",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
     "eslint": "^9.28.0",
     "eslint-config-next": "^15.3.3",
+    "js-yaml": "^5.2.3",
+    "mdast-util-to-string": "^4.0.0",
+    "remark-gfm": "^4.0.1",
+    "remark-parse": "^11.0.0",
     "tailwindcss": "^4.1.8",
     "typescript": "^5.8.3",
+    "unified": "^11.0.5",
+    "unist-util-visit": "^5.1.0",
     "vitest": "^4.1.10"
   }
 }
