@@ -254,6 +254,44 @@ anchor headings, and validate the round-trip into `project.content`.
 
 ---
 
+## Phase 7 — Renderer rewrite: project page is content-only (T11) — DONE
+
+**Objective:** the project detail page renders the single `project.content`
+Portable Text stream (heading-based sections with stable anchors) instead of
+~18 flat narrative fields. New `faqItem` / `challengeCard` block components
+render the one-off schema types the serializer emits.
+
+### Files modified
+- `components/DocumentationBlocks.tsx`
+  - Added `block` renderers for `h2`/`h3`/`h4` that emit `id={headingId(value)}`
+    pointing at the shared `generateHeadingId()` (bare mode). This preserves the
+    migrated legacy anchors (e.g. `#results`, `#lessons-and-limitations`) so
+    deep-link citations keep resolving (R2).
+  - Added `types.faqItem` → `<FaqItem>` and `types.challengeCard` →
+    `<ChallengeCard>` renderers, plus the `FaqItemValue` / `ChallengeCardValue`
+    shapes.
+  - Added `FaqItem` and `ChallengeCard` React components (Q/A card and
+    problem/solution/outcome card with matching slate palette).
+  - `headingId(value)` helper flattening a block via `portableTextBlockToText` →
+    `generateHeadingId`.
+- `app/projects/[slug]/page.tsx`
+  - Removed the legacy flat-field pipeline: `DetailBlock`, `ImageBlock`,
+    `ChallengesBlock`, `BeforeAfterBlock`, `FaqBlock`, `PortableContent`,
+    `hasImageUrl`, the `demoVideo`/`screenshots`/`beforeAfter`/`detailedContent`
+    sections, and the legacy flat-field imports.
+  - Renders `<PortableText value={content} components={documentationPortableTextComponents} />`
+    when `content` is present (old `detailedContent` only was rendered as
+    "Details"); metadata hero (title, status, short summary, cover, metrics,
+    technologies, GitHub/demo/doc links) is unchanged.
+
+### Verification
+- `npm run typecheck` clean; `npm run lint` only the pre-existing warnings in
+  `lib/agent/orchestrator.ts` / `lib/observability/noop.ts`; `npm test` 28
+  passed; `npm run build` green (`/projects/[slug]` SSG for both local
+  projects).
+
+---
+
 ## TODO (remaining phases)
 
 | Task | Status |

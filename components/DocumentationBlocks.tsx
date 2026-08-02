@@ -3,6 +3,8 @@ import type { PortableTextComponents } from "@portabletext/react";
 import { ExternalLink } from "lucide-react";
 import { urlFor } from "@/sanity/image";
 import { MermaidDiagram } from "./MermaidDiagram";
+import { generateHeadingId } from "@/lib/content/headings";
+import { portableTextBlockToText } from "@/lib/content/portable-text";
 
 type CodeBlockValue = {
   code?: string;
@@ -54,7 +56,44 @@ type DocumentationImageValue = {
   caption?: string;
 };
 
+type FaqItemValue = {
+  question?: string;
+  answer?: string;
+};
+
+type ChallengeCardValue = {
+  problem?: string;
+  solution?: string;
+  outcome?: string;
+};
+
+// Heading styles rendered with the shared `generateHeadingId()` anchor so the
+// renderer's ids agree with the chunker's anchors and the migration's headings
+// (single slug scheme — Risk R2). Heading text is  flattened to plain text.
+const headingClasses: Record<string, string> = {
+  h2: "mt-12 text-2xl font-bold text-slate-950",
+  h3: "mt-8 text-xl font-bold text-slate-900",
+  h4: "mt-6 text-lg font-semibold text-slate-900",
+};
+
 export const documentationPortableTextComponents: PortableTextComponents = {
+  block: {
+    h2: ({ children, value }) => (
+      <h2 id={headingId(value)} className={headingClasses.h2}>
+        {children}
+      </h2>
+    ),
+    h3: ({ children, value }) => (
+      <h3 id={headingId(value)} className={headingClasses.h3}>
+        {children}
+      </h3>
+    ),
+    h4: ({ children, value }) => (
+      <h4 id={headingId(value)} className={headingClasses.h4}>
+        {children}
+      </h4>
+    ),
+  },
   types: {
     documentationCodeBlock: ({ value }) => (
       <CodeBlock {...(value as CodeBlockValue)} />
@@ -91,7 +130,11 @@ export const documentationPortableTextComponents: PortableTextComponents = {
     ),
     documentationImage: ({ value }) => (
       <DocumentationImage {...(value as DocumentationImageValue)} />
-    )
+    ),
+    faqItem: ({ value }) => <FaqItem {...(value as FaqItemValue)} />,
+    challengeCard: ({ value }) => (
+      <ChallengeCard {...(value as ChallengeCardValue)} />
+    ),
   },
   marks: {
     code: ({ children }) => (
@@ -120,6 +163,11 @@ export const documentationPortableTextComponents: PortableTextComponents = {
     }
   }
 };
+
+function headingId(value: unknown): string {
+  const text = portableTextBlockToText(value as never);
+  return generateHeadingId(text);
+}
 
 function CodeBlock({ code, language, filename, caption }: CodeBlockValue) {
   if (!code) {
@@ -356,6 +404,56 @@ export function DocumentationImage({
         </figcaption>
       ) : null}
     </figure>
+  );
+}
+
+export function FaqItem({ question, answer }: FaqItemValue) {
+  if (!question && !answer) {
+    return null;
+  }
+
+  return (
+    <div className="my-4 rounded-lg border border-slate-200 bg-white p-5">
+      {question ? <h4 className="font-bold text-slate-950">{question}</h4> : null}
+      {answer ? (
+        <p className="mt-2 whitespace-pre-wrap leading-7 text-slate-700">{answer}</p>
+      ) : null}
+    </div>
+  );
+}
+
+export function ChallengeCard({ problem, solution, outcome }: ChallengeCardValue) {
+  if (!problem && !solution && !outcome) {
+    return null;
+  }
+
+  return (
+    <div className="my-4 rounded-lg border border-slate-200 bg-white p-5">
+      {problem ? (
+        <div className="mb-4">
+          <h4 className="text-sm font-bold uppercase tracking-wide text-red-600">
+            Problem
+          </h4>
+          <p className="mt-1 whitespace-pre-wrap leading-7 text-slate-700">{problem}</p>
+        </div>
+      ) : null}
+      {solution ? (
+        <div className="mb-4">
+          <h4 className="text-sm font-bold uppercase tracking-wide text-teal-700">
+            Solution
+          </h4>
+          <p className="mt-1 whitespace-pre-wrap leading-7 text-slate-700">{solution}</p>
+        </div>
+      ) : null}
+      {outcome ? (
+        <div>
+          <h4 className="text-sm font-bold uppercase tracking-wide text-slate-500">
+            Outcome
+          </h4>
+          <p className="mt-1 whitespace-pre-wrap leading-7 text-slate-700">{outcome}</p>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
