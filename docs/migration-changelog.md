@@ -1,0 +1,160 @@
+# Migration Changelog: Metadata / Narrative Separation
+
+This changelog records every completed phase of the metadata / narrative
+separation migration, sequenced per `docs/implementation-plan.md`. Each phase
+maps to one (or more) reviewable commits.
+
+Target architecture: Markdown authored in the repository (`projects/<slug>/docs/*.md`)
+is the source of truth; the Publishing Agent deterministically serializes it to
+Portable Text stored on `project.content`; the renderer and retrieval read
+`content` (heading-based sections) instead of ~18 flat narrative schema fields.
+
+---
+
+## Project metadata
+
+- **Source of truth:** `docs/implementation-plan.md` (task map T1–T16),
+  `docs/project-content-architecture.md`, `docs/migration-plan.md`.
+- **Validation per phase:** `npm test`, `npm run typecheck`, `npm run lint`,
+  `npm run build`.
+
+---
+
+## Phase 0 — Foundation & pure refactors (T1, T2, T3) — DONE
+
+**Objective:** introduce the test runner and the shared abstractions every later
+phase consumes. No behavior change.
+
+**Branch/commit:** feature branch work; `6fd7b1f feat(content): add shared
+heading/PT utils, upload module, test runner`.
+
+### Files added
+- `vitest.config.ts` — vitest config (node env, `@` alias).
+- `lib/content/headings.ts` — canonical `generateHeadingId()` (bare + keyed
+  modes; duplicate disambiguation via `used` map). Single source of truth for
+  anchor ids.
+- `lib/content/portable-text.ts` — required shared abstraction: PT→text flatten
+  and heading-based section splitter (`splitSectionsByHeading`).
+- `scripts/lib/upload.ts` — shared exported `uploadImage` + `ImageRef` type.
+- `lib/content/headings.test.ts` — heading-id cases (bare/keyed/dedup).
+
+### Files modified
+- `package.json` — added `test` script + `vitest` devDep.
+- `lib/indexing/chunkers.ts` — re-uses `generateHeadingId()` for anchors
+  (dropped inline slug).
+- `lib/project-docs-source.ts` — re-uses shared `generateHeadingId()`
+  (dropped private `slugify`).
+- `scripts/publish-tool.ts` — re-imports shared `uploadImage` (dropped private copy).
+
+### Decisions / notes
+- Keyed mode (`-<8-char key>`) preserved for doc-page TOC; bare mode
+  implemented for project-page / migration / chunker use (Risk R2).
+- `@` path alias resolves to repo root throughout.
+
+### Verification
+- `npm test` (28 tests), typecheck, lint (only pre-existing warnings in
+  unrelated `lib/agent`, `lib/observability`), build green.
+
+---
+
+## Phase 1 — Deterministic content tooling (T4, T5) — DONE
+
+**Objective:** deterministic Markdown-document discovery + Markdown→Portable
+Text serializer (both schema-free). Additive.
+
+**Branch commit:** `cb6d50b feat(content): add docs discovery +
+Markdown->PortableText serializer`.
+
+### Files added
+- `lib/content/discover-docs.ts` — recursive `.md` scan, `order` front-matter
+  → filename fallback, per-file/per-dir size caps, loud malformed-front-matter
+  errors, `[{ file, order, heading, raw, sha }]`.
+- `lib/content/markdown-to-pt.ts` — md→PT serializer mapping h2/h3/h4, prose,
+  lists, code marks, `documentationCodeBlock`, `documentationMermaidDiagram`,
+  `documentationCallout` (keyword variants), `documentationTable`,
+  `documentationImage`, `faqItem`, `challengeCard`; structural validation
+  (balanced fences, absolute image paths) + stable content-hash `_key`s.
+- `lib/content/discover-docs.test.ts`, `lib/content/markdown-to-pt.test.ts`.
+
+### Files modified
+- `package.json` — devDeps for `unified`, `remark-parse`, `remark-gfm`,
+  `mdast-util-to-string`, `unist-util-visit`, `js-yaml`, `@types/js-yaml`.
+
+### Decisions
+- Serializer is schema-free and deterministic (Decision 2: `unified` +
+  `remark-parse`).
+- Portable Text is a derived representation; Markdown is the authoring source.
+- `documentationImage.alt` is always required by the schema, so the serializer
+  emits alt text / errors (Risk R5).
+
+### Verification
+- `npm test` (28), typecheck, lint, build green.
+
+---
+
+## Phase 2 — Schema `content` + read surfaces (T6, part of T7) — DONE
+
+**Files:** `sanity/schemaTypes/project.ts`, `documentationBlocks.ts`,
+`schemaTypes/index.ts`, `projectDocumentationPage.ts`, `sanity/types.ts`,
+`scripts/publish-tool.ts`, `sanity/queries.ts`.
+
+### Gains
+- `documentationBlocks.ts` — added `faqItem`, `challengeCard` object types
+  (thin wrappers over legacy shapes) + shared `portableTextBlockMember`,
+  `projectContentBlockOf`, `documentationPageBlockOf`.
+- `project.ts` — added `content: array` of (shared block config +
+  `...documentationBlockTypes` + `faqItem` + `challengeCard`), `Rule.min(1)`,
+  described as published representation (do not edit).
+- `index.ts` — registers `faqItem`/`challengeCard`.
+- `sanity/types.ts` — `ProjectDetail.content?: PortableTextBlock[]`.
+- `sanity/queries.ts` — `projectBySlugQuery` selects `content`.
+- `publish-tool.ts` — `ProjectReadOutput.content`, `readProjectQuery`
+  selects `content`, `BLOCK_KEYS` excludes `content` from generic metadata path.
+
+### Decisions
+- `content` is excluded from the metadata create/update path (Risk R7).
+
+---
+
+## Phase 3 — Read surfaces select `content` (T7, remainder) — DONE
+
+Finishes the read-surface work (the query/type/bridge `content` selection from
+Phase 2 already landed). Remaining items made fallbacks metadata-only.
+
+### Files modified
+- `sanity/fallbackContent.ts` — fallback projects are now **metadata-only**
+  (Decision 3): dropped all legacy narrative fields (`whyIBuiltIt`,
+  `theProblem`, `interestingChallenges`, `results`, etc.), keeping only
+  metadata (`title`, `slug`, `shortSummary`, `status`, `technologies`,
+  `keyMetrics`, `featured`, `displayOrder`).
+- `lib/indexing/adapters.ts` — `fallbackToSanityProject` maps only metadata;
+  legacy narrative fields pinned to `null` so the shared `SanityProject` shape
+  still compiles (removed fully in Phase 8 / T15).
+
+### Decisions / notes
+- Risk R6 accepted: the no-Sanity dev experience loses narrative for fallback
+  projects (the metadata hero renders alone). This matches migration-plan §3.4
+  and the approved Decision 3. The real dataset (Sanity `content`) carries the
+  actual narrative.
+- `content` remains optional/absent for fallback projects; the document is
+  metadata-only.
+
+### Verification
+- `npm test` (28), typecheck, lint, build green.
+
+---
+
+## TODO (remaining phases)
+
+| Task | Status |
+|------|--------|
+| T7 | metadata-only fallbacks (this phase) |
+| T8 | `scripts/publish-docs.ts` bridge |
+| T9 | agent `publish_docs` + `content` exclusion + prompt cleanup |
+| T10 | `scripts/migrate-legacy-content.ts` → committed `docs/` → `content` |
+| T11 | renderer rewrite (`app/projects/[slug]/page.tsx`, `DocumentationBlocks.tsx`) |
+| T12 | index rewrite (`SanityProject.content`, query, chunker, adapters) |
+| T13 | structured retrieval rewrite (`lib/retrieval/structured.ts`) + probes |
+| T14 | manual verification (pages, agent e2e, index, gate) |
+| T15 | legacy cleanup (code → schema → dataset) |
+| T16 | promote local→prod |
