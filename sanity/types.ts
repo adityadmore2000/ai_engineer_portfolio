@@ -104,6 +104,8 @@ export type ProjectDetail = ProjectSummary & {
   timeline?: string;
   faq?: FaqItem[];
   detailedContent?: PortableTextBlock[];
+  /** Derived narrative representation (published from the repo docs/ source). */
+  content?: PortableTextBlock[];
 };
 
 export type ProjectDocumentationPage = {

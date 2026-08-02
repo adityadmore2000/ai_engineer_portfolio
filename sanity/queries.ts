@@ -130,7 +130,8 @@ export const projectBySlugQuery = groq`
       question,
       answer
     },
-    detailedContent
+    detailedContent,
+    content
   }
 `;
 

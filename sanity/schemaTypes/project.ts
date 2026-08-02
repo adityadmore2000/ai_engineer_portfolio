@@ -1,6 +1,7 @@
 import { defineField, defineType } from "sanity";
 import { FolderKanban } from "lucide-react";
 import { urlRule } from "./validation";
+import { projectContentBlockOf } from "./documentationBlocks";
 
 export const project = defineType({
   name: "project",
@@ -252,6 +253,15 @@ export const project = defineType({
       title: "Detailed Rich Text Content",
       type: "array",
       of: [{ type: "block" }]
+    }),
+    defineField({
+      name: "content",
+      title: "Content",
+      type: "array",
+      description:
+        "Published representation of the project narrative, derived from the Markdown docs/ source. Do not edit here; edit the Markdown in the repository and re-publish.",
+      of: projectContentBlockOf,
+      validation: (Rule) => Rule.min(1)
     }),
     defineField({
       name: "published",

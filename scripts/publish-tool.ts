@@ -63,13 +63,14 @@ const META_KEYS = new Set([
   "published",
   "__markdownDir__",
 ]);
+const BLOCK_KEYS = new Set(["content", "detailedContent", "faqItem", "challengeCard"]);
 
 function setGenericFields(
   target: Record<string, unknown>,
   source: object
 ) {
   for (const [key, value] of Object.entries(source)) {
-    if (META_KEYS.has(key) || IMAGE_KEYS.has(key) || ALT_KEYS.has(key)) continue;
+    if (META_KEYS.has(key) || IMAGE_KEYS.has(key) || ALT_KEYS.has(key) || BLOCK_KEYS.has(key)) continue;
     if (value === undefined || value === null) continue;
     target[key] = value;
   }
@@ -123,6 +124,7 @@ export type ProjectReadOutput = {
   architectureImageAlt?: string;
   screenshotAlts?: string[];
   published?: boolean;
+  content?: unknown[];
 };
 
 const readProjectQuery = `*[_type == "project" && slug.current == $slug][0]{
@@ -152,7 +154,8 @@ const readProjectQuery = `*[_type == "project" && slug.current == $slug][0]{
   coverImage{alt},
   architectureImage{alt},
   screenshots[]{alt},
-  published
+  published,
+  content
 }`;
 
 export async function readProject(
@@ -192,6 +195,7 @@ export async function readProject(
     screenshotAlts: (doc.screenshots as Array<Record<string, string>> | undefined)
       ?.map((s) => s.alt) ?? undefined,
     published: doc.published as boolean | undefined,
+    content: (doc.content as unknown[] | undefined) ?? undefined,
   };
 }
 

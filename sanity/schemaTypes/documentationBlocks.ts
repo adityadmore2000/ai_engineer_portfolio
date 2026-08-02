@@ -460,3 +460,138 @@ export const documentationBlockTypes = [
   documentationCTAGroup,
   documentationImage
 ];
+
+// ── Shared Portable Text block configuration ──────────────
+// The standard `block` member used by both `project.content` and
+// `projectDocumentationPage.body`, so the two channels share one definition.
+
+export const portableTextBlockMember = {
+  type: "block",
+  styles: [
+    { title: "Normal", value: "normal" },
+    { title: "Heading 2", value: "h2" },
+    { title: "Heading 3", value: "h3" },
+    { title: "Heading 4", value: "h4" }
+  ],
+  lists: [
+    { title: "Bullet", value: "bullet" },
+    { title: "Number", value: "number" }
+  ],
+  marks: {
+    decorators: [
+      { title: "Strong", value: "strong" },
+      { title: "Emphasis", value: "em" },
+      { title: "Underline", value: "underline" },
+      { title: "Code", value: "code" }
+    ],
+    annotations: [
+      {
+        name: "link",
+        title: "Link",
+        type: "object",
+        fields: [
+          defineField({
+            name: "href",
+            title: "URL",
+            type: "url",
+            validation: (Rule) =>
+              Rule.uri({ scheme: ["http", "https", "mailto"] })
+          })
+        ]
+      }
+    ]
+  }
+};
+
+/** `of` member list for `project.content` — the shared block plus every
+ * reusable documentation block plus the FAQ/challenge cards. */
+export const projectContentBlockOf = [
+  portableTextBlockMember,
+  { type: "documentationCodeBlock" },
+  { type: "documentationMermaidDiagram" },
+  { type: "documentationCallout" },
+  { type: "documentationTable" },
+  { type: "documentationTimeline" },
+  { type: "documentationBadgeGroup" },
+  { type: "documentationCTAGroup" },
+  { type: "documentationImage" },
+  { type: "faqItem" },
+  { type: "challengeCard" }
+];
+
+/** `of` member list for `projectDocumentationPage.body` (deep-dive pages). */
+export const documentationPageBlockOf = [
+  portableTextBlockMember,
+  { type: "documentationCodeBlock" },
+  { type: "documentationMermaidDiagram" },
+  { type: "documentationCallout" },
+  { type: "documentationTable" },
+  { type: "documentationTimeline" },
+  { type: "documentationBadgeGroup" },
+  { type: "documentationCTAGroup" },
+  { type: "documentationImage" }
+];
+
+// ── FAQ / challenge cards (thin wrappers over the legacy shapes) ──
+
+export const documentationFaqItem = defineType({
+  name: "faqItem",
+  title: "FAQ Item",
+  type: "object",
+  icon: Megaphone,
+  fields: [
+    defineField({
+      name: "question",
+      title: "Question",
+      type: "string",
+      validation: (Rule) => Rule.required()
+    }),
+    defineField({
+      name: "answer",
+      title: "Answer",
+      type: "markdown"
+    })
+  ],
+  preview: {
+    select: { question: "question", answer: "answer" },
+    prepare({ question, answer }) {
+      return {
+        title: question || "FAQ Item",
+        subtitle: answer ? String(answer).slice(0, 70) : undefined
+      };
+    }
+  }
+});
+
+export const documentationChallengeCard = defineType({
+  name: "challengeCard",
+  title: "Challenge Card",
+  type: "object",
+  icon: Workflow,
+  fields: [
+    defineField({
+      name: "problem",
+      title: "Problem",
+      type: "markdown"
+    }),
+    defineField({
+      name: "solution",
+      title: "Solution",
+      type: "markdown"
+    }),
+    defineField({
+      name: "outcome",
+      title: "Outcome",
+      type: "markdown"
+    })
+  ],
+  preview: {
+    select: { problem: "problem", outcome: "outcome" },
+    prepare({ problem, outcome }) {
+      return {
+        title: problem ? String(problem).slice(0, 70) : "Challenge Card",
+        subtitle: outcome ? String(outcome).slice(0, 70) : undefined
+      };
+    }
+  }
+});
