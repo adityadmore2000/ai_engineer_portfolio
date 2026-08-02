@@ -98,6 +98,25 @@ describe("serializeMarkdown", () => {
     const { blocks } = serializeMarkdown("- one\n- two\n");
     const items = blocks.filter((b) => b._type === "block" && b.listItem === "bullet");
     expect(items).toHaveLength(2);
+    // mdast list items wrap inline content in a paragraph; the serializer must
+    // recurse and preserve the text as block children (regression: list items
+    // used to serialize with empty children).
+    for (const item of items) {
+      const text = ((item.children as Array<Record<string, unknown>>) || [])
+        .map((c) => c.text)
+        .join("");
+      expect(text.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("preserves inline markup inside list items", () => {
+    const { blocks } = serializeMarkdown("- run `npx build` now\n");
+    const item = blocks.find((b) => b._type === "block" && b.listItem === "bullet");
+    const children = (item?.children as Array<Record<string, unknown>>) || [];
+    expect(children).toHaveLength(3);
+    expect(children[0].text).toBe("run ");
+    expect(children[1]).toMatchObject({ text: "npx build", marks: ["code"] });
+    expect(children[2].text).toBe(" now");
   });
 
   it("produces stable keys (idempotent)", () => {

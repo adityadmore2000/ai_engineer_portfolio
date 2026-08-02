@@ -378,6 +378,11 @@ function convertInline(node: Content, out: ChildNode[], marks: string[]): void {
     case "delete":
       for (const c of (node as Content & { children: Content[] }).children) convertInline(c, out, marks);
       return;
+    case "paragraph":
+      // mdast list items wrap their inline content in a paragraph; recurse so
+      // list-block children are produced instead of empty children.
+      for (const c of (node as Content & { children: Content[] }).children) convertInline(c, out, marks);
+      return;
     case "break":
       out.push({ _type: "span", text: "\n" });
       return;
