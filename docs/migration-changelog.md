@@ -179,6 +179,40 @@ touching metadata.
 
 ---
 
+## Phase 5 — Agent `publish_docs` tool + prompt cleanup (T9) — DONE
+
+**Objective:** expose `publish_docs` to the Publishing Agent, explicitly exclude
+`content` from the metadata writable set, and trim stale field lists from the
+agent's tool args + `SYSTEM_PROMPT` (Risk R8 minimal trim).
+
+### Files modified (agent/publish_agent.py)
+- `_writable_field_types` — excluded `content` alongside `detailedContent` so
+  the generic metadata mapping path can never clobber the derived narrative
+  (Risk R7).
+- `@tool publish_docs(slug, docs_dir)` — new tool that shells out to
+  `scripts/publish-docs.ts`; clear docstring distinguishing it from metadata
+  mutations.
+- Tool registration list — added `publish_docs`.
+- `SYSTEM_PROMPT` — added a narrative-publishing tools section, an
+  INTENT → OPERATION mapping block for `publish_docs`, and rewrote the
+  "Schema Fields" section to be metadata-only with a note pointing narrative to
+  `publish_docs`.
+- `create_project` / `update_project` tool-arg field lists — trimmed to metadata
+  only (dropped `problemStatement`/`approach`/`results`/`limitations`/
+  `futureImprovements`).
+
+### Decisions
+- Minimal prompt trim per Risk R8 — schema-driven prompt regeneration is left
+  as a documented follow-up to keep this PR small.
+- `publish_docs` is explicitly distinct from `update_project`; narrative writes
+  are routed exclusively through the serializer bridge.
+
+### Verification
+- Python syntax parse OK; `typecheck` + `test` (JS/Git) green (agent is not
+  part of the TS build).
+
+---
+
 ## TODO (remaining phases)
 
 | Task | Status |
@@ -186,7 +220,7 @@ touching metadata.
 | T9 | agent `publish_docs` + `content` exclusion + prompt cleanup |
 | T10 | `scripts/migrate-legacy-content.ts` → committed `docs/` → `content` |
 | T11 | renderer rewrite (`app/projects/[slug]/page.tsx`, `DocumentationBlocks.tsx`) |
-| T12 | index rewrite (`SanityProject.content`, query, chunker, adapters) |
+| T12 | `lib/indexing/types.ts`, `chunkers.ts`, `adapters.ts`, `scripts/index-content.ts` |
 | T13 | structured retrieval rewrite (`lib/retrieval/structured.ts`) + probes |
 | T14 | manual verification (pages, agent e2e, index, gate) |
 | T15 | legacy cleanup (code → schema → dataset) |

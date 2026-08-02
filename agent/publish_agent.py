@@ -135,12 +135,14 @@ def create_project(
         dict,
         (
             "Structured project data for a NEW project. Fails if the slug already exists. "
-            "Fields: title (required), slug (required), shortSummary, "
+            "METADATA ONLY: title (required), slug (required), shortSummary, "
             "coverImage, coverImageAlt, technologies[], keyMetrics[], "
-            "githubUrl, demoUrl, featured, displayOrder, problemStatement, "
-            "approach, results, architectureImage, architectureImageAlt, "
-            "screenshots[], screenshotAlts[], limitations, futureImprovements. "
-            "Image paths must be relative to the markdown file's directory."
+            "githubUrl, demoUrl, featured, displayOrder, "
+            "architectureImage, architectureImageAlt, "
+            "screenshots[], screenshotAlts[]. "
+            "Image paths must be relative to the markdown file's directory. "
+            "Narrative (long-form storytelling) is NOT a field here — use "
+            "publish_docs(slug, docs_dir) after creating the project."
         ),
     ],
 ) -> str:
@@ -178,10 +180,11 @@ def update_project(
             "Partial project data with ONLY the fields to change. "
             "The slug identifies which project to update. "
             "Only the fields you include here will be modified; all others are preserved. "
-            "Fields: title, shortSummary, coverImage, coverImageAlt, technologies[], "
-            "keyMetrics[], githubUrl, demoUrl, featured, displayOrder, problemStatement, "
-            "approach, results, architectureImage, architectureImageAlt, "
-            "screenshots[], screenshotAlts[], limitations, futureImprovements."
+            "METADATA ONLY: title, shortSummary, coverImage, coverImageAlt, technologies[], "
+            "keyMetrics[], githubUrl, demoUrl, featured, displayOrder, "
+            "architectureImage, architectureImageAlt, "
+            "screenshots[], screenshotAlts[]. "
+            "To change narrative documentation, use publish_docs(slug, docs_dir)."
         ),
     ],
 ) -> str:
@@ -253,6 +256,36 @@ def delete_project(
     )
     if result.returncode != 0:
         return f"Error: {result.stderr.strip()}"
+    return result.stdout.strip()
+
+
+@tool
+def publish_docs(
+    slug: Annotated[str, "Slug of the existing project whose narrative to publish"],
+    docs_dir: Annotated[
+        str,
+        (
+            "Path to the project's Markdown documentation directory (e.g. "
+            "projects/<slug>/docs). Every .md document inside it is "
+            "deterministically serialized to Portable Text and written to "
+            "project.content as a replace (stable _key ids). Absolute image "
+            "paths resolve against this directory. Never mutates metadata."
+        ),
+    ],
+) -> str:
+    """Publish a project's `docs/` Markdown documentation into `project.content`.
+    Serialization is deterministic and schema-free; the documents are the
+    source of truth. Call this whenever the user points at a docs directory or
+    asks to publish/refresh a project's narrative documentation."""
+    bridge = PROJECT_ROOT / "scripts" / "publish-docs.ts"
+    result = subprocess.run(
+        ["npx", "tsx", str(bridge), slug, docs_dir],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
+    if result.returncode != 0:
+        return f"Error publishing docs:\n{result.stderr.strip() or result.stdout.strip()}"
     return result.stdout.strip()
 
 
@@ -585,7 +618,16 @@ def _writable_field_types(schema: dict[str, Any]) -> dict[str, str]:
     for f in schema.get("fields", []):
         name = f.get("name")
         ftype = f.get("type")
-        if not name or name in ("title", "slug", "published", "detailedContent"):
+        if not name or name in (
+            "title",
+            "slug",
+            "published",
+            "detailedContent",
+            # `content` is derived narrative storage — written exclusively by the
+            # publish_docs bridge, never via the metadata path. Excluded so the
+            # generic setGenericFields path can never clobber it (Risk R7).
+            "content",
+        ):
             continue
         if ftype in _SCALAR_PY or ftype == "image":
             out[name] = ftype
@@ -946,6 +988,8 @@ tools = [
     publish_project,
     unpublish_project,
     delete_project,
+    # Narrative publishing (Markdown docs → project.content)
+    publish_docs,
     # Indexing trigger (transactional rebuild; no indexing logic lives here)
     reindex_content,
     # Dataset synchronization
@@ -979,6 +1023,14 @@ Available tools (mutations — each is a distinct lifecycle operation):
 - publish_project(slug) — PUBLISH an existing project (sets it visible on public site)
 - unpublish_project(slug) — UNPUBLISH an existing project (hides it from public site)
 - delete_project(slug) — DELETE a project and its documentation pages forever
+
+Available tools (narrative publishing — Markdown docs → project.content):
+- publish_docs(slug, docs_dir) — deterministically serialize every Markdown
+  document in the project's `docs/` directory into Portable Text and write it
+  to project.content (a replace with stable keys). The Markdown documents are
+  the source of truth; the agent never rewrites them. Metadata is untouched.
+  Call this when the user asks to publish/refresh a project's narrative
+  documentation or points at a docs/ directory.
 
 Available tools (indexing — keep Qdrant in sync with Sanity):
 - reindex_content() — transactionally rebuild the semantic search index from
@@ -1086,6 +1138,22 @@ User says "List projects", "What projects do I have?", "Show me my projects"
 User says "Read X", "Show me X", "What's in X", "Get the data for X"
   → This is READ. Call read_project(slug).
 
+── NARRATIVE DOCUMENTATION (Markdown docs → project.content) ────────────
+
+User says "Publish the docs", "Refresh the docs for X", "Publish the narrative
+for X from <path>/docs", "Update the documentation content", or points at a
+project's docs/ directory
+  → This is publish_docs.
+    1. First call list_projects() with a search term to find the project's slug.
+       If ambiguous, show options and ask.
+    2. Call publish_docs(slug, <docs_dir>) where <docs_dir> is the absolute path
+       to the project's Markdown documentation directory.
+    The tool deterministically serializes each .md document to Portable Text and
+    replaces project.content. Metadata is never touched by this operation.
+    This is DISTINCT from update_project: update_project edits metadata fields,
+    while publish_docs replaces the narrative. Do NOT use update_project to try
+    to write narrative content, and do NOT expect publish_docs to change metadata.
+
 ── DATASET SYNCHRONIZATION ─────────────────────────────
 
 User says "Sync production to local", "Update my local dataset from production",
@@ -1106,6 +1174,11 @@ User says "Sync local to production", "Publish my local changes to production",
 
 ── SCHEMA FIELDS (for create_project and update_project) ──
 
+These are the metadata fields the metadata create/update path can write. The
+narrative (long-form storytelling) is authored as Markdown documents in the
+project's docs/ directory and published via publish_docs(slug, docs_dir); it is
+NOT part of create_project/update_project.
+
 - title (string): Project name.
 - slug (string): URL-friendly identifier.
 - shortSummary (markdown): 1-3 sentence summary.
@@ -1117,15 +1190,10 @@ User says "Sync local to production", "Publish my local changes to production",
 - demoUrl (string): Live demo URL.
 - featured (boolean): Whether to feature on homepage (default true).
 - displayOrder (number): Sort order (default 0).
-- problemStatement (markdown): Problem description.
-- approach (markdown): Solution approach.
-- results (markdown): Outcomes.
 - architectureImage (string): Relative path to architecture diagram.
 - architectureImageAlt (string): Alt text for architecture diagram.
 - screenshots (array of strings): Relative paths to screenshots.
 - screenshotAlts (array of strings): Alt texts for screenshots.
-- limitations (markdown): Known limitations.
-- futureImprovements (markdown): Planned improvements.
 
 Image paths must be preserved exactly as they appear in the markdown."""
 
