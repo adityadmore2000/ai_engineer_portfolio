@@ -67,43 +67,7 @@ export type ProjectSummary = {
   status?: string;
 };
 
-export type Challenge = {
-  problem?: string;
-  solution?: string;
-  outcome?: string;
-};
-
-export type BeforeAfterComparison = {
-  beforeImage?: SanityImage;
-  afterImage?: SanityImage;
-  caption?: string;
-};
-
-export type FaqItem = {
-  question?: string;
-  answer?: string;
-};
-
 export type ProjectDetail = ProjectSummary & {
-  status?: string;
-  whyIBuiltIt?: string;
-  theProblem?: string;
-  theSolution?: string;
-  architectureImage?: SanityImage;
-  engineeringDecisions?: string;
-  interestingChallenges?: Challenge[];
-  results?: string;
-  whatThisDemonstrates?: string;
-  screenshots?: SanityImage[];
-  demoVideo?: string;
-  beforeAfterComparisons?: BeforeAfterComparison[];
-  exampleInputsOutputs?: string;
-  lessonsLearned?: string;
-  limitations?: string;
-  futureImprovements?: string;
-  timeline?: string;
-  faq?: FaqItem[];
-  detailedContent?: PortableTextBlock[];
   /** Derived narrative representation (published from the repo docs/ source). */
   content?: PortableTextBlock[];
 };

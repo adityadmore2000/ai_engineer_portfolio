@@ -46,7 +46,6 @@ SCHEMA_FILE = PROJECT_ROOT / "sanity" / "schemaTypes" / "project.ts"
 # convention; not part of the Sanity schema proper).
 IMAGE_ALT_PSEUDO_FIELDS = {
     "coverImage": "coverImageAlt",          # singular image -> single alt string
-    "architectureImage": "architectureImageAlt",
     "screenshots": "screenshotAlts",         # image array -> list of alt strings
 }
 
@@ -138,7 +137,6 @@ def create_project(
             "METADATA ONLY: title (required), slug (required), shortSummary, "
             "coverImage, coverImageAlt, technologies[], keyMetrics[], "
             "githubUrl, demoUrl, featured, displayOrder, "
-            "architectureImage, architectureImageAlt, "
             "screenshots[], screenshotAlts[]. "
             "Image paths must be relative to the markdown file's directory. "
             "Narrative (long-form storytelling) is NOT a field here — use "
@@ -182,7 +180,6 @@ def update_project(
             "Only the fields you include here will be modified; all others are preserved. "
             "METADATA ONLY: title, shortSummary, coverImage, coverImageAlt, technologies[], "
             "keyMetrics[], githubUrl, demoUrl, featured, displayOrder, "
-            "architectureImage, architectureImageAlt, "
             "screenshots[], screenshotAlts[]. "
             "To change narrative documentation, use publish_docs(slug, docs_dir)."
         ),
@@ -479,7 +476,7 @@ def parse_spec_text(md_text: str) -> tuple[dict[str, Any], dict[str, int]]:
     return fields, provenance
 
 
-_IMAGE_FIELD_NAMES = {"coverImage", "architectureImage", "screenshots"}
+_IMAGE_FIELD_NAMES = {"coverImage", "screenshots"}
 
 
 def _enforce_absolute_image_paths(fields: dict[str, Any]) -> list[str]:
@@ -1190,8 +1187,6 @@ NOT part of create_project/update_project.
 - demoUrl (string): Live demo URL.
 - featured (boolean): Whether to feature on homepage (default true).
 - displayOrder (number): Sort order (default 0).
-- architectureImage (string): Relative path to architecture diagram.
-- architectureImageAlt (string): Alt text for architecture diagram.
 - screenshots (array of strings): Relative paths to screenshots.
 - screenshotAlts (array of strings): Alt texts for screenshots.
 

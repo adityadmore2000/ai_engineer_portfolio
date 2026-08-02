@@ -18,29 +18,9 @@ export interface ProjectPublishInput {
   demoUrl?: string;
   featured?: boolean;
   displayOrder?: number;
-  whyIBuiltIt?: string;
-  theProblem?: string;
-  theSolution?: string;
-  architectureImage?: string;
-  architectureImageAlt?: string;
-  engineeringDecisions?: string;
-  interestingChallenges?: { problem?: string; solution?: string; outcome?: string }[];
-  results?: string;
-  whatThisDemonstrates?: string;
   screenshots?: string[];
   screenshotAlts?: string[];
   demoVideo?: string;
-  beforeAfterComparisons?: {
-    beforeImage?: string;
-    afterImage?: string;
-    caption?: string;
-  }[];
-  exampleInputsOutputs?: string;
-  lessonsLearned?: string;
-  limitations?: string;
-  futureImprovements?: string;
-  timeline?: string;
-  faq?: { question?: string; answer?: string }[];
   published?: boolean;
 }
 
@@ -50,12 +30,8 @@ export interface ProjectPublishInput {
 // copied through generically, so newly added Sanity fields map automatically
 // (the agent discovers them from the Studio schema; this layer sets them).
 
-const IMAGE_KEYS = new Set(["coverImage", "architectureImage", "screenshots"]);
-const ALT_KEYS = new Set([
-  "coverImageAlt",
-  "architectureImageAlt",
-  "screenshotAlts",
-]);
+const IMAGE_KEYS = new Set(["coverImage", "screenshots"]);
+const ALT_KEYS = new Set(["coverImageAlt", "screenshotAlts"]);
 const META_KEYS = new Set([
   "_type",
   "title",
@@ -63,7 +39,7 @@ const META_KEYS = new Set([
   "published",
   "__markdownDir__",
 ]);
-const BLOCK_KEYS = new Set(["content", "detailedContent", "faqItem", "challengeCard"]);
+const BLOCK_KEYS = new Set(["content", "faqItem", "challengeCard"]);
 
 function setGenericFields(
   target: Record<string, unknown>,
@@ -108,20 +84,8 @@ export type ProjectReadOutput = {
   demoUrl?: string;
   featured?: boolean;
   displayOrder?: number;
-  whyIBuiltIt?: string;
-  theProblem?: string;
-  theSolution?: string;
-  engineeringDecisions?: string;
-  results?: string;
-  whatThisDemonstrates?: string;
   demoVideo?: string;
-  exampleInputsOutputs?: string;
-  lessonsLearned?: string;
-  limitations?: string;
-  futureImprovements?: string;
-  timeline?: string;
   coverImageAlt?: string;
-  architectureImageAlt?: string;
   screenshotAlts?: string[];
   published?: boolean;
   content?: unknown[];
@@ -139,20 +103,8 @@ const readProjectQuery = `*[_type == "project" && slug.current == $slug][0]{
   demoUrl,
   featured,
   displayOrder,
-  whyIBuiltIt,
-  theProblem,
-  theSolution,
-  engineeringDecisions,
-  results,
-  whatThisDemonstrates,
   demoVideo,
-  exampleInputsOutputs,
-  lessonsLearned,
-  limitations,
-  futureImprovements,
-  timeline,
   coverImage{alt},
-  architectureImage{alt},
   screenshots[]{alt},
   published,
   content
@@ -178,20 +130,8 @@ export async function readProject(
     demoUrl: (doc.demoUrl as string) ?? undefined,
     featured: doc.featured as boolean | undefined,
     displayOrder: doc.displayOrder as number | undefined,
-    whyIBuiltIt: (doc.whyIBuiltIt as string) ?? undefined,
-    theProblem: (doc.theProblem as string) ?? undefined,
-    theSolution: (doc.theSolution as string) ?? undefined,
-    engineeringDecisions: (doc.engineeringDecisions as string) ?? undefined,
-    results: (doc.results as string) ?? undefined,
-    whatThisDemonstrates: (doc.whatThisDemonstrates as string) ?? undefined,
     demoVideo: (doc.demoVideo as string) ?? undefined,
-    exampleInputsOutputs: (doc.exampleInputsOutputs as string) ?? undefined,
-    lessonsLearned: (doc.lessonsLearned as string) ?? undefined,
-    limitations: (doc.limitations as string) ?? undefined,
-    futureImprovements: (doc.futureImprovements as string) ?? undefined,
-    timeline: (doc.timeline as string) ?? undefined,
     coverImageAlt: ((doc.coverImage as Record<string, string> | null)?.alt) ?? undefined,
-    architectureImageAlt: ((doc.architectureImage as Record<string, string> | null)?.alt) ?? undefined,
     screenshotAlts: (doc.screenshots as Array<Record<string, string>> | undefined)
       ?.map((s) => s.alt) ?? undefined,
     published: doc.published as boolean | undefined,
@@ -230,19 +170,6 @@ async function uploadCoverImage(
   const ref = await uploadImage(client, input.coverImage, markdownDir);
   if (ref && input.coverImageAlt) {
     ref.alt = input.coverImageAlt;
-  }
-  return ref;
-}
-
-async function uploadArchitectureImage(
-  client: ReturnType<typeof getWriteClient>,
-  input: { architectureImage?: string; architectureImageAlt?: string },
-  markdownDir: string
-) {
-  if (!input.architectureImage) return undefined;
-  const ref = await uploadImage(client, input.architectureImage, markdownDir);
-  if (ref && input.architectureImageAlt) {
-    ref.alt = input.architectureImageAlt;
   }
   return ref;
 }
@@ -289,7 +216,6 @@ export async function createProject(
   console.log("  Images:");
 
   const coverImageRef = await uploadCoverImage(client, input, markdownDir);
-  const architectureImageRef = await uploadArchitectureImage(client, input, markdownDir);
   const screenshotRefs = await uploadScreenshots(client, input, markdownDir);
 
   const doc: Record<string, unknown> & { _type: string } = {
@@ -302,7 +228,6 @@ export async function createProject(
   setGenericFields(doc, input);
 
   if (coverImageRef) doc.coverImage = coverImageRef;
-  if (architectureImageRef) doc.architectureImage = architectureImageRef;
   if (screenshotRefs.length) doc.screenshots = screenshotRefs;
 
   const result = await client.create(doc);
@@ -335,7 +260,6 @@ export async function updateProject(
   console.log("  Images:");
 
   const coverImageRef = await uploadCoverImage(client, input, markdownDir);
-  const architectureImageRef = await uploadArchitectureImage(client, input, markdownDir);
   const screenshotRefs = await uploadScreenshots(client, input, markdownDir);
 
   const patchData: Record<string, unknown> = {};
@@ -345,10 +269,6 @@ export async function updateProject(
   if (coverImageRef) patchData.coverImage = coverImageRef;
   if (input.coverImageAlt !== undefined && !input.coverImage) {
     patchData["coverImage.alt"] = input.coverImageAlt;
-  }
-  if (architectureImageRef) patchData.architectureImage = architectureImageRef;
-  if (input.architectureImageAlt !== undefined && !input.architectureImage) {
-    patchData["architectureImage.alt"] = input.architectureImageAlt;
   }
   if (screenshotRefs.length) patchData.screenshots = screenshotRefs;
 

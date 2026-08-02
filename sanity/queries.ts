@@ -102,35 +102,6 @@ export const allProjectsQuery = groq`
 export const projectBySlugQuery = groq`
   *[_type == "project" && slug.current == $slug && published == true][0] {
     ${projectSummaryFields},
-    whyIBuiltIt,
-    theProblem,
-    theSolution,
-    architectureImage{${imageFields}},
-    engineeringDecisions,
-    interestingChallenges[]{
-      problem,
-      solution,
-      outcome
-    },
-    results,
-    whatThisDemonstrates,
-    screenshots[]{${imageFields}},
-    demoVideo,
-    beforeAfterComparisons[]{
-      beforeImage{${imageFields}},
-      afterImage{${imageFields}},
-      caption
-    },
-    exampleInputsOutputs,
-    lessonsLearned,
-    limitations,
-    futureImprovements,
-    timeline,
-    faq[]{
-      question,
-      answer
-    },
-    detailedContent,
     content
   }
 `;
