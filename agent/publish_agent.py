@@ -8,14 +8,18 @@ Supports the full lifecycle: create, read, update, publish, unpublish, delete.
 
 from __future__ import annotations
 
-import json
 import os
 import sys
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated
 
-import bridges
 import spec_pipeline
+from services import (
+    DatasetSyncService,
+    IndexService,
+    ProjectService,
+    PublishingService,
+)
 
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, MessagesState
@@ -29,6 +33,13 @@ from langchain_core.tools import tool
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:4b")
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# ── Service singletons ───────────────────────────────────
+
+project_svc = ProjectService()
+publishing_svc = PublishingService()
+index_svc = IndexService()
+dataset_sync_svc = DatasetSyncService()
 
 # ── Read-only tools ──────────────────────────────────────
 
@@ -76,10 +87,7 @@ def list_projects(
     ] = None,
 ) -> str:
     """List projects in the portfolio, optionally filtered by title."""
-    r = bridges.list_projects(search)
-    if not r.success:
-        return f"Error: {r.stderr.strip()}"
-    return r.stdout.strip()
+    return project_svc.list_projects(search)
 
 
 @tool
@@ -87,10 +95,7 @@ def read_project(
     slug: Annotated[str, "Project slug (URL identifier) to fetch"],
 ) -> str:
     """Read an existing project's current data from Sanity by slug."""
-    r = bridges.read_project(slug)
-    if not r.success:
-        return f"Error: {r.stderr.strip()}"
-    return r.stdout.strip()
+    return project_svc.read_project(slug)
 
 
 # ── Lifecycle mutation tools ─────────────────────────────
@@ -113,19 +118,7 @@ def create_project(
     ],
 ) -> str:
     """Create a NEW project in the Sanity CMS portfolio. Fails if slug already exists."""
-    required = ("title", "slug")
-    missing = [f for f in required if not project_data.get(f)]
-    if missing:
-        return f"Error: missing required fields: {', '.join(missing)}"
-
-    tmp_path = bridges.write_json_tempfile(project_data)
-    try:
-        r = bridges.create_project(tmp_path)
-        if not r.success:
-            return f"Error creating project:\n{r.stderr.strip()}"
-        return r.stdout.strip()
-    finally:
-        os.unlink(tmp_path)
+    return project_svc.create_project(project_data)
 
 
 @tool
@@ -145,14 +138,7 @@ def update_project(
     ],
 ) -> str:
     """Update specific fields of an EXISTING project. Fails if slug not found. True partial update — only included fields are changed."""
-    tmp_path = bridges.write_json_tempfile(project_data)
-    try:
-        r = bridges.update_project(tmp_path, slug)
-        if not r.success:
-            return f"Error updating project:\n{r.stderr.strip()}"
-        return r.stdout.strip()
-    finally:
-        os.unlink(tmp_path)
+    return project_svc.update_project(slug, project_data)
 
 
 @tool
@@ -160,10 +146,7 @@ def publish_project(
     slug: Annotated[str, "Slug of the project to publish"],
 ) -> str:
     """Publish an existing project, making it visible on the public portfolio site."""
-    r = bridges.publish_project(slug)
-    if not r.success:
-        return f"Error publishing project:\n{r.stderr.strip()}"
-    return r.stdout.strip()
+    return publishing_svc.publish_project(slug)
 
 
 @tool
@@ -171,10 +154,7 @@ def unpublish_project(
     slug: Annotated[str, "Slug of the project to unpublish"],
 ) -> str:
     """Unpublish an existing project, hiding it from the public portfolio site."""
-    r = bridges.unpublish_project(slug)
-    if not r.success:
-        return f"Error unpublishing project:\n{r.stderr.strip()}"
-    return r.stdout.strip()
+    return publishing_svc.unpublish_project(slug)
 
 
 @tool
@@ -182,10 +162,7 @@ def delete_project(
     slug: Annotated[str, "Project slug (URL identifier) to delete"],
 ) -> str:
     """Delete a project and its documentation pages from Sanity by slug."""
-    r = bridges.delete_project(slug)
-    if not r.success:
-        return f"Error: {r.stderr.strip()}"
-    return r.stdout.strip()
+    return project_svc.delete_project(slug)
 
 
 @tool
@@ -206,10 +183,7 @@ def publish_docs(
     Serialization is deterministic and schema-free; the documents are the
     source of truth. Call this whenever the user points at a docs directory or
     asks to publish/refresh a project's narrative documentation."""
-    r = bridges.publish_docs(slug, docs_dir)
-    if not r.success:
-        return f"Error publishing docs:\n{r.stderr.strip() or r.stdout.strip()}"
-    return r.stdout.strip()
+    return publishing_svc.publish_docs(slug, docs_dir)
 
 
 @tool
@@ -221,10 +195,7 @@ def reindex_content() -> str:
     search stays available throughout. Call this AFTER any content mutation
     (create_project, update_project, publish_project, unpublish_project,
     delete_project) so the vector index stays in sync with Sanity."""
-    r = bridges.reindex_content()
-    if not r.success:
-        return f"Error reindexing:\n{r.stderr.strip() or r.stdout.strip()}"
-    return r.stdout.strip() or "Reindex complete."
+    return index_svc.reindex_content()
 
 
 # ── Dataset synchronization tools ────────────────────────
@@ -235,10 +206,7 @@ def sync_production_to_local() -> str:
     """Pull the latest content from the production Sanity dataset into the local
     development dataset. Exports production, then imports it into local with
     --replace. This OVERWRITES the local dataset. No slug is needed."""
-    r = bridges.sync_dataset("prod-to-local")
-    if not r.success:
-        return f"Error syncing production → local:\n{r.stderr.strip()}"
-    return r.stdout.strip() or "Synced production → local."
+    return dataset_sync_svc.sync_production_to_local()
 
 
 @tool
@@ -247,10 +215,7 @@ def sync_local_to_production() -> str:
     then imports it into production with --replace. This OVERWRITES the
     production dataset (destructive). No slug is needed. Distinct from
     publish_project(), which toggles a single project's visibility."""
-    r = bridges.sync_dataset("local-to-prod")
-    if not r.success:
-        return f"Error syncing local → production:\n{r.stderr.strip()}"
-    return r.stdout.strip() or "Synced local → production."
+    return dataset_sync_svc.sync_local_to_production()
 
 
 # ── Spec-driven project creation ─────────────────────────
