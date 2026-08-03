@@ -22,6 +22,7 @@ from langchain_ollama import ChatOllama
 from pydantic import BaseModel, create_model
 
 import bridges
+from state import SchemaCache, PendingCreateState
 
 # ── Configuration ────────────────────────────────────────
 
@@ -212,43 +213,13 @@ def parse_spec_file(path: str) -> str:
     )
 
 
-# ── Schema discovery (cache keyed on mtime of project.ts) ──
+# ── Schema discovery (delegated to state.SchemaCache) ──
 
-# In-process cache of the discovered project schema + per-field meta.
-_SCHEMA_CACHE: dict[str, Any] = {}
-
-
-def _schema_needs_refresh() -> bool:
-    if not _SCHEMA_CACHE:
-        return True
-    try:
-        return SCHEMA_FILE.stat().st_mtime != _SCHEMA_CACHE.get("_mtime")
-    except OSError:
-        return True
-
-
-def _refresh_schema_cache() -> dict[str, Any]:
-    r = bridges.describe_schema("project")
-    if not r.success:
-        raise RuntimeError(
-            f"describe-schema.ts failed: {r.stderr.strip() or r.stdout.strip()}"
-        )
-    schema = json.loads(r.stdout)
-    schema_bytes = json.dumps(schema, sort_keys=True).encode("utf-8")
-    schema["_version_hash"] = hashlib.sha256(schema_bytes).hexdigest()[:16]
-    try:
-        schema["_mtime"] = SCHEMA_FILE.stat().st_mtime
-    except OSError:
-        schema["_mtime"] = 0.0
-    _SCHEMA_CACHE.clear()
-    _SCHEMA_CACHE.update(schema)
-    return schema
+_schema_cache = SchemaCache(SCHEMA_FILE)
 
 
 def get_discovered_schema() -> dict[str, Any]:
-    if _schema_needs_refresh():
-        _refresh_schema_cache()
-    return dict(_SCHEMA_CACHE)
+    return _schema_cache.get()
 
 
 def describe_project_schema() -> str:
@@ -500,9 +471,9 @@ def _llm_repair(
     return payload, new_errors
 
 
-# ── Pending-create slot for the human confirmation gate ──
+# ── Pending-create slot (delegated to state.PendingCreateState) ──
 
-_PENDING_CREATE: dict[str, Any] = {}
+_pending_create = PendingCreateState()
 
 
 def create_project_from_spec(spec_path: str) -> str:
@@ -559,8 +530,7 @@ def create_project_from_spec(spec_path: str) -> str:
     payload["published"] = True  # per decision: spec-created projects go live
     payload["__markdownDir__"] = parsed_json["source_dir"]
 
-    global _PENDING_CREATE
-    _PENDING_CREATE = {
+    _pending_create.set({
         "payload": payload,
         "spec_path": parsed_json["spec_path"],
         "spec_sha256": parsed_json["spec_sha256"],
@@ -569,7 +539,7 @@ def create_project_from_spec(spec_path: str) -> str:
         "uncertain_fields": uncertain,
         "provenance": parsed_json["provenance"],
         "staged_at": datetime.now(timezone.utc).isoformat(),
-    }
+    })
 
     return json.dumps(
         {
@@ -597,17 +567,16 @@ def confirm_pending_create(create_project_fn) -> str:
         string.  In practice this is the ``create_project`` LangChain tool's
         ``.invoke`` method.
     """
-    global _PENDING_CREATE
-    if not _PENDING_CREATE:
+    if not _pending_create.is_pending:
         return "Error: no pending create to confirm. Run create_project_from_spec(<path>) first."
 
-    pending = _PENDING_CREATE
+    pending = _pending_create.get()
     payload = dict(pending["payload"])
 
     # Hand off to the existing create_project tool (so the create path,
     # image uploads, slug-existence check, etc. are reused verbatim).
     create_result = create_project_fn({"project_data": payload})
-    _PENDING_CREATE = {}
+    _pending_create.clear()
 
     # Audit log (always, on the same turn as the create attempt).
     audit_dir = PROJECT_ROOT / ".agents"
@@ -636,6 +605,5 @@ def confirm_pending_create(create_project_fn) -> str:
 
 def cancel_pending_create() -> str:
     """Discard the staged spec-driven project payload without writing to Sanity."""
-    global _PENDING_CREATE
-    _PENDING_CREATE = {}
+    _pending_create.clear()
     return "Pending create cancelled. Nothing was written to Sanity."
