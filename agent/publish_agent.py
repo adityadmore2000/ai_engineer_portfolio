@@ -9,13 +9,12 @@ Supports the full lifecycle: create, read, update, publish, unpublish, delete.
 from __future__ import annotations
 
 import os
-import sys
-from pathlib import Path
 from typing import Annotated
 
 import spec_pipeline
 from services import (
     DatasetSyncService,
+    FileSystemService,
     IndexService,
     ProjectService,
     PublishingService,
@@ -32,7 +31,6 @@ from langchain_core.tools import tool
 
 OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:4b")
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 # ── Service singletons ───────────────────────────────────
 
@@ -40,6 +38,7 @@ project_svc = ProjectService()
 publishing_svc = PublishingService()
 index_svc = IndexService()
 dataset_sync_svc = DatasetSyncService()
+fs_svc = FileSystemService()
 
 # ── Read-only tools ──────────────────────────────────────
 
@@ -47,10 +46,7 @@ dataset_sync_svc = DatasetSyncService()
 @tool
 def read_file(path: Annotated[str, "Absolute or relative path to a file"]) -> str:
     """Read the entire contents of a file from disk."""
-    p = Path(path).expanduser().resolve()
-    if not p.exists():
-        return f"Error: file not found at {p}"
-    return p.read_text(encoding="utf-8")
+    return fs_svc.read_file(path)
 
 
 @tool
@@ -58,13 +54,7 @@ def find_markdown(
     directory: Annotated[str, "Directory to search recursively"],
 ) -> str:
     """Find all Markdown (.md) files inside a directory."""
-    d = Path(directory).expanduser().resolve()
-    if not d.is_dir():
-        return f"Error: directory not found at {d}"
-    files = sorted(d.rglob("*.md"))
-    if not files:
-        return f"No Markdown files found in {d}"
-    return "\n".join(str(f.relative_to(d)) for f in files)
+    return fs_svc.find_markdown(directory)
 
 
 @tool
@@ -72,11 +62,7 @@ def list_dir(
     path: Annotated[str, "Directory to list"],
 ) -> str:
     """List entries (files and subdirectories) in a directory."""
-    d = Path(path).expanduser().resolve()
-    if not d.is_dir():
-        return f"Error: directory not found at {d}"
-    entries = sorted(os.listdir(d))
-    return "\n".join(entries)
+    return fs_svc.list_dir(path)
 
 
 @tool

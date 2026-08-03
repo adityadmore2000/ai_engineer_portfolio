@@ -10,6 +10,7 @@ tools (thin adapters) and the bridge layer (subprocess execution).
 from __future__ import annotations
 
 import os
+from pathlib import Path
 from typing import Any
 
 import bridges
@@ -143,3 +144,35 @@ class DatasetSyncService:
         if not r.success:
             return f"Error syncing local → production:\n{r.stderr.strip()}"
         return r.stdout.strip() or "Synced local → production."
+
+
+# ── FileSystemService ────────────────────────────────────
+
+
+class FileSystemService:
+    """Read-only filesystem operations (file reading, directory listing, search)."""
+
+    def read_file(self, path: str) -> str:
+        """Read the entire contents of a file from disk."""
+        p = Path(path).expanduser().resolve()
+        if not p.exists():
+            return f"Error: file not found at {p}"
+        return p.read_text(encoding="utf-8")
+
+    def find_markdown(self, directory: str) -> str:
+        """Find all Markdown (.md) files inside a directory recursively."""
+        d = Path(directory).expanduser().resolve()
+        if not d.is_dir():
+            return f"Error: directory not found at {d}"
+        files = sorted(d.rglob("*.md"))
+        if not files:
+            return f"No Markdown files found in {d}"
+        return "\n".join(str(f.relative_to(d)) for f in files)
+
+    def list_dir(self, path: str) -> str:
+        """List entries (files and subdirectories) in a directory."""
+        d = Path(path).expanduser().resolve()
+        if not d.is_dir():
+            return f"Error: directory not found at {d}"
+        entries = sorted(os.listdir(d))
+        return "\n".join(entries)
