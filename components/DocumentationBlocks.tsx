@@ -387,7 +387,15 @@ export function DocumentationImage({
   alt,
   caption
 }: DocumentationImageValue) {
-  if (!image || !alt) {
+  if (!alt) {
+    return null;
+  }
+
+  // Some images may carry an empty source object (e.g. the upload asset was
+  // never resolved), which has no `asset._ref` to build a URL from. Guard here
+  // so an unresolvable image degrades to nothing instead of crashing the page.
+  const ref = (image as { asset?: { _ref?: string } } | undefined)?.asset?._ref;
+  if (!image || !ref) {
     return null;
   }
 

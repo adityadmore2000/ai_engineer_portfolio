@@ -88,7 +88,8 @@ const projectSummaryFields = `
 `;
 
 export const featuredProjectsQuery = groq`
-  *[_type == "project" && featured == true && published == true] | order(coalesce(displayOrder, 999) asc, title asc) {
+  *[_type == "project" && published == true] |
+  order(featured desc, coalesce(displayOrder, 999) asc, title asc) {
     ${projectSummaryFields}
   }
 `;

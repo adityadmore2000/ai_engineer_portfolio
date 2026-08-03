@@ -12,12 +12,12 @@ import hashlib
 import json
 import os
 import re
-import subprocess
 import sys
-import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated, Any, Optional
+
+import bridges
 
 from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, MessagesState
@@ -98,14 +98,10 @@ def list_projects(
     ] = None,
 ) -> str:
     """List projects in the portfolio, optionally filtered by title."""
-    bridge = PROJECT_ROOT / "scripts" / "list-projects.ts"
-    args = ["npx", "tsx", str(bridge)]
-    if search:
-        args.append(search)
-    result = subprocess.run(args, capture_output=True, text=True, cwd=PROJECT_ROOT)
-    if result.returncode != 0:
-        return f"Error: {result.stderr.strip()}"
-    return result.stdout.strip()
+    r = bridges.list_projects(search)
+    if not r.success:
+        return f"Error: {r.stderr.strip()}"
+    return r.stdout.strip()
 
 
 @tool
@@ -113,16 +109,10 @@ def read_project(
     slug: Annotated[str, "Project slug (URL identifier) to fetch"],
 ) -> str:
     """Read an existing project's current data from Sanity by slug."""
-    bridge = PROJECT_ROOT / "scripts" / "read-project.ts"
-    result = subprocess.run(
-        ["npx", "tsx", str(bridge), slug],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-    )
-    if result.returncode != 0:
-        return f"Error: {result.stderr.strip()}"
-    return result.stdout.strip()
+    r = bridges.read_project(slug)
+    if not r.success:
+        return f"Error: {r.stderr.strip()}"
+    return r.stdout.strip()
 
 
 # ── Lifecycle mutation tools ─────────────────────────────
@@ -150,21 +140,12 @@ def create_project(
     if missing:
         return f"Error: missing required fields: {', '.join(missing)}"
 
-    fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="project_")
+    tmp_path = bridges.write_json_tempfile(project_data)
     try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(project_data, f, indent=2)
-
-        bridge = PROJECT_ROOT / "scripts" / "create-project.ts"
-        result = subprocess.run(
-            ["npx", "tsx", str(bridge), tmp_path],
-            capture_output=True,
-            text=True,
-            cwd=PROJECT_ROOT,
-        )
-        if result.returncode != 0:
-            return f"Error creating project:\n{result.stderr.strip()}"
-        return result.stdout.strip()
+        r = bridges.create_project(tmp_path)
+        if not r.success:
+            return f"Error creating project:\n{r.stderr.strip()}"
+        return r.stdout.strip()
     finally:
         os.unlink(tmp_path)
 
@@ -186,21 +167,12 @@ def update_project(
     ],
 ) -> str:
     """Update specific fields of an EXISTING project. Fails if slug not found. True partial update — only included fields are changed."""
-    fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix="project_")
+    tmp_path = bridges.write_json_tempfile(project_data)
     try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(project_data, f, indent=2)
-
-        bridge = PROJECT_ROOT / "scripts" / "update-project.ts"
-        result = subprocess.run(
-            ["npx", "tsx", str(bridge), tmp_path, slug],
-            capture_output=True,
-            text=True,
-            cwd=PROJECT_ROOT,
-        )
-        if result.returncode != 0:
-            return f"Error updating project:\n{result.stderr.strip()}"
-        return result.stdout.strip()
+        r = bridges.update_project(tmp_path, slug)
+        if not r.success:
+            return f"Error updating project:\n{r.stderr.strip()}"
+        return r.stdout.strip()
     finally:
         os.unlink(tmp_path)
 
@@ -210,16 +182,10 @@ def publish_project(
     slug: Annotated[str, "Slug of the project to publish"],
 ) -> str:
     """Publish an existing project, making it visible on the public portfolio site."""
-    bridge = PROJECT_ROOT / "scripts" / "publish-project.ts"
-    result = subprocess.run(
-        ["npx", "tsx", str(bridge), slug],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-    )
-    if result.returncode != 0:
-        return f"Error publishing project:\n{result.stderr.strip()}"
-    return result.stdout.strip()
+    r = bridges.publish_project(slug)
+    if not r.success:
+        return f"Error publishing project:\n{r.stderr.strip()}"
+    return r.stdout.strip()
 
 
 @tool
@@ -227,16 +193,10 @@ def unpublish_project(
     slug: Annotated[str, "Slug of the project to unpublish"],
 ) -> str:
     """Unpublish an existing project, hiding it from the public portfolio site."""
-    bridge = PROJECT_ROOT / "scripts" / "unpublish-project.ts"
-    result = subprocess.run(
-        ["npx", "tsx", str(bridge), slug],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-    )
-    if result.returncode != 0:
-        return f"Error unpublishing project:\n{result.stderr.strip()}"
-    return result.stdout.strip()
+    r = bridges.unpublish_project(slug)
+    if not r.success:
+        return f"Error unpublishing project:\n{r.stderr.strip()}"
+    return r.stdout.strip()
 
 
 @tool
@@ -244,16 +204,10 @@ def delete_project(
     slug: Annotated[str, "Project slug (URL identifier) to delete"],
 ) -> str:
     """Delete a project and its documentation pages from Sanity by slug."""
-    bridge = PROJECT_ROOT / "scripts" / "delete-project.ts"
-    result = subprocess.run(
-        ["npx", "tsx", str(bridge), slug],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-    )
-    if result.returncode != 0:
-        return f"Error: {result.stderr.strip()}"
-    return result.stdout.strip()
+    r = bridges.delete_project(slug)
+    if not r.success:
+        return f"Error: {r.stderr.strip()}"
+    return r.stdout.strip()
 
 
 @tool
@@ -274,16 +228,10 @@ def publish_docs(
     Serialization is deterministic and schema-free; the documents are the
     source of truth. Call this whenever the user points at a docs directory or
     asks to publish/refresh a project's narrative documentation."""
-    bridge = PROJECT_ROOT / "scripts" / "publish-docs.ts"
-    result = subprocess.run(
-        ["npx", "tsx", str(bridge), slug, docs_dir],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-    )
-    if result.returncode != 0:
-        return f"Error publishing docs:\n{result.stderr.strip() or result.stdout.strip()}"
-    return result.stdout.strip()
+    r = bridges.publish_docs(slug, docs_dir)
+    if not r.success:
+        return f"Error publishing docs:\n{r.stderr.strip() or r.stdout.strip()}"
+    return r.stdout.strip()
 
 
 @tool
@@ -295,17 +243,10 @@ def reindex_content() -> str:
     search stays available throughout. Call this AFTER any content mutation
     (create_project, update_project, publish_project, unpublish_project,
     delete_project) so the vector index stays in sync with Sanity."""
-    bridge = PROJECT_ROOT / "scripts" / "index-content.ts"
-    result = subprocess.run(
-        ["npx", "tsx", str(bridge)],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-        timeout=900,
-    )
-    if result.returncode != 0:
-        return f"Error reindexing:\n{result.stderr.strip() or result.stdout.strip()}"
-    return result.stdout.strip() or "Reindex complete."
+    r = bridges.reindex_content()
+    if not r.success:
+        return f"Error reindexing:\n{r.stderr.strip() or r.stdout.strip()}"
+    return r.stdout.strip() or "Reindex complete."
 
 
 # ── Dataset synchronization tools ────────────────────────
@@ -316,16 +257,10 @@ def sync_production_to_local() -> str:
     """Pull the latest content from the production Sanity dataset into the local
     development dataset. Exports production, then imports it into local with
     --replace. This OVERWRITES the local dataset. No slug is needed."""
-    bridge = PROJECT_ROOT / "scripts" / "sync-dataset.ts"
-    result = subprocess.run(
-        ["npx", "tsx", str(bridge), "prod-to-local"],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-    )
-    if result.returncode != 0:
-        return f"Error syncing production → local:\n{result.stderr.strip()}"
-    return result.stdout.strip() or "Synced production → local."
+    r = bridges.sync_dataset("prod-to-local")
+    if not r.success:
+        return f"Error syncing production → local:\n{r.stderr.strip()}"
+    return r.stdout.strip() or "Synced production → local."
 
 
 @tool
@@ -334,16 +269,10 @@ def sync_local_to_production() -> str:
     then imports it into production with --replace. This OVERWRITES the
     production dataset (destructive). No slug is needed. Distinct from
     publish_project(), which toggles a single project's visibility."""
-    bridge = PROJECT_ROOT / "scripts" / "sync-dataset.ts"
-    result = subprocess.run(
-        ["npx", "tsx", str(bridge), "local-to-prod"],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-    )
-    if result.returncode != 0:
-        return f"Error syncing local → production:\n{result.stderr.strip()}"
-    return result.stdout.strip() or "Synced local → production."
+    r = bridges.sync_dataset("local-to-prod")
+    if not r.success:
+        return f"Error syncing local → production:\n{r.stderr.strip()}"
+    return r.stdout.strip() or "Synced local → production."
 
 
 # ── Spec-driven project creation ("add project considering this spec") ──
@@ -551,18 +480,12 @@ def _schema_needs_refresh() -> bool:
 
 
 def _refresh_schema_cache() -> dict[str, Any]:
-    bridge = PROJECT_ROOT / "scripts" / "describe-schema.ts"
-    result = subprocess.run(
-        ["npx", "tsx", str(bridge), "project"],
-        capture_output=True,
-        text=True,
-        cwd=PROJECT_ROOT,
-    )
-    if result.returncode != 0:
+    r = bridges.describe_schema("project")
+    if not r.success:
         raise RuntimeError(
-            f"describe-schema.ts failed: {result.stderr.strip() or result.stdout.strip()}"
+            f"describe-schema.ts failed: {r.stderr.strip() or r.stdout.strip()}"
         )
-    schema = json.loads(result.stdout)
+    schema = json.loads(r.stdout)
     schema_bytes = json.dumps(schema, sort_keys=True).encode("utf-8")
     schema["_version_hash"] = hashlib.sha256(schema_bytes).hexdigest()[:16]
     try:
