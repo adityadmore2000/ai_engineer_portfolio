@@ -14,6 +14,7 @@ This module is the application entry point.  It owns:
   - REPL loop
 
 All other responsibilities live in dedicated modules:
+  - llm.py         — LLM provider abstraction (registry-based)
   - tools.py       — LangChain tool definitions (thin adapters)
   - prompts.py     — system prompt
   - services.py    — business workflow orchestration
@@ -24,32 +25,21 @@ All other responsibilities live in dedicated modules:
 
 from __future__ import annotations
 
-import os
-
-from langchain_ollama import ChatOllama
 from langgraph.graph import StateGraph, MessagesState
 from langgraph.prebuilt import ToolNode, tools_condition
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_core.messages import SystemMessage, ToolMessage
 
+from llm import create_chat_model, get_model_name
 from prompts import SYSTEM_PROMPT
 from tools import tools
-
-# ── Configuration ────────────────────────────────────────
-
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:4b")
 
 
 # ── Graph construction ───────────────────────────────────
 
 
 def create_agent():
-    llm = ChatOllama(
-        base_url=OLLAMA_URL,
-        model=OLLAMA_MODEL,
-        temperature=0,
-    ).bind_tools(tools)
+    llm = create_chat_model().bind_tools(tools)
 
     # ── Graph ────────────────────────────────────────────
     graph_builder = StateGraph(MessagesState)
@@ -76,7 +66,7 @@ def main():
     agent = create_agent()
     thread_id = "1"
 
-    print(f"Portfolio Publishing Agent ({OLLAMA_MODEL})")
+    print(f"Portfolio Publishing Agent ({get_model_name()})")
     print("Type your request in natural language, or /quit to exit.")
     print()
 

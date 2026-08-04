@@ -18,7 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-from langchain_ollama import ChatOllama
+from llm import create_chat_model
 from pydantic import BaseModel, create_model
 
 import bridges
@@ -44,8 +44,7 @@ IMAGE_ALT_PSEUDO_FIELDS = {
     "screenshots": "screenshotAlts",         # image array -> list of alt strings
 }
 
-OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3:4b")
+
 
 
 # ── Spec parsing ─────────────────────────────────────────
@@ -435,11 +434,7 @@ def _llm_repair(
     that exist on the discovered project schema. Returns (payload, new_errors).
     """
     model_cls = _build_payload_pydantic_model(schema)
-    repair_llm = ChatOllama(
-        base_url=OLLAMA_URL,
-        model=OLLAMA_MODEL,
-        temperature=0,
-    ).with_structured_output(model_cls)
+    repair_llm = create_chat_model().with_structured_output(model_cls)
 
     writable = _writable_field_types(schema)
     schema_brief = json.dumps(

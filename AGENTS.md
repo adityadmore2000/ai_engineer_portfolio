@@ -139,12 +139,28 @@ and deep links agree.
 
 A Python-based agent (`agent/publish_agent.py`) that manages the full project lifecycle via natural language.
 
+### LLM Provider
+
+The agent supports multiple LLM providers via a registry-based abstraction in
+`agent/llm.py`. Provider selection is controlled by `AGENT_LLM_PROVIDER`
+(default: `ollama`). Supported providers: `ollama`, `openai`, `anthropic`,
+`bedrock`, `gemini`. Adding a new provider requires only a `@register("name")`
+decorated function in `llm.py` — no changes to existing code.
+
+Backward compatibility: if `AGENT_LLM_MODEL` is unset, falls back to
+`OLLAMA_MODEL`; if `AGENT_LLM_BASE_URL` is unset, falls back to `OLLAMA_URL`.
+
 ### Setup
 
 ```bash
 cd agent
 python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
 # Ensure .env.local has NEXT_PUBLIC_SANITY_PROJECT_ID and SANITY_API_WRITE_TOKEN set
+# For cloud providers, also install the provider package:
+#   pip install langchain-openai    # for openai
+#   pip install langchain-anthropic # for anthropic
+#   pip install langchain-aws       # for bedrock
+#   pip install langchain-google-genai # for gemini
 ```
 
 ### Usage
@@ -243,7 +259,14 @@ The agent can move an entire Sanity dataset between environments through natural
 ### Architecture
 
 ```
-agent/publish_agent.py   ← Python REPL with Ollama tool-calling
+agent/publish_agent.py   ← Python REPL entry point (graph + REPL)
+  ├── agent/llm.py       ← LLM provider abstraction (registry-based)
+  ├── agent/tools.py     ← LangChain tool definitions (thin adapters)
+  ├── agent/prompts.py   ← system prompt
+  ├── agent/services.py  ← business workflow orchestration
+  ├── agent/spec_pipeline.py ← spec-driven creation pipeline
+  ├── agent/bridges.py   ← TypeScript bridge subprocess execution
+  └── agent/state.py     ← mutable state (schema cache, pending create)
         ↓  (shells out)
 scripts/{create-project,update-project,publish-project,unpublish-project,read-project,list-projects,delete-project,sync-dataset,describe-schema}.ts   ← thin TypeScript bridges
         ↓
