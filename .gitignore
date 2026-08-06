@@ -8,6 +8,7 @@ out/
 coverage/
 .codex
 .agents
+.state
 package-lock.json
 .env*
 .venv/

@@ -1,5 +1,14 @@
 import type { Embeddings } from "@langchain/core/embeddings";
 
+export function getEmbeddingModel(): string {
+  const provider = process.env.EMBEDDING_PROVIDER || "ollama";
+  const configured = process.env.EMBEDDING_MODEL;
+  if (provider === "openai") {
+    return `openai:${configured || "text-embedding-3-small"}`;
+  }
+  return `ollama:${configured || "nomic-embed-text"}`;
+}
+
 export async function getEmbeddings(): Promise<Embeddings> {
   const provider = process.env.EMBEDDING_PROVIDER || "ollama";
 

@@ -83,7 +83,8 @@ const projectSummaryFields = `
   demoUrl,
   featured,
   displayOrder,
-  published
+  published,
+  status
 `;
 
 export const featuredProjectsQuery = groq`
@@ -101,13 +102,34 @@ export const allProjectsQuery = groq`
 export const projectBySlugQuery = groq`
   *[_type == "project" && slug.current == $slug && published == true][0] {
     ${projectSummaryFields},
-    problemStatement,
-    approach,
+    whyIBuiltIt,
+    theProblem,
+    theSolution,
+    architectureImage{${imageFields}},
+    engineeringDecisions,
+    interestingChallenges[]{
+      problem,
+      solution,
+      outcome
+    },
     results,
+    whatThisDemonstrates,
+    screenshots[]{${imageFields}},
+    demoVideo,
+    beforeAfterComparisons[]{
+      beforeImage{${imageFields}},
+      afterImage{${imageFields}},
+      caption
+    },
+    exampleInputsOutputs,
+    lessonsLearned,
     limitations,
     futureImprovements,
-    architectureImage{${imageFields}},
-    screenshots[]{${imageFields}},
+    timeline,
+    faq[]{
+      question,
+      answer
+    },
     detailedContent
   }
 `;

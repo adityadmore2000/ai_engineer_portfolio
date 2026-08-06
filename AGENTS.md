@@ -18,6 +18,58 @@ npm run build
 - Incremental Static Regeneration: `export const revalidate = 60` on all pages
 - No custom backend — Sanity Content Lake is the only data source
 
+## Transactional Indexing (Qdrant)
+
+Qdrant is a deterministic projection of Sanity, never an authoritative store.
+`npm run index-content` (`scripts/index-content.ts`) rebuilds it through an
+application-level transaction managed by `lib/indexing/transaction/manager.ts`
+(`IndexTransactionManager`), modeled after blue-green deployments:
+
+1. **Content transaction** — only mutates Sanity (the publishing agent's job).
+2. **Index transaction** — after content commits, the manager:
+   - creates a temp collection `portfolio_temp_txn_<id>` (e.g. `txn_20260801_001`),
+   - builds the full index from Sanity into it,
+   - validates it (collection exists, expected vs indexed count, embedding
+     dimensions, generic + content-aware semantic retrieval probes),
+   - atomically promotes it via Qdrant aliases (the stable `QDRANT_COLLECTION`
+     name becomes an alias pointing at the new backing collection),
+   - cleans up the previous backing collection outside the committed txn.
+
+Transaction metadata is persisted as JSON in `.state/index-transactions/`
+(gitignored runtime state, migrated automatically from the legacy
+`.agents/index-txns/` location). On restart, `recover()` inspects that journal,
+aborts/resumes incomplete transactions, and sweeps orphaned temp collections —
+production always points at a fully validated index and is never exposed to a
+partial build. Failed transactions never touch production.
+
+Guarantees:
+
+- **Zero-downtime migration** — a legacy real collection is converted to the
+  alias atomically via Qdrant's batch operations endpoint
+  (`POST /collections/operations`); production search never disappears. Ongoing
+  promotions are single-call alias swaps (delete + create in one request).
+- **Single-writer** — a lock file in the journal dir (`acquireLock`/`releaseLock`)
+  ensures only one transaction mutates the production index at a time. Stale
+  locks (dead pid or > 30 min old) are broken automatically. Suitable for the
+  current single-agent workflow; a real lease mechanism is required before
+  concurrent API-driven publishing.
+- **Provenance** — every record stores `trigger`, `initiatedBy`,
+  `sanityRevision` (sha256 of indexed content), `embeddingModel`, `startedAt`,
+  `promotedAt`, `completedAt` for traceability between content changes and index
+  versions.
+- **Semantic validation** — `scripts/index-content.ts` derives content-aware
+  probes (e.g. query a project's title, expect the top-3 results' payloads to
+  reference it). Promotion is refused if expected content is not retrievable.
+
+Retrieval (`lib/ai/vector-store.ts`) wraps the Qdrant client to be alias-aware
+so the production name resolves whether it is a real collection or an alias.
+Application code always references the stable `QDRANT_COLLECTION` name and never
+a versioned backing collection, so it is permanently decoupled from physical
+collection names.
+
+The publishing agent only *triggers* indexing via the `reindex_content` tool
+(it shells out to `scripts/index-content.ts`); it contains no indexing logic.
+
 ## Key Files
 
 | File | Purpose |
@@ -33,15 +85,41 @@ npm run build
 | `lib/project-docs-source.ts` | fumadocs tree builder for doc page navigation |
 | `.env.example` | All required env vars documented |
 
-## Project Schema (to match when publishing)
+## Project Schema (layered storytelling approach)
 
-All text fields except `detailedContent` are `markdown` type (rendered via `<Markdown>` component). `detailedContent` is Portable Text (`block[]`).
+Projects follow a progressive disclosure hierarchy. All text fields except `detailedContent` are `markdown` type (rendered via `<Markdown>` component). `detailedContent` is Portable Text (`block[]`).
 
 Required fields on `project` document: `title`, `slug`.
 
-Image fields (`coverImage`, `architectureImage`, `screenshots[]`) are Sanity image type with hotspot and `alt` string field.
+Image fields (`coverImage`, `architectureImage`, `screenshots[]`, `beforeAfterComparisons[].beforeImage`, `beforeAfterComparisons[].afterImage`) are Sanity image type with hotspot and `alt` string field.
 
 Visibility flag: `published` (boolean, default `true`) — controls whether the project appears on the public site. The agent's `publish_project` and `unpublish_project` tools toggle this field.
+
+### Field order (storytelling hierarchy)
+
+| Section | Fields | Audience |
+|---------|--------|----------|
+| **Hero** | `title`, `shortSummary`, `status`, `technologies`, `githubUrl`, `demoUrl`, `keyMetrics`, `coverImage` | All |
+| **Why I Built It** | `whyIBuiltIt` — personal, engineering-driven motivation | All |
+| **The Problem** | `theProblem` — what engineering problem existed | Recruiter+ |
+| **The Solution** | `theSolution` — high-level system explanation | Recruiter+ |
+| **System Architecture** | `architectureImage` — diagram + alt text | Recruiter+ |
+| **Engineering Decisions** | `engineeringDecisions` — design decisions and rationale | Hiring Manager+ |
+| **Interesting Challenges** | `interestingChallenges[]` — array of `{problem, solution, outcome}` objects | Hiring Manager+ |
+| **Results** | `results` — measurable outcomes | All |
+| **What This Demonstrates** | `whatThisDemonstrates` — engineering skills summary | Recruiter+ |
+
+### Optional fields (when available)
+
+`screenshots[]`, `demoVideo` (url), `beforeAfterComparisons[]` (array of `{beforeImage, afterImage, caption}`), `exampleInputsOutputs`, `lessonsLearned`, `limitations`, `futureImprovements`, `timeline`, `faq[]` (array of `{question, answer}`), `detailedContent` (Portable Text)
+
+### Status values
+
+`active`, `completed`, `archived`, `poc`, `in-development`
+
+### Deprecated fields (hidden in Studio, may be removed)
+
+`problemStatement`, `approach` — replaced by the storytelling fields above.
 
 ## Publishing Agent
 

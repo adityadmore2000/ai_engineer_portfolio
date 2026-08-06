@@ -5,6 +5,8 @@ import { Github, Linkedin, Mail } from "lucide-react";
 import type { SiteSettings } from "@/sanity/types";
 import { getResumeHref } from "@/sanity/utils";
 import { Markdown } from "./Markdown";
+import { TrackLink } from "./Analytics";
+import { AnalyticsEvents } from "@/lib/analytics";
 
 export function Hero({ settings }: { settings?: SiteSettings | null }) {
   const resumeHref = getResumeHref(settings);
@@ -51,23 +53,25 @@ export function Hero({ settings }: { settings?: SiteSettings | null }) {
               {primaryCtaText}
             </Link>
             {resumeHref ? (
-              <a
+              <TrackLink
                 href={resumeHref}
                 target="_blank"
                 rel="noreferrer"
+                event={AnalyticsEvents.FileDownload}
+                metadata={{ file: "resume", format: "pdf" }}
                 className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
               >
                 {secondaryCtaText}
-              </a>
+              </TrackLink>
             ) : null}
           </div>
 
           <div className="mt-7 flex flex-wrap gap-3">
             {settings.linkedinUrl ? (
-              <SocialLink href={settings.linkedinUrl} label="LinkedIn" icon={<Linkedin size={18} />} />
+              <SocialLink href={settings.linkedinUrl} label="LinkedIn" icon={<Linkedin size={18} />} event={AnalyticsEvents.ExternalClick} metadata={{ destination: "linkedin" }} />
             ) : null}
             {settings.githubUrl ? (
-              <SocialLink href={settings.githubUrl} label="GitHub" icon={<Github size={18} />} />
+              <SocialLink href={settings.githubUrl} label="GitHub" icon={<Github size={18} />} event={AnalyticsEvents.ExternalClick} metadata={{ destination: "github" }} />
             ) : null}
             {settings.email ? (
               <SocialLink href={`mailto:${settings.email}`} label="Email" icon={<Mail size={18} />} />
@@ -114,21 +118,27 @@ export function Hero({ settings }: { settings?: SiteSettings | null }) {
 function SocialLink({
   href,
   label,
-  icon
+  icon,
+  event,
+  metadata
 }: {
   href: string;
   label: string;
   icon: ReactNode;
+  event?: string;
+  metadata?: Record<string, string>;
 }) {
   return (
-    <a
+    <TrackLink
       href={href}
       target={href.startsWith("mailto:") ? undefined : "_blank"}
       rel={href.startsWith("mailto:") ? undefined : "noreferrer"}
+      event={event}
+      metadata={metadata}
       className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
     >
       {icon}
       {label}
-    </a>
+    </TrackLink>
   );
 }

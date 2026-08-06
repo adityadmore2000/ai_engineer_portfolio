@@ -1,7 +1,9 @@
 import { FileText } from "lucide-react";
 import type { SiteSettings } from "@/sanity/types";
 import { getResumeHref } from "@/sanity/utils";
+import { AnalyticsEvents } from "@/lib/analytics";
 import { SectionShell } from "./SectionShell";
+import { TrackLink } from "./Analytics";
 
 export function ResumeSection({ settings }: { settings?: SiteSettings | null }) {
   const resumeHref = getResumeHref(settings);
@@ -31,20 +33,24 @@ export function ResumeSection({ settings }: { settings?: SiteSettings | null }) 
           </div>
         </div>
         <div className="mt-5 flex flex-col gap-3 sm:flex-row md:mt-0">
-          <a
+          <TrackLink
             href={resumeHref}
+            event={AnalyticsEvents.FileDownload}
+            metadata={{ file: "resume", format: "pdf" }}
             className="inline-flex items-center justify-center rounded-md bg-teal-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-900"
           >
             Download Resume
-          </a>
-          <a
+          </TrackLink>
+          <TrackLink
             href={resumeHref}
             target="_blank"
             rel="noreferrer"
+            event={AnalyticsEvents.FileDownload}
+            metadata={{ file: "resume", format: "pdf" }}
             className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
           >
             View Resume
-          </a>
+          </TrackLink>
         </div>
       </div>
     </SectionShell>
