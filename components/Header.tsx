@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Menu, X } from "lucide-react";
 import { useState } from "react";
 import type { SiteSettings } from "@/sanity/types";
-import { trackContactClick } from "@/lib/analytics";
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics";
 
 const navItems = [
   { label: "Home", href: "/#home" },
@@ -40,7 +40,7 @@ export function Header({ settings }: { settings?: SiteSettings | null }) {
           ))}
           <Link
             href="/#contact"
-            onClick={trackContactClick}
+            onClick={() => trackEvent(AnalyticsEvents.ContactAction, { method: "header_cta" })}
             className="rounded-md bg-teal-800 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-900"
           >
             {ctaText}
@@ -74,7 +74,7 @@ export function Header({ settings }: { settings?: SiteSettings | null }) {
             <Link
               href="/#contact"
               onClick={() => {
-                trackContactClick();
+                trackEvent(AnalyticsEvents.ContactAction, { method: "header_cta" });
                 setIsOpen(false);
               }}
               className="mt-2 rounded-md bg-teal-800 px-3 py-2 text-center text-sm font-semibold text-white hover:bg-teal-900"

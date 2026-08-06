@@ -3,7 +3,7 @@ import { Github, Linkedin, Mail } from "lucide-react";
 import type { SiteSettings } from "@/sanity/types";
 import { Markdown } from "./Markdown";
 import { TrackLink } from "./Analytics";
-import type { ClickAnalyticsEvent } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics";
 
 export function Footer({ settings }: { settings?: SiteSettings | null }) {
   const currentYear = new Date().getFullYear();
@@ -24,12 +24,12 @@ export function Footer({ settings }: { settings?: SiteSettings | null }) {
         </div>
         <div className="flex gap-2">
           {settings?.linkedinUrl ? (
-            <FooterLink href={settings.linkedinUrl} label="LinkedIn" event="linkedin_click">
+            <FooterLink href={settings.linkedinUrl} label="LinkedIn" event={AnalyticsEvents.ExternalClick} metadata={{ destination: "linkedin" }}>
               <Linkedin aria-hidden="true" size={18} />
             </FooterLink>
           ) : null}
           {settings?.githubUrl ? (
-            <FooterLink href={settings.githubUrl} label="GitHub" event="github_click">
+            <FooterLink href={settings.githubUrl} label="GitHub" event={AnalyticsEvents.ExternalClick} metadata={{ destination: "github" }}>
               <Github aria-hidden="true" size={18} />
             </FooterLink>
           ) : null}
@@ -48,12 +48,14 @@ function FooterLink({
   href,
   label,
   children,
-  event
+  event,
+  metadata
 }: {
   href: string;
   label: string;
   children: ReactNode;
-  event?: ClickAnalyticsEvent;
+  event?: string;
+  metadata?: Record<string, string>;
 }) {
   return (
     <TrackLink
@@ -62,6 +64,7 @@ function FooterLink({
       rel={href.startsWith("mailto:") ? undefined : "noreferrer"}
       aria-label={label}
       event={event}
+      metadata={metadata}
       className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
     >
       {children}

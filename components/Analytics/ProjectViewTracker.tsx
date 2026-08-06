@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { trackProjectView } from "@/lib/analytics";
+import { AnalyticsEvents, trackEvent } from "@/lib/analytics";
 
 type ProjectViewTrackerProps = {
   slug: string;
@@ -13,7 +13,7 @@ export function ProjectViewTracker({ slug }: ProjectViewTrackerProps) {
   useEffect(() => {
     if (lastSlug.current === slug) return;
     lastSlug.current = slug;
-    trackProjectView(slug);
+    trackEvent(AnalyticsEvents.ProjectView, { project_slug: slug });
   }, [slug]);
 
   return null;

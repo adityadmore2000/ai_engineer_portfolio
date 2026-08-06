@@ -5,7 +5,7 @@ import { getResumeHref } from "@/sanity/utils";
 import { Markdown } from "./Markdown";
 import { SectionShell } from "./SectionShell";
 import { TrackLink } from "./Analytics";
-import type { ClickAnalyticsEvent } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics";
 
 export function Contact({ settings }: { settings?: SiteSettings | null }) {
   if (!settings) {
@@ -31,7 +31,8 @@ export function Contact({ settings }: { settings?: SiteSettings | null }) {
         {settings.email ? (
           <TrackLink
             href={`mailto:${settings.email}`}
-            event="contact_click"
+            event={AnalyticsEvents.ContactAction}
+            metadata={{ method: "email" }}
             className="inline-flex items-center gap-2 rounded-md bg-teal-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-900"
           >
             <Mail aria-hidden="true" size={17} />
@@ -39,13 +40,13 @@ export function Contact({ settings }: { settings?: SiteSettings | null }) {
           </TrackLink>
         ) : null}
         {settings.linkedinUrl ? (
-          <ContactLink href={settings.linkedinUrl} label="LinkedIn" icon={<Linkedin size={17} />} event="linkedin_click" />
+          <ContactLink href={settings.linkedinUrl} label="LinkedIn" icon={<Linkedin size={17} />} event={AnalyticsEvents.ExternalClick} metadata={{ destination: "linkedin" }} />
         ) : null}
         {settings.githubUrl ? (
-          <ContactLink href={settings.githubUrl} label="GitHub" icon={<Github size={17} />} event="github_click" />
+          <ContactLink href={settings.githubUrl} label="GitHub" icon={<Github size={17} />} event={AnalyticsEvents.ExternalClick} metadata={{ destination: "github" }} />
         ) : null}
         {resumeHref ? (
-          <ContactLink href={resumeHref} label={resumeCtaText} event="resume_download" />
+          <ContactLink href={resumeHref} label={resumeCtaText} event={AnalyticsEvents.FileDownload} metadata={{ file: "resume", format: "pdf" }} />
         ) : null}
       </div>
     </SectionShell>
@@ -56,12 +57,14 @@ function ContactLink({
   href,
   label,
   icon,
-  event
+  event,
+  metadata
 }: {
   href: string;
   label: string;
   icon?: ReactNode;
-  event?: ClickAnalyticsEvent;
+  event?: string;
+  metadata?: Record<string, string>;
 }) {
   return (
     <TrackLink
@@ -69,6 +72,7 @@ function ContactLink({
       target="_blank"
       rel="noreferrer"
       event={event}
+      metadata={metadata}
       className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
     >
       {icon}

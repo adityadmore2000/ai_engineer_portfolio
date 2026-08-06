@@ -6,7 +6,7 @@ import type { SiteSettings } from "@/sanity/types";
 import { getResumeHref } from "@/sanity/utils";
 import { Markdown } from "./Markdown";
 import { TrackLink } from "./Analytics";
-import type { ClickAnalyticsEvent } from "@/lib/analytics";
+import { AnalyticsEvents } from "@/lib/analytics";
 
 export function Hero({ settings }: { settings?: SiteSettings | null }) {
   const resumeHref = getResumeHref(settings);
@@ -57,7 +57,8 @@ export function Hero({ settings }: { settings?: SiteSettings | null }) {
                 href={resumeHref}
                 target="_blank"
                 rel="noreferrer"
-                event="resume_download"
+                event={AnalyticsEvents.FileDownload}
+                metadata={{ file: "resume", format: "pdf" }}
                 className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
               >
                 {secondaryCtaText}
@@ -67,10 +68,10 @@ export function Hero({ settings }: { settings?: SiteSettings | null }) {
 
           <div className="mt-7 flex flex-wrap gap-3">
             {settings.linkedinUrl ? (
-              <SocialLink href={settings.linkedinUrl} label="LinkedIn" icon={<Linkedin size={18} />} event="linkedin_click" />
+              <SocialLink href={settings.linkedinUrl} label="LinkedIn" icon={<Linkedin size={18} />} event={AnalyticsEvents.ExternalClick} metadata={{ destination: "linkedin" }} />
             ) : null}
             {settings.githubUrl ? (
-              <SocialLink href={settings.githubUrl} label="GitHub" icon={<Github size={18} />} event="github_click" />
+              <SocialLink href={settings.githubUrl} label="GitHub" icon={<Github size={18} />} event={AnalyticsEvents.ExternalClick} metadata={{ destination: "github" }} />
             ) : null}
             {settings.email ? (
               <SocialLink href={`mailto:${settings.email}`} label="Email" icon={<Mail size={18} />} />
@@ -118,12 +119,14 @@ function SocialLink({
   href,
   label,
   icon,
-  event
+  event,
+  metadata
 }: {
   href: string;
   label: string;
   icon: ReactNode;
-  event?: ClickAnalyticsEvent;
+  event?: string;
+  metadata?: Record<string, string>;
 }) {
   return (
     <TrackLink
@@ -131,6 +134,7 @@ function SocialLink({
       target={href.startsWith("mailto:") ? undefined : "_blank"}
       rel={href.startsWith("mailto:") ? undefined : "noreferrer"}
       event={event}
+      metadata={metadata}
       className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
     >
       {icon}

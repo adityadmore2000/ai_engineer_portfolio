@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ExternalLink, Github } from "lucide-react";
 import type { ProjectSummary } from "@/sanity/types";
+import { AnalyticsEvents } from "@/lib/analytics";
 import { LightboxImage } from "./LightboxImage";
 import { Markdown } from "./Markdown";
 import { TrackLink } from "./Analytics";
@@ -65,7 +66,8 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
               target="_blank"
               rel="noreferrer"
               aria-label={`${project.title} GitHub repository`}
-              event="github_click"
+              event={AnalyticsEvents.ExternalClick}
+              metadata={{ destination: "github" }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
             >
               <Github aria-hidden="true" size={17} />
@@ -77,7 +79,8 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
               target="_blank"
               rel="noreferrer"
               aria-label={`${project.title} demo`}
-              event="demo_click"
+              event={AnalyticsEvents.ExternalClick}
+              metadata={{ destination: "demo" }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
             >
               <ExternalLink aria-hidden="true" size={17} />
