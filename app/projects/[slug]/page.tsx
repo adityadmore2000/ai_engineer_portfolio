@@ -8,6 +8,7 @@ import { LightboxImage } from "@/components/LightboxImage";
 import { Markdown } from "@/components/Markdown";
 import { PortableContent } from "@/components/PortableContent";
 import { SectionShell } from "@/components/SectionShell";
+import { ProjectViewTracker, TrackLink } from "@/components/Analytics";
 import {
   createProjectDocsSource,
   getFirstDocumentationPage
@@ -98,6 +99,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   return (
     <div className="min-h-screen bg-[var(--background)]">
       <Header settings={pageSettings} />
+      <ProjectViewTracker slug={slug} />
       <main>
         <SectionShell className="pt-12">
           <Link
@@ -275,26 +277,28 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                   </Link>
                 ) : null}
                 {pageProject.githubUrl ? (
-                  <a
+                  <TrackLink
                     href={pageProject.githubUrl}
                     target="_blank"
                     rel="noreferrer"
+                    event="github_click"
                     className="inline-flex items-center justify-center gap-2 rounded-md border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
                   >
                     <Github aria-hidden="true" size={17} />
                     GitHub
-                  </a>
+                  </TrackLink>
                 ) : null}
                 {pageProject.demoUrl ? (
-                  <a
+                  <TrackLink
                     href={pageProject.demoUrl}
                     target="_blank"
                     rel="noreferrer"
+                    event="demo_click"
                     className="inline-flex items-center justify-center gap-2 rounded-md bg-teal-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-900"
                   >
                     <ExternalLink aria-hidden="true" size={17} />
                     Live Demo
-                  </a>
+                  </TrackLink>
                 ) : null}
               </div>
             </aside>

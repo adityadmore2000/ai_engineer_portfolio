@@ -4,6 +4,8 @@ import type { SiteSettings } from "@/sanity/types";
 import { getResumeHref } from "@/sanity/utils";
 import { Markdown } from "./Markdown";
 import { SectionShell } from "./SectionShell";
+import { TrackLink } from "./Analytics";
+import type { ClickAnalyticsEvent } from "@/lib/analytics";
 
 export function Contact({ settings }: { settings?: SiteSettings | null }) {
   if (!settings) {
@@ -27,22 +29,23 @@ export function Contact({ settings }: { settings?: SiteSettings | null }) {
       ) : null}
       <div className="flex flex-wrap gap-3">
         {settings.email ? (
-          <a
+          <TrackLink
             href={`mailto:${settings.email}`}
+            event="contact_click"
             className="inline-flex items-center gap-2 rounded-md bg-teal-800 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-900"
           >
             <Mail aria-hidden="true" size={17} />
             {emailCtaText}
-          </a>
+          </TrackLink>
         ) : null}
         {settings.linkedinUrl ? (
-          <ContactLink href={settings.linkedinUrl} label="LinkedIn" icon={<Linkedin size={17} />} />
+          <ContactLink href={settings.linkedinUrl} label="LinkedIn" icon={<Linkedin size={17} />} event="linkedin_click" />
         ) : null}
         {settings.githubUrl ? (
-          <ContactLink href={settings.githubUrl} label="GitHub" icon={<Github size={17} />} />
+          <ContactLink href={settings.githubUrl} label="GitHub" icon={<Github size={17} />} event="github_click" />
         ) : null}
         {resumeHref ? (
-          <ContactLink href={resumeHref} label={resumeCtaText} />
+          <ContactLink href={resumeHref} label={resumeCtaText} event="resume_download" />
         ) : null}
       </div>
     </SectionShell>
@@ -52,21 +55,24 @@ export function Contact({ settings }: { settings?: SiteSettings | null }) {
 function ContactLink({
   href,
   label,
-  icon
+  icon,
+  event
 }: {
   href: string;
   label: string;
   icon?: ReactNode;
+  event?: ClickAnalyticsEvent;
 }) {
   return (
-    <a
+    <TrackLink
       href={href}
       target="_blank"
       rel="noreferrer"
+      event={event}
       className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 hover:bg-slate-50"
     >
       {icon}
       {label}
-    </a>
+    </TrackLink>
   );
 }
