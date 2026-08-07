@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { SiteNotice } from "@/components/SiteNotice";
 import { ChatProvider, FloatingButton, SlideOutPanel } from "@/components/Chat";
+import { GoogleAnalytics } from "@/components/Analytics";
 import { Analytics } from "@vercel/analytics/react";
 import "./globals.css";
 
@@ -49,7 +50,8 @@ export default function RootLayout({
             <SlideOutPanel />
           </ChatProvider>
         </RootProvider>
-          <Analytics />
+        <Analytics />
+        <GoogleAnalytics />
       </body>
     </html>
   );
