@@ -1,5 +1,7 @@
 langgraph>=0.4.0
 langchain-ollama>=0.3.0
+markdown-it-py>=3.0.0
+pyyaml>=6.0.0
 # Optional — install only the provider you need:
 langchain-openai>=0.3.0
 # langchain-anthropic>=0.3.0
