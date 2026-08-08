@@ -165,6 +165,8 @@ export const documentationPortableTextComponents: PortableTextComponents = {
 };
 
 function headingId(value: unknown): string {
+  const anchor = (value as { anchor?: string }).anchor;
+  if (anchor) return anchor;
   const text = portableTextBlockToText(value as never);
   return generateHeadingId(text);
 }

@@ -124,4 +124,43 @@ describe("serializeMarkdown", () => {
     const b = serializeMarkdown("# T\n\nbody.\n");
     expect(a.blocks.map((bl) => bl._key)).toEqual(b.blocks.map((bl) => bl._key));
   });
+
+  it("emits anchor + stripped text for a heading with {#id}", () => {
+    const { blocks, errors } = serializeMarkdown("## Architecture {#architecture}\n\nDeep.\n");
+    expect(errors).toEqual([]);
+    const heading = blocks.find((b) => b._type === "block" && b.style === "h2");
+    expect(heading?.anchor).toBe("architecture");
+    expect(((heading?.children as Array<Record<string, unknown>>) || []).map((c) => c.text).join("")).toBe(
+      "Architecture"
+    );
+  });
+
+  it("keeps bare headings byte-identical (no anchor)", () => {
+    const { blocks } = serializeMarkdown("## Architecture\n\nDeep.\n");
+    const heading = blocks.find((b) => b._type === "block" && b.style === "h2");
+    expect(heading?.anchor).toBeUndefined();
+    expect(((heading?.children as Array<Record<string, unknown>>) || []).map((c) => c.text).join("")).toBe(
+      "Architecture"
+    );
+  });
+
+  it("keeps inline marks while stripping the marker", () => {
+    const { blocks } = serializeMarkdown("## **Bold** System {#sys}\n\nDeep.\n");
+    const heading = blocks.find((b) => b._type === "block" && b.style === "h2");
+    expect(heading?.anchor).toBe("sys");
+    const children = (heading?.children as Array<Record<string, unknown>>) || [];
+    const text = children.map((c) => c.text).join("");
+    expect(text).toBe("Bold System");
+    expect(children.some((c) => Array.isArray(c.marks) && c.marks.includes("strong"))).toBe(true);
+  });
+
+  it("handles a mixed document where only some headings carry markers", () => {
+    const { blocks } = serializeMarkdown(
+      "## Overview {#overview}\n\nIntro.\n\n## Results\n\nOutcomes.\n\n## Next {#future}\n\nPlan.\n"
+    );
+    const headings = blocks.filter((b) => b._type === "block" && typeof b.style === "string" && b.style.startsWith("h"));
+    expect(headings.map((h) => h.anchor)).toEqual(["overview", undefined, "future"]);
+    expect(((headings[0].children as Array<Record<string, unknown>>) || []).map((c) => c.text).join("")).toBe("Overview");
+    expect(((headings[2].children as Array<Record<string, unknown>>) || []).map((c) => c.text).join("")).toBe("Next");
+  });
 });

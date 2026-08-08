@@ -64,7 +64,10 @@ export function splitSectionsByHeading(
     if (isHeadingBlock(block)) {
       flush();
       heading = portableTextBlockToText(block);
-      id = generateHeadingId(heading, { used });
+      id =
+        "anchor" in block && typeof block.anchor === "string" && block.anchor
+          ? block.anchor
+          : generateHeadingId(heading, { used });
       textParts = [];
       sectionBlocks = [];
       continue;

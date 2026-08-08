@@ -467,6 +467,15 @@ export const documentationBlockTypes = [
 
 export const portableTextBlockMember = {
   type: "block",
+  fields: [
+    defineField({
+      name: "anchor",
+      title: "Anchor ID",
+      type: "string",
+      description:
+        "Stable section anchor (from a `{#id}` heading marker). Falls back to the slugified heading when absent."
+    })
+  ],
   styles: [
     { title: "Normal", value: "normal" },
     { title: "Heading 2", value: "h2" },

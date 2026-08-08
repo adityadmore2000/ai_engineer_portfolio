@@ -270,15 +270,82 @@ function handleSectionSegment(label: string, text: string, ctx: Context): void {
 
 // ── Block builders ─────────────────────────────────────────
 
+// Explicit section marker: a trailing `{#id}` on a heading line becomes the
+// published anchor (see Phase 3 anchor propagation). Stripped at token time so
+// a bare heading (no marker) is byte-identical to pre-Phase-3 output.
+const HEADING_ANCHOR_RE = /\s*\{#([a-z0-9][a-z0-9-]*[a-z0-9])\}\s*$/;
+
 function headingBlock(node: Content & { depth: number }, topDepth: number | null): ContentBlock {
   const style = headingStyle(node.depth, topDepth);
   const text = mdastText(node).trim();
+  const marker = HEADING_ANCHOR_RE.exec(text);
+
+  if (marker) {
+    const anchoredText = text.slice(0, text.length - marker[0].length).trim();
+    return {
+      _type: "block",
+      _key: stableKey(`h${node.depth}:${anchoredText}`),
+      style,
+      anchor: marker[1],
+      children: inlineChildren(
+        removeTrailingText((node as Content & { children: Content[] }).children, marker[0].length)
+      ),
+    };
+  }
+
   return {
     _type: "block",
     _key: stableKey(`h${node.depth}:${text}`),
     style,
     children: inlineChildren((node as Content & { children: Content[] }).children),
   };
+}
+
+/**
+ * Removes trailing characters from the heading's inline children, operating on
+ * the text tokens (no Markdown re-synthesis) so inline marks like strong/em
+ * survive. An explicit `{#id}` marker is always plain text at the end.
+ */
+function removeTrailingText(nodes: Content[], chars: number): Content[] {
+  return stripTrailingChars(nodes, chars).nodes;
+}
+
+function stripTrailingChars(nodes: Content[], chars: number): { nodes: Content[]; remaining: number } {
+  const out: Content[] = [];
+  let remaining = chars;
+
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i];
+    if (remaining <= 0) {
+      out.unshift(node);
+      continue;
+    }
+
+    if (node.type === "text") {
+      const t = node as Text;
+      if (t.value.length <= remaining) {
+        remaining -= t.value.length;
+      } else {
+        out.unshift({ ...t, value: t.value.slice(0, t.value.length - remaining) });
+        remaining = 0;
+      }
+      continue;
+    }
+
+    const children = (node as Content & { children?: Content[] }).children;
+    if (children && children.length) {
+      const inner = stripTrailingChars(children, remaining);
+      remaining = inner.remaining;
+      if (inner.nodes.length) {
+        out.unshift({ ...node, children: inner.nodes } as Content);
+      }
+      continue;
+    }
+
+    out.unshift(node);
+  }
+
+  return { nodes: out, remaining };
 }
 
 function codeBlock(node: Content & { type: "code" }): ContentBlock {

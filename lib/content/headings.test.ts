@@ -4,6 +4,20 @@ import {
   portableTextToText,
   splitSectionsByHeading,
 } from "@/lib/content/portable-text";
+import type { ContentBlock } from "@/sanity/types";
+
+const h2 = (text: string, extra: Partial<ContentBlock> = {}): ContentBlock => ({
+  _type: "block",
+  style: "h2",
+  children: [{ _type: "span", text }],
+  ...extra,
+});
+
+const p = (text: string): ContentBlock => ({
+  _type: "block",
+  style: "normal",
+  children: [{ _type: "span", text }],
+});
 
 describe("generateHeadingId", () => {
   it("slugifies the canonical legacy anchor names", () => {
@@ -35,10 +49,10 @@ describe("generateHeadingId", () => {
 describe("splitSectionsByHeading", () => {
   it("splits a PT array into heading-derived sections with anchors", () => {
     const sections = splitSectionsByHeading([
-      { _type: "block", style: "h2", _key: "k1", children: [{ _type: "span", text: "Engineering Decisions" }] },
-      { _type: "block", style: "normal", children: [{ _type: "span", text: "We chose X." }] },
-      { _type: "block", style: "h2", children: [{ _type: "span", text: "Results" }] },
-      { _type: "block", style: "normal", children: [{ _type: "span", text: "It improved." }] },
+      h2("Engineering Decisions"),
+      p("We chose X."),
+      h2("Results"),
+      p("It improved."),
     ]);
 
     expect(sections.map((s) => s.heading)).toEqual([
@@ -51,21 +65,36 @@ describe("splitSectionsByHeading", () => {
   });
 
   it("renders heading-free content under an empty heading", () => {
-    const sections = splitSectionsByHeading([
-      { _type: "block", style: "normal", children: [{ _type: "span", text: "Lead prose." }] },
-    ]);
+    const sections = splitSectionsByHeading([p("Lead prose.")]);
     expect(sections).toHaveLength(1);
     expect(sections[0].heading).toBe("");
     expect(sections[0].text).toBe("Lead prose.");
+  });
+
+  it("lets an explicit anchor win over the slugified fallback", () => {
+    const sections = splitSectionsByHeading([
+      h2("Engineering Decisions", { _key: "k1", anchor: "custom-anchor" }),
+      p("We chose X."),
+    ]);
+    expect(sections).toHaveLength(1);
+    expect(sections[0].id).toBe("custom-anchor");
+    expect(sections[0].heading).toBe("Engineering Decisions");
+  });
+
+  it("keeps fallback ids unchanged and dedupes via used map", () => {
+    const sections = splitSectionsByHeading([
+      h2("Overview"),
+      p("One."),
+      h2("Overview"),
+      p("Two."),
+    ]);
+    expect(sections.map((s) => s.id)).toEqual(["overview", "overview-2"]);
   });
 });
 
 describe("portableTextToText", () => {
   it("flattens heading and prose into text", () => {
-    const text = portableTextToText([
-      { _type: "block", style: "h2", children: [{ _type: "span", text: "Results" }] },
-      { _type: "block", style: "normal", children: [{ _type: "span", text: "Improved." }] },
-    ]);
+    const text = portableTextToText([h2("Results"), p("Improved.")]);
     expect(text).toContain("Results");
     expect(text).toContain("Improved.");
   });

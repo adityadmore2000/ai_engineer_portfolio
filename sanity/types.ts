@@ -1,5 +1,12 @@
 import type { PortableTextBlock } from "next-sanity";
 
+/**
+ * Portable Text block for `project.content` (and derived narratives). An
+ * optional `anchor` stores the `{#id}` heading marker's value; consumers fall
+ * back to the slugified heading when absent (Phase 3).
+ */
+export type ContentBlock = PortableTextBlock & { anchor?: string };
+
 export type SanityImage = {
   url?: string;
   alt?: string;
@@ -69,7 +76,7 @@ export type ProjectSummary = {
 
 export type ProjectDetail = ProjectSummary & {
   /** Derived narrative representation (published from the repo docs/ source). */
-  content?: PortableTextBlock[];
+  content?: ContentBlock[];
 };
 
 export type ProjectDocumentationPage = {
@@ -117,5 +124,5 @@ export type TechnicalNoteSummary = {
 };
 
 export type TechnicalNoteDetail = TechnicalNoteSummary & {
-  content?: PortableTextBlock[];
+  content?: ContentBlock[];
 };
