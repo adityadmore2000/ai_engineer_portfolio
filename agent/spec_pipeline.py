@@ -557,6 +557,59 @@ def _llm_repair(
 _pending_create = PendingCreateState()
 
 
+def _assemble_spec_payload(
+    parsed_json: dict[str, Any]
+) -> tuple[dict[str, Any], list[str], str | None]:
+    """Turn the parsed spec JSON into the normalized publish payload.
+
+    Deterministically shared by the staging and direct-publish paths: maps the
+    parsed fields to the discovered schema (`normalize_and_validate`), runs ONE
+    LLM self-repair retry when validation fails, then stamps the required meta
+    fields (`title`, `slug`, `published=True`) and the `__markdownDir__`
+    reserved key. Returns ``(payload, uncertain, error)`` — never partial.
+    """
+    try:
+        schema = get_discovered_schema()
+    except Exception as exc:  # noqa: BLE001
+        return {}, [], f"Error discovering schema: {exc}"
+
+    parsed_fields = parsed_json["fields"]
+    payload, uncertain, errors = normalize_and_validate(parsed_fields, schema)
+
+    repair_errors: list[str] = []
+    if errors:
+        payload, repair_errors = _llm_repair(parsed_fields, schema, errors)
+        errors = repair_errors
+
+    if errors:
+        return {}, [], (
+            "Validation failed after self-repair; refusing to proceed.\n"
+            + "Errors:\n"
+            + "\n".join(f"- {e}" for e in errors)
+            + "\n\nPlease fix the spec and retry."
+        )
+
+    # title + slug + published are required meta fields stored at the top level.
+    title = parsed_fields.get("title")
+    slug = parsed_fields.get("slug")
+    slug_clean = _strip_quotes(str(slug)).strip() if slug is not None else None
+    if not title:
+        return {}, [], "Error: spec is missing `- **title**: <value>` (required)."
+    if not slug_clean:
+        return {}, [], r"Error: spec is missing `- **slug**: `<value>`` (required)."
+    if len(slug_clean) > 96 or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", slug_clean):
+        return {}, [], (
+            f"Error: slug {slug_clean!r} must be lowercase, URL-safe, "
+            "1-96 chars, not start/end with a hyphen."
+        )
+
+    payload["title"] = str(title)
+    payload["slug"] = slug_clean
+    payload["published"] = True  # per decision: spec-created projects go live
+    payload["__markdownDir__"] = parsed_json["source_dir"]
+    return payload, uncertain, None
+
+
 def create_project_from_spec(spec_path: str) -> str:
     """Orchestrate: parse spec → discover schema → validate → (LLM repair) → stage.
 
@@ -572,50 +625,20 @@ def create_project_from_spec(spec_path: str) -> str:
     if "fields" not in parsed_json:
         return raw_parse if isinstance(raw_parse, str) else json.dumps(parsed_json)
 
+    payload, uncertain, error = _assemble_spec_payload(parsed_json)
+    if error:
+        return error
+
     try:
-        schema = get_discovered_schema()
-    except Exception as exc:  # noqa: BLE001
-        return f"Error discovering schema: {exc}"
-
-    parsed_fields = parsed_json["fields"]
-    payload, uncertain, errors = normalize_and_validate(parsed_fields, schema)
-
-    repair_errors: list[str] = []
-    if errors:
-        payload, repair_errors = _llm_repair(parsed_fields, schema, errors)
-        errors = repair_errors
-
-    if errors:
-        return (
-            "Validation failed after self-repair; NOT staging a create.\n"
-            f"Errors:\n" + "\n".join(f"- {e}" for e in errors)
-            + "\n\nPlease fix the spec and retry."
-        )
-
-    # title + slug + published are required meta fields stored at the top level.
-    title = parsed_fields.get("title")
-    slug = parsed_fields.get("slug")
-    slug_clean = _strip_quotes(str(slug)).strip() if slug is not None else None
-    if not title:
-        return "Error: spec is missing `- **title**: <value>` (required)."
-    if not slug_clean:
-        return r"Error: spec is missing `- **slug**: `<value>`` (required)."
-    if len(slug_clean) > 96 or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", slug_clean):
-        return (
-            f"Error: slug {slug_clean!r} must be lowercase, URL-safe, "
-            "1-96 chars, not start/end with a hyphen."
-        )
-
-    payload["title"] = str(title)
-    payload["slug"] = slug_clean
-    payload["published"] = True  # per decision: spec-created projects go live
-    payload["__markdownDir__"] = parsed_json["source_dir"]
+        schema_version_hash = get_discovered_schema().get("_version_hash")
+    except Exception:  # noqa: BLE001
+        schema_version_hash = None
 
     _pending_create.set({
         "payload": payload,
         "spec_path": parsed_json["spec_path"],
         "spec_sha256": parsed_json["spec_sha256"],
-        "schema_version_hash": schema.get("_version_hash"),
+        "schema_version_hash": schema_version_hash,
         "source_dir": parsed_json["source_dir"],
         "uncertain_fields": uncertain,
         "provenance": parsed_json["provenance"],
@@ -638,6 +661,56 @@ def create_project_from_spec(spec_path: str) -> str:
         },
         indent=2,
     )
+
+
+def publish_project_spec(spec_path: str, mode: str = "create") -> str:
+    """Publish a COMPLETE project from one ``project-spec.md`` in a single call.
+
+    Parses + validates the metadata deterministically (with ONE LLM self-repair
+    retry on failure), then hands the payload and spec to the
+    ``publish-project-spec.ts`` bridge, which writes/updates the project
+    metadata AND replaces ``project.content`` with the serialized body —
+    one spec, one published project.
+
+    Returns a human-readable summary (or an error string).
+    """
+    if mode not in ("create", "update"):
+        return f"Error: publish mode must be 'create' or 'update', got {mode!r}."
+
+    raw_parse = parse_spec_file(spec_path)
+    try:
+        parsed_json = json.loads(raw_parse)
+    except (json.JSONDecodeError, TypeError):
+        return raw_parse
+
+    if "fields" not in parsed_json:
+        return raw_parse if isinstance(raw_parse, str) else json.dumps(parsed_json)
+
+    payload, uncertain, error = _assemble_spec_payload(parsed_json)
+    if error:
+        return error
+
+    tmp_path = bridges.write_json_tempfile(payload)
+    try:
+        result = bridges.publish_project_spec(
+            mode,
+            spec_path,
+            tmp_path,
+            payload["slug"] if mode == "update" else None,
+        )
+    finally:
+        os.unlink(tmp_path)
+
+    if not result.success:
+        return (
+            f"Error publishing project spec:\n"
+            f"{result.stderr.strip() or result.stdout.strip()}"
+        )
+
+    output = result.stdout.strip()
+    if uncertain:
+        output += "\nUncertain fields: " + ", ".join(f"'{u}'" for u in uncertain)
+    return output
 
 
 def confirm_pending_create(create_project_fn) -> str:
@@ -664,6 +737,28 @@ def confirm_pending_create(create_project_fn) -> str:
     create_result = create_project_fn({"project_data": payload})
     _pending_create.clear()
 
+    # Canonical staged specs with a non-empty body also publish the narrative:
+    # the metadata writer just created the project, so the bridge patches
+    # project.content (REPLACE, stable keys) in the SAME confirmation turn.
+    # The empty-body rule keeps legacy and body-less canonical records on the
+    # exact legacy behavior (metadata only, no content call).
+    content_result = ""
+    if pending.get("format") == "frontmatter" and pending.get("body_md"):
+        tmp_path = bridges.write_json_tempfile(payload)
+        try:
+            content_bridge = bridges.publish_project_spec(
+                "update", pending["spec_path"], tmp_path, payload["slug"]
+            )
+        finally:
+            os.unlink(tmp_path)
+        if content_bridge.success:
+            content_result = f"\nContent: {content_bridge.stdout.strip()}"
+        else:
+            content_result = (
+                "\nContent: failed to publish narrative:\n"
+                f"{content_bridge.stderr.strip() or content_bridge.stdout.strip()}"
+            )
+
     # Audit log (always, on the same turn as the create attempt).
     audit_dir = PROJECT_ROOT / ".agents"
     audit_dir.mkdir(parents=True, exist_ok=True)
@@ -675,7 +770,10 @@ def confirm_pending_create(create_project_fn) -> str:
         "spec_sha256": pending.get("spec_sha256"),
         "schema_version_hash": pending.get("schema_version_hash"),
         "source_dir": pending.get("source_dir"),
+        "format": pending.get("format", "legacy"),
         "mapped_payload": payload,
+        "section_ids": [s["id"] for s in pending.get("sections", [])],
+        "body_sha256": pending.get("body_sha256"),
         "uncertain_fields": pending.get("uncertain_fields", []),
         "provenance": pending.get("provenance", {}),
         "staged_at": pending.get("staged_at"),
@@ -684,9 +782,9 @@ def confirm_pending_create(create_project_fn) -> str:
     try:
         audit_path.write_text(json.dumps(audit_record, indent=2, default=str), encoding="utf-8")
     except OSError as exc:
-        return f"{create_result}\n(Warning: failed to write audit log: {exc})"
+        return f"{create_result}{content_result}\n(Warning: failed to write audit log: {exc})"
 
-    return f"{create_result}\nAudit log: {audit_path}"
+    return f"{create_result}{content_result}\nAudit log: {audit_path}"
 
 
 def cancel_pending_create() -> str:

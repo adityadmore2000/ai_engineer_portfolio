@@ -163,6 +163,26 @@ def publish_docs(
 
 
 @tool
+def publish_project_spec(
+    spec_path: Annotated[
+        str,
+        "Path to a canonical project-spec.md (frontmatter metadata + Markdown body).",
+    ],
+    mode: Annotated[
+        str,
+        '"create" for a NEW project, "update" for an existing project.',
+    ] = "create",
+) -> str:
+    """Publish a COMPLETE project from ONE canonical project-spec.md in a single
+    call: the frontmatter metadata is written via create/update AND the Markdown
+    body is serialized into project.content (a replace with stable keys, so
+    re-runs are idempotent). The spec body becomes the published narrative —
+    this REPLACES the separate create_project + publish_docs flow for canonical
+    specs. Use mode='update' when the slug already exists in Sanity."""
+    return publishing_svc.publish_project_spec(spec_path, mode)
+
+
+@tool
 def reindex_content() -> str:
     """Rebuild the semantic search index (Qdrant) from the current Sanity
     content using a transactional, atomic index swap. Builds a temporary
@@ -268,6 +288,8 @@ tools = [
     delete_project,
     # Narrative publishing (Markdown docs → project.content)
     publish_docs,
+    # Canonical project-spec publishing (metadata + content in one call)
+    publish_project_spec,
     # Indexing trigger (transactional rebuild; no indexing logic lives here)
     reindex_content,
     # Dataset synchronization

@@ -129,6 +129,31 @@ def publish_docs(slug: str, docs_dir: str) -> BridgeResult:
     return _run_bridge("publish-docs.ts", [slug, docs_dir])
 
 
+def publish_project_spec(
+    mode: str,
+    spec_path: str,
+    json_path: str,
+    slug: str | None = None,
+) -> BridgeResult:
+    """Publish a COMPLETE project (metadata + content) from a project-spec.md.
+
+    Parameters
+    ----------
+    mode:
+        ``"create"`` (new project) or ``"update"`` (existing project).
+    spec_path:
+        Path to the canonical ``project-spec.md`` file.
+    json_path:
+        Path to the temporary metadata payload JSON.
+    slug:
+        The project slug, required when ``mode="update"``.
+    """
+    args = [mode, spec_path, json_path]
+    if slug:
+        args.append(slug)
+    return _run_bridge("publish-project-spec.ts", args)
+
+
 def reindex_content() -> BridgeResult:
     """Transactionally rebuild the Qdrant semantic search index."""
     return _run_bridge("index-content.ts", timeout=900)

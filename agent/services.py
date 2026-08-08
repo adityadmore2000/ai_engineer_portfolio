@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 import bridges
+import spec_pipeline
 
 
 # ── ProjectService ───────────────────────────────────────
@@ -109,6 +110,16 @@ class PublishingService:
         if not r.success:
             return f"Error publishing docs:\n{r.stderr.strip() or r.stdout.strip()}"
         return r.stdout.strip()
+
+    def publish_project_spec(self, spec_path: str, mode: str = "create") -> str:
+        """Publish a COMPLETE project from one canonical ``project-spec.md``.
+
+        The spec pipeline parses + validates the metadata (with ONE LLM
+        self-repair retry on failure) and hands the payload to the
+        ``publish-project-spec.ts`` bridge, which writes metadata AND replaces
+        ``project.content`` with the serialized body in a single call.
+        """
+        return spec_pipeline.publish_project_spec(spec_path, mode)
 
 
 # ── IndexService ─────────────────────────────────────────
