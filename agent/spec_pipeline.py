@@ -19,9 +19,19 @@ from pathlib import Path
 from typing import Any, Optional
 
 from llm import create_chat_model
-from pydantic import BaseModel, create_model
+from pydantic import BaseModel, ValidationError, create_model
 
 import bridges
+from specs import (
+    FrontmatterError,
+    ProjectMetadata,
+    ProjectSpec,
+    SectionError,
+    detect_canonical,
+    extract_sections,
+    parse_frontmatter,
+    strip_frontmatter,
+)
 from state import SchemaCache, PendingCreateState
 
 # ── Configuration ────────────────────────────────────────
@@ -176,10 +186,44 @@ def _enforce_absolute_image_paths(fields: dict[str, Any]) -> list[str]:
     return warnings
 
 
+def _build_canonical_spec(path: Path, text: str, front_meta: dict[str, Any]) -> ProjectSpec:
+    """Build a typed ``ProjectSpec`` from a canonical (frontmatter) spec.
+
+    Raises ``ValidationError`` (metadata) or ``SectionError`` (duplicate
+    section ids) with deterministic messages; no partial state is produced.
+    """
+    _, body_md = strip_frontmatter(text)
+    metadata = ProjectMetadata(**front_meta)
+    sections, extract_warnings = extract_sections(body_md, str(path))
+    unknown_meta = sorted((k, v) for k, v in (metadata.model_extra or {}).items())
+
+    warnings = [f"unknown front-matter field: {k} (ignored)" for k, _ in unknown_meta]
+    warnings.extend(extract_warnings)
+    warnings.extend(_enforce_absolute_image_paths(metadata.model_dump(exclude_unset=True)))
+
+    return ProjectSpec(
+        source_path=str(path),
+        source_dir=str(path.parent),
+        raw_sha256=hashlib.sha256(text.encode("utf-8")).hexdigest(),
+        raw_length=len(text),
+        format="frontmatter",
+        metadata=metadata,
+        body_md=body_md,
+        sections=sections,
+        unknown_meta=unknown_meta,
+        warnings=warnings,
+    )
+
+
 def parse_spec_file(path: str) -> str:
     """Deterministically parse a Markdown project spec.
 
-    Returns JSON string: {source_dir, raw_length, fields, provenance, warnings, spec_sha256}.
+    Detects the canonical ``project-spec.md`` format via a ``---`` frontmatter
+    block containing ``schema_version`` and returns JSON adding ``format``,
+    ``fields`` (typed metadata dump), ``body_md``, ``sections``, and
+    ``body_sha256``. Legacy bullet specs (no canonical front-matter) keep the
+    established ``fields``/``provenance`` contract unchanged (transitional).
+
     On error, returns an error string (not JSON).
     """
     p = Path(path).expanduser().resolve()
@@ -195,6 +239,44 @@ def parse_spec_file(path: str) -> str:
             "Split the spec or raise SPEC_MAX_CHARS in the environment."
         )
 
+    try:
+        fm_str, _body = strip_frontmatter(md_text)
+        front_meta = parse_frontmatter(fm_str)
+    except FrontmatterError as exc:
+        return f"Error: {exc}"
+
+    if detect_canonical(front_meta):
+        try:
+            spec = _build_canonical_spec(p, md_text, front_meta)
+        except ValidationError as exc:
+            return f"Error: invalid project-spec front-matter metadata:\n{exc}"
+        except SectionError as exc:
+            return f"Error: {exc}"
+        body_md = spec.body_md
+        unknown_keys = {k for k, _ in spec.unknown_meta}
+        fields = {
+            k: v
+            for k, v in spec.metadata.model_dump(exclude_unset=True).items()
+            if k not in unknown_keys
+        }
+        return json.dumps(
+            {
+                "source_dir": spec.source_dir,
+                "spec_path": spec.source_path,
+                "raw_length": spec.raw_length,
+                "format": spec.format,
+                "fields": fields,
+                "provenance": {},
+                "warnings": spec.warnings,
+                "spec_sha256": spec.raw_sha256,
+                "body_md": body_md,
+                "sections": [s.model_dump() for s in spec.sections],
+                "body_sha256": hashlib.sha256(body_md.encode("utf-8")).hexdigest(),
+            },
+            indent=2,
+        )
+
+    # Legacy bullet adapter — transitional only; removed in Phase 7.
     fields, provenance = parse_spec_text(md_text)
     warnings = _enforce_absolute_image_paths(fields)
 
@@ -203,10 +285,14 @@ def parse_spec_file(path: str) -> str:
             "source_dir": str(p.parent),
             "spec_path": str(p),
             "raw_length": len(md_text),
+            "format": "legacy",
             "fields": fields,
             "provenance": provenance,
             "warnings": warnings,
             "spec_sha256": hashlib.sha256(md_text.encode("utf-8")).hexdigest(),
+            "body_md": "",
+            "sections": [],
+            "body_sha256": None,
         },
         indent=2,
     )
@@ -533,6 +619,10 @@ def create_project_from_spec(spec_path: str) -> str:
         "source_dir": parsed_json["source_dir"],
         "uncertain_fields": uncertain,
         "provenance": parsed_json["provenance"],
+        "format": parsed_json.get("format", "legacy"),
+        "body_md": parsed_json.get("body_md", ""),
+        "sections": parsed_json.get("sections", []),
+        "body_sha256": parsed_json.get("body_sha256"),
         "staged_at": datetime.now(timezone.utc).isoformat(),
     })
 
@@ -541,6 +631,7 @@ def create_project_from_spec(spec_path: str) -> str:
             "status": "pending_confirmation",
             "message": "Proposed project payload staged. Reply `yes` to create, "
             "or describe what to change.",
+            "format": parsed_json.get("format", "legacy"),
             "payload": payload,
             "uncertain_fields": uncertain,
             "provenance": parsed_json["provenance"],
