@@ -16,7 +16,6 @@ def test_harness_runs(fixture_path: Path, read_fixture):
         "empty-body.md",
         "unknown-section.md",
         "rich-body.md",
-        "legacy-bullets.spec.md",
         "metadata-carrying.md",
     }
     present = {p.name for p in fixture_path.glob("*") if p.is_file()}

@@ -124,11 +124,6 @@ def delete_project(slug: str) -> BridgeResult:
     return _run_bridge("delete-project.ts", [slug])
 
 
-def publish_docs(slug: str, docs_dir: str) -> BridgeResult:
-    """Serialize Markdown docs into Portable Text on ``project.content``."""
-    return _run_bridge("publish-docs.ts", [slug, docs_dir])
-
-
 def publish_project_spec(
     mode: str,
     spec_path: str,

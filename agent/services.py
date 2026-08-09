@@ -88,7 +88,7 @@ class ProjectService:
 
 
 class PublishingService:
-    """Publish/unpublish projects and publish narrative documentation."""
+    """Publish/unpublish projects and publish complete project specs."""
 
     def publish_project(self, slug: str) -> str:
         """Set a project as visible on the public portfolio site."""
@@ -102,13 +102,6 @@ class PublishingService:
         r = bridges.unpublish_project(slug)
         if not r.success:
             return f"Error unpublishing project:\n{r.stderr.strip()}"
-        return r.stdout.strip()
-
-    def publish_docs(self, slug: str, docs_dir: str) -> str:
-        """Serialize Markdown docs into Portable Text on ``project.content``."""
-        r = bridges.publish_docs(slug, docs_dir)
-        if not r.success:
-            return f"Error publishing docs:\n{r.stderr.strip() or r.stdout.strip()}"
         return r.stdout.strip()
 
     def publish_project_spec(self, spec_path: str, mode: str = "create") -> str:

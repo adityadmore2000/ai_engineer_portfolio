@@ -169,61 +169,25 @@ def test_unknown_frontmatter_key_collected_as_warning(fixture_path: Path, tmp_pa
     assert "titel" not in parsed["fields"]
 
 
-# ── Legacy adapter (transitional) ────────────────────────────────
+# ── Legacy bullet specs are no longer supported ──────────────────
 
 
-def test_legacy_bullet_fields_and_provenance_regression(fixture_path: Path):
-    """The legacy adapter must keep producing the exact old fields/provenance."""
-    parsed = json.loads(spec_pipeline.parse_spec_file(str(fixture_path / "legacy-bullets.spec.md")))
-    assert parsed["format"] == "legacy"
-    assert parsed["fields"] == {
-        "title": "Video Captioning Agent",
-        "slug": "video-captioning-agent",
-        "shortSummary": "A hackathon project that watches videos and produces captions.",
-        "technologies": ["Python", "OpenCV", "Docker"],
-        "keyMetrics": ["27 commits covering every major pipeline stage"],
-        "githubUrl": "https://github.com/theule-home/video-captioning",
-        "featured": "true",
-        "displayOrder": "0",
-    }
-    assert parsed["provenance"] == {
-        "title": 1,
-        "slug": 2,
-        "shortSummary": 3,
-        "technologies": 5,
-        "keyMetrics": 9,
-        "githubUrl": 11,
-        "featured": 13,
-        "displayOrder": 14,
-    }
-    assert parsed["body_md"] == ""
-    assert parsed["sections"] == []
-
-
-def test_legacy_bullet_stages_payload_with_legacy_format(mock_schema, fixture_path: Path):
-    result = spec_pipeline.create_project_from_spec(str(fixture_path / "legacy-bullets.spec.md"))
-    parsed = json.loads(result)
-    assert parsed["format"] == "legacy"
-    pending = spec_pipeline._pending_create.get()
-    assert pending["format"] == "legacy"
-    assert pending["body_md"] == ""
-    assert pending["body_sha256"] is None
-    payload = pending["payload"]
-    assert payload["title"] == "Video Captioning Agent"
-    assert payload["slug"] == "video-captioning-agent"
-    assert payload["technologies"] == ["Python", "OpenCV", "Docker"]
-    assert payload["featured"] is True
-    assert payload["displayOrder"] == 0
-    assert payload["published"] is True
-
-
-def test_missing_frontmatter_routes_to_legacy_adapter(fixture_path: Path):
-    parsed = json.loads(
-        spec_pipeline.parse_spec_file(str(fixture_path / "missing-frontmatter.md"))
+def test_legacy_bullet_spec_is_rejected(fixture_path: Path):
+    """Legacy bullet grammar (no schema_version frontmatter) fails loudly."""
+    result = spec_pipeline.parse_spec_file(
+        str(fixture_path / "missing-frontmatter.md")
     )
-    assert parsed["format"] == "legacy"
-    assert parsed["fields"]["title"] == "Legacy bullet title"
-    assert parsed["fields"]["slug"] == "legacy-bullet-slug"
+    assert isinstance(result, str) and result.startswith("Error")
+    assert "no longer supported" in result
+    assert "project-spec.md" in result
+
+
+def test_legacy_bullet_spec_create_stages_nothing(fixture_path: Path):
+    result = spec_pipeline.create_project_from_spec(
+        str(fixture_path / "missing-frontmatter.md")
+    )
+    assert isinstance(result, str) and result.startswith("Error")
+    assert not spec_pipeline._pending_create.is_pending
 
 
 # ── LLM repair boundary ──────────────────────────────────────────

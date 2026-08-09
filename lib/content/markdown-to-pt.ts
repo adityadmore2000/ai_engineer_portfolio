@@ -51,8 +51,8 @@ export type SerializeOptions = {
   heading?: string;
   /**
    * Resolves a `![alt](path)` reference into the value stored under
-   * `documentationImage.image`. The publish-docs bridge supplies this to upload
-   * the file; tests supply a placeholder.
+   * `documentationImage.image`. The publish-project-spec bridge supplies this
+   * to upload the file; tests supply a placeholder.
    */
   resolveImage?: (path: string, alt: string) => unknown;
   /** Hard input cap in characters. Default 60000. */

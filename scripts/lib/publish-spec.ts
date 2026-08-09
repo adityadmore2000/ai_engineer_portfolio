@@ -68,7 +68,7 @@ export async function publishSpec(
   }
 
   // Serializer errors abort before any write (the `--check`-style dry-run
-  // guarantee, parity with `publish-docs.ts`).
+  // guarantee).
   if (errors.length) {
     return { mode: input.mode, contentBlocks: 0, contentPatched: false, errors };
   }

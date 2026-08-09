@@ -3,7 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createClient } from "@sanity/client";
 import { apiVersion, dataset, projectId } from "../sanity/env";
-import { stripFrontMatter } from "../lib/content/discover-docs";
+import { stripFrontMatter } from "../lib/content/frontmatter";
 import {
   createProject,
   readProject,

@@ -59,20 +59,10 @@ IMAGE_ALT_PSEUDO_FIELDS = {
 
 # ── Spec parsing ─────────────────────────────────────────
 #
-# Bullet grammar: `- **field**: inline` or `- **field**:\n  <indented block>`.
-
-_BULLET_RE = re.compile(r"^-\s+\*\*([^*]+)\*\*:\s?(.*)$")
-_SUBBULLET_RE = re.compile(r"^\s+-\s+(.*)$")
-_ABSENT_PREFIXES = ("not set", "not live", "not available", "not applicable")
-
-
-def _is_absent(value: str) -> bool:
-    """Detect spec markers that mean 'this field is intentionally not set'."""
-    return value.strip().lower().startswith(_ABSENT_PREFIXES) or value.strip().lower() in {
-        "none",
-        "n/a",
-        "",
-    }
+# Canonical format only: YAML frontmatter (machine metadata) + free-form
+# Markdown body (narrative). The legacy `- **field**: value` bullet grammar was
+# removed in Phase 7 — the canonical `project-spec.md` format is the only
+# supported authoring surface.
 
 
 def _strip_quotes(value: str) -> str:
@@ -82,88 +72,6 @@ def _strip_quotes(value: str) -> str:
     if len(v) >= 2 and v[0] == "`" and v[-1] == "`":
         return v[1:-1]
     return v
-
-
-def parse_spec_text(md_text: str) -> tuple[dict[str, Any], dict[str, int]]:
-    """Parse the rigid `- **field**: value` Markdown grammar used by spec files.
-
-    Returns (fields, provenance) where provenance maps field name -> 1-indexed
-    line number of the bullet that defined it.
-    """
-    lines = md_text.splitlines()
-    fields: dict[str, Any] = {}
-    provenance: dict[str, int] = {}
-
-    i = 0
-    n = len(lines)
-    while i < n:
-        line = lines[i]
-        m = _BULLET_RE.match(line)
-        if not m:
-            i += 1
-            continue
-
-        field_name = m.group(1).strip()
-        inline = m.group(2).strip()
-        bullet_line = i + 1  # 1-indexed
-
-        # Collect the indented block that follows (until a non-indented,
-        # non-blank line). Blank lines terminate the block — matching the
-        # single-paragraph convention used in the reference spec.
-        block_lines: list[str] = []
-        j = i + 1
-        while j < n:
-            nxt = lines[j]
-            if nxt.strip() == "":
-                break
-            if re.match(r"^\s+\S", nxt):
-                block_lines.append(nxt)
-                j += 1
-                continue
-            break
-
-        if inline and _is_absent(inline):
-            i = j
-            continue
-
-        if block_lines and all(not _SUBBULLET_RE.match(b) for b in block_lines):
-            # Prose: dedent each line and join with newlines.
-            prose = "\n".join(re.sub(r"^\s+", "", b).rstrip() for b in block_lines).strip()
-            if _is_absent(prose):
-                i = j
-                continue
-            fields[field_name] = prose
-            provenance[field_name] = bullet_line
-            i = j
-            continue
-
-        if block_lines and _SUBBULLET_RE.match(block_lines[0] or ""):
-            # Array of sub-bullets.
-            items: list[str] = []
-            for b in block_lines:
-                sm = _SUBBULLET_RE.match(b)
-                if sm:
-                    items.append(_strip_quotes(sm.group(1)))
-                elif b.strip():
-                    items.append(_strip_quotes(b.strip()))
-            if not items:
-                i = j
-                continue
-            fields[field_name] = items
-            provenance[field_name] = bullet_line
-            i = j
-            continue
-
-        # Inline scalar.
-        scalar = _strip_quotes(inline)
-        if _is_absent(scalar):
-            i = j
-            continue
-        fields[field_name] = scalar
-        provenance[field_name] = bullet_line
-        i = j
-
-    return fields, provenance
 
 
 _IMAGE_FIELD_NAMES = {"coverImage", "screenshots"}
@@ -216,15 +124,16 @@ def _build_canonical_spec(path: Path, text: str, front_meta: dict[str, Any]) -> 
 
 
 def parse_spec_file(path: str) -> str:
-    """Deterministically parse a Markdown project spec.
+    """Deterministically parse a canonical ``project-spec.md``.
 
-    Detects the canonical ``project-spec.md`` format via a ``---`` frontmatter
-    block containing ``schema_version`` and returns JSON adding ``format``,
-    ``fields`` (typed metadata dump), ``body_md``, ``sections``, and
-    ``body_sha256``. Legacy bullet specs (no canonical front-matter) keep the
-    established ``fields``/``provenance`` contract unchanged (transitional).
+    The canonical format is the only supported spec surface: a ``---``
+    frontmatter block carrying ``schema_version`` (machine metadata) plus a
+    free-form Markdown body (narrative). Returns JSON with ``format``, ``fields``
+    (typed metadata dump), ``body_md``, ``sections``, and ``body_sha256``.
 
-    On error, returns an error string (not JSON).
+    Files without canonical frontmatter (e.g. legacy bullet specs) are rejected
+    with a deterministic, instructive error. On error, returns an error string
+    (not JSON).
     """
     p = Path(path).expanduser().resolve()
     if not p.exists():
@@ -245,54 +154,40 @@ def parse_spec_file(path: str) -> str:
     except FrontmatterError as exc:
         return f"Error: {exc}"
 
-    if detect_canonical(front_meta):
-        try:
-            spec = _build_canonical_spec(p, md_text, front_meta)
-        except ValidationError as exc:
-            return f"Error: invalid project-spec front-matter metadata:\n{exc}"
-        except SectionError as exc:
-            return f"Error: {exc}"
-        body_md = spec.body_md
-        unknown_keys = {k for k, _ in spec.unknown_meta}
-        fields = {
-            k: v
-            for k, v in spec.metadata.model_dump(exclude_unset=True).items()
-            if k not in unknown_keys
-        }
-        return json.dumps(
-            {
-                "source_dir": spec.source_dir,
-                "spec_path": spec.source_path,
-                "raw_length": spec.raw_length,
-                "format": spec.format,
-                "fields": fields,
-                "provenance": {},
-                "warnings": spec.warnings,
-                "spec_sha256": spec.raw_sha256,
-                "body_md": body_md,
-                "sections": [s.model_dump() for s in spec.sections],
-                "body_sha256": hashlib.sha256(body_md.encode("utf-8")).hexdigest(),
-            },
-            indent=2,
+    if not detect_canonical(front_meta):
+        return (
+            "Error: legacy bullet specs are no longer supported; migrate to the "
+            "canonical `project-spec.md` format (YAML frontmatter with "
+            "`schema_version: 1` + `type: project`, then a Markdown body). "
+            "See docs/spec-format.md."
         )
 
-    # Legacy bullet adapter — transitional only; removed in Phase 7.
-    fields, provenance = parse_spec_text(md_text)
-    warnings = _enforce_absolute_image_paths(fields)
-
+    try:
+        spec = _build_canonical_spec(p, md_text, front_meta)
+    except ValidationError as exc:
+        return f"Error: invalid project-spec front-matter metadata:\n{exc}"
+    except SectionError as exc:
+        return f"Error: {exc}"
+    body_md = spec.body_md
+    unknown_keys = {k for k, _ in spec.unknown_meta}
+    fields = {
+        k: v
+        for k, v in spec.metadata.model_dump(exclude_unset=True).items()
+        if k not in unknown_keys
+    }
     return json.dumps(
         {
-            "source_dir": str(p.parent),
-            "spec_path": str(p),
-            "raw_length": len(md_text),
-            "format": "legacy",
+            "source_dir": spec.source_dir,
+            "spec_path": spec.source_path,
+            "raw_length": spec.raw_length,
+            "format": spec.format,
             "fields": fields,
-            "provenance": provenance,
-            "warnings": warnings,
-            "spec_sha256": hashlib.sha256(md_text.encode("utf-8")).hexdigest(),
-            "body_md": "",
-            "sections": [],
-            "body_sha256": None,
+            "provenance": {},
+            "warnings": spec.warnings,
+            "spec_sha256": spec.raw_sha256,
+            "body_md": body_md,
+            "sections": [s.model_dump() for s in spec.sections],
+            "body_sha256": hashlib.sha256(body_md.encode("utf-8")).hexdigest(),
         },
         indent=2,
     )
@@ -342,7 +237,7 @@ def _writable_field_types(schema: dict[str, Any]) -> dict[str, str]:
             "published",
             "detailedContent",
             # `content` is derived narrative storage — written exclusively by the
-            # publish_docs bridge, never via the metadata path. Excluded so the
+            # spec serializer bridge, never via the metadata path. Excluded so the
             # generic setGenericFields path can never clobber it (Risk R7).
             "content",
         ):
@@ -594,9 +489,9 @@ def _assemble_spec_payload(
     slug = parsed_fields.get("slug")
     slug_clean = _strip_quotes(str(slug)).strip() if slug is not None else None
     if not title:
-        return {}, [], "Error: spec is missing `- **title**: <value>` (required)."
+        return {}, [], "Error: spec is missing `title:` in the front-matter (required)."
     if not slug_clean:
-        return {}, [], r"Error: spec is missing `- **slug**: `<value>`` (required)."
+        return {}, [], "Error: spec is missing `slug:` in the front-matter (required)."
     if len(slug_clean) > 96 or not re.fullmatch(r"[a-z0-9](?:[a-z0-9-]*[a-z0-9])?", slug_clean):
         return {}, [], (
             f"Error: slug {slug_clean!r} must be lowercase, URL-safe, "
@@ -642,7 +537,7 @@ def create_project_from_spec(spec_path: str) -> str:
         "source_dir": parsed_json["source_dir"],
         "uncertain_fields": uncertain,
         "provenance": parsed_json["provenance"],
-        "format": parsed_json.get("format", "legacy"),
+        "format": "frontmatter",
         "body_md": parsed_json.get("body_md", ""),
         "sections": parsed_json.get("sections", []),
         "body_sha256": parsed_json.get("body_sha256"),
@@ -654,7 +549,7 @@ def create_project_from_spec(spec_path: str) -> str:
             "status": "pending_confirmation",
             "message": "Proposed project payload staged. Reply `yes` to create, "
             "or describe what to change.",
-            "format": parsed_json.get("format", "legacy"),
+            "format": "frontmatter",
             "payload": payload,
             "uncertain_fields": uncertain,
             "provenance": parsed_json["provenance"],
@@ -740,8 +635,8 @@ def confirm_pending_create(create_project_fn) -> str:
     # Canonical staged specs with a non-empty body also publish the narrative:
     # the metadata writer just created the project, so the bridge patches
     # project.content (REPLACE, stable keys) in the SAME confirmation turn.
-    # The empty-body rule keeps legacy and body-less canonical records on the
-    # exact legacy behavior (metadata only, no content call).
+    # The empty-body rule keeps body-less records on the metadata-only
+    # behavior (no content call).
     content_result = ""
     if pending.get("format") == "frontmatter" and pending.get("body_md"):
         tmp_path = bridges.write_json_tempfile(payload)
@@ -770,7 +665,7 @@ def confirm_pending_create(create_project_fn) -> str:
         "spec_sha256": pending.get("spec_sha256"),
         "schema_version_hash": pending.get("schema_version_hash"),
         "source_dir": pending.get("source_dir"),
-        "format": pending.get("format", "legacy"),
+        "format": pending.get("format", "frontmatter"),
         "mapped_payload": payload,
         "section_ids": [s["id"] for s in pending.get("sections", [])],
         "body_sha256": pending.get("body_sha256"),

@@ -113,30 +113,6 @@ def test_confirm_canonical_publishes_content_and_audits(
     assert record["body_sha256"]
 
 
-def test_confirm_legacy_skips_content_publish(monkeypatch, mock_schema, fixture_path):
-    spec_pipeline.create_project_from_spec(str(fixture_path / "legacy-bullets.spec.md"))
-
-    bridge_calls: list = []
-
-    def fake_bridge(*args, **kwargs):
-        bridge_calls.append((args, kwargs))
-        return bridges.BridgeResult(success=True, stdout="unexpected", stderr="")
-
-    monkeypatch.setattr(spec_pipeline.bridges, "publish_project_spec", fake_bridge)
-    fake_create, create_calls = make_fake_create()
-
-    out = spec_pipeline.confirm_pending_create(fake_create)
-
-    assert create_calls, "the metadata create must still run for legacy specs"
-    assert bridge_calls == [], "legacy records never touch the content bridge"
-    assert "Content:" not in out
-
-    record = read_audit(out)
-    assert record["format"] == "legacy"
-    assert record["section_ids"] == []
-    assert record["body_sha256"] is None
-
-
 def test_confirm_canonical_empty_body_skips_content_publish(
     monkeypatch, mock_schema, fixture_path
 ):

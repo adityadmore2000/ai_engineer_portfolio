@@ -24,7 +24,7 @@ title: Demo
 Body text.
 """
 
-# Exact port of `lib/content/discover-docs.ts:50` FRONT_MATTER_RE for parity.
+# Exact port of `lib/content/frontmatter.ts` FRONT_MATTER_RE for parity.
 TS_FRONT_MATTER_RE = re.compile(r"^---\r?\n([\s\S]*?)\r?\n---\r?\n?")
 
 

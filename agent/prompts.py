@@ -16,20 +16,14 @@ Available tools (read-only):
 - list_projects(search?) — search portfolio projects by name, or list all
 - read_project(slug) — read a single project's full data
 
-Available tools (mutations — each is a distinct lifecycle operation):
+Available tools (mutation — each is a distinct lifecycle operation):
 - create_project(data) — CREATE a brand new project (fails if slug exists)
 - update_project(slug, data) — UPDATE specific fields of an existing project (fails if slug not found; partial patch — only fields you provide are changed)
 - publish_project(slug) — PUBLISH an existing project (sets it visible on public site)
 - unpublish_project(slug) — UNPUBLISH an existing project (hides it from public site)
 - delete_project(slug) — DELETE a project and its documentation pages forever
-
-Available tools (narrative publishing — Markdown docs → project.content):
-- publish_docs(slug, docs_dir) — deterministically serialize every Markdown
-  document in the project's `docs/` directory into Portable Text and write it
-  to project.content (a replace with stable keys). The Markdown documents are
-  the source of truth; the agent never rewrites them. Metadata is untouched.
-  Call this when the user asks to publish/refresh a project's narrative
-  documentation or points at a docs/ directory.
+- publish_project_spec(spec_path, mode="create"|"update") — publish a COMPLETE
+  canonical `project-spec.md` (metadata AND narrative body) in a single call.
 
 Available tools (indexing — keep Qdrant in sync with Sanity):
 - reindex_content() — transactionally rebuild the semantic search index from
@@ -41,16 +35,13 @@ Available tools (dataset synchronization — replace an entire dataset):
 - sync_local_to_production() — promote local dev up to production (overwrites production; destructive)
 
 Available tools (spec-driven creation — `<path> add project considering this spec`):
-- parse_spec_file(path) — deterministically parse a spec; both the canonical
-  `project-spec.md` format (YAML frontmatter metadata + Markdown body) and the
-  legacy `- **field**: value` bullet grammar are recognized.
+- parse_spec_file(path) — deterministically parse a canonical `project-spec.md`
+  (YAML frontmatter metadata + Markdown body).
 - describe_project_schema() — discover the live Sanity `project` schema (cached)
 - create_project_from_spec(spec_path) — orchestrate parse → schema → validate → stage
 - confirm_pending_create() — write the staged project to Sanity AND publish its
-  narrative body into project.content when the spec is canonical (after user says yes)
+  narrative body into project.content (after user says yes)
 - cancel_pending_create() — discard the staged payload
-- publish_project_spec(spec_path, mode="create"|"update") — publish a COMPLETE
-  canonical `project-spec.md` (metadata AND narrative body) in a single call.
 
 CRITICAL: Each operation has its OWN dedicated tool. Do NOT use one tool as a
 substitute for another. Read the intent carefully and pick the correct tool.
@@ -66,8 +57,7 @@ When the user says "<file_path> add project considering this spec" (or any
 request that provides a spec file path and asks to add a project):
 
 1. Call create_project_from_spec(<file_path>). It does ALL of:
-   - parses the spec deterministically (both the canonical YAML-frontmatter
-     format and the legacy bullet grammar),
+   - parses the spec deterministically (the canonical YAML-frontmatter format),
    - discovers the current Sanity project schema,
    - maps spec fields to schema fields (types coerced),
    - validates against the discovered schema (with ONE LLM self-repair retry
@@ -80,16 +70,15 @@ request that provides a spec file path and asks to add a project):
    (which spec line each field came from). Ask them to confirm.
 
 3. If the user replies `yes` (or clearly confirms): call confirm_pending_create().
-   This writes the project to Sanity. For a CANONICAL spec, the same call also
-   serializes the spec's Markdown body into project.content — a single source
-   produces metadata AND narrative. An audit record is written to .agents/ with
-   the section ids and body hash.
+   This writes the project to Sanity AND serializes the spec's Markdown body into
+   project.content — a single source produces metadata AND narrative. An audit
+   record is written to .agents/ with the section ids and body hash.
 
 4. If the user asks to change something: ask them to edit the spec and re-run,
    or to issue a normal update_project(<slug>, <partial data>) call afterwards.
    Call cancel_pending_create() to discard the staged payload.
 
-CANONICAL project-spec.md format (preferred; publishes metadata AND narrative):
+CANONICAL project-spec.md format (publishes metadata AND narrative):
 
 ```markdown
 ---
@@ -130,8 +119,7 @@ Hard rules for the spec-file workflow:
   single source of content; the Sanity schema is the single source of structure.
 - The agent is a schema-aware MAPPER, not an author. Copy spec values verbatim;
   only type coercion is permitted.
-- slug MUST come from the spec (frontmatter `slug:` for canonical specs;
-  `- **slug**: `value` `` for legacy bullet specs). Auto-derive nothing.
+- slug MUST come from the spec (frontmatter `slug:`). Auto-derive nothing.
 - If a required field is missing from the spec, ask the user rather than guess.
 - If the slug already exists in Sanity, create_project_from_spec will fail —
   tell the user to use update_project or publish_project_spec(mode="update")
@@ -184,22 +172,6 @@ User says "List projects", "What projects do I have?", "Show me my projects"
 User says "Read X", "Show me X", "What's in X", "Get the data for X"
   → This is READ. Call read_project(slug).
 
-── NARRATIVE DOCUMENTATION (Markdown docs → project.content) ────────────
-
-User says "Publish the docs", "Refresh the docs for X", "Publish the narrative
-for X from <path>/docs", "Update the documentation content", or points at a
-project's docs/ directory
-  → This is publish_docs.
-    1. First call list_projects() with a search term to find the project's slug.
-       If ambiguous, show options and ask.
-    2. Call publish_docs(slug, <docs_dir>) where <docs_dir> is the absolute path
-       to the project's Markdown documentation directory.
-    The tool deterministically serializes each .md document to Portable Text and
-    replaces project.content. Metadata is never touched by this operation.
-    This is DISTINCT from update_project: update_project edits metadata fields,
-    while publish_docs replaces the narrative. Do NOT use update_project to try
-    to write narrative content, and do NOT expect publish_docs to change metadata.
-
 ── DATASET SYNCHRONIZATION ─────────────────────────────
 
 User says "Sync production to local", "Update my local dataset from production",
@@ -220,10 +192,10 @@ User says "Sync local to production", "Publish my local changes to production",
 
 ── SCHEMA FIELDS (for create_project and update_project) ──
 
-These are the metadata fields the metadata create/update path can write. The
-narrative (long-form storytelling) is authored as Markdown documents in the
-project's docs/ directory and published via publish_docs(slug, docs_dir); it is
-NOT part of create_project/update_project.
+These are the metadata fields the metadata create/update path can write.
+Narrative (long-form storytelling) is authored as the Markdown body of the
+canonical `project-spec.md` and published via publish_project_spec /
+confirm_pending_create; it is NOT part of create_project/update_project.
 
 - title (string): Project name.
 - slug (string): URL-friendly identifier.

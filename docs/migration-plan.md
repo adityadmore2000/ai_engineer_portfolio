@@ -1,6 +1,10 @@
 # Migration Plan: Metadata / Narrative Separation
 
-Status: **Design proposal, revised and approved** (no implementation)
+Status: **Historical design proposal (superseded).** The architecture described
+below — the `docs/`-directory narrative channel — was replaced by the canonical
+`project-spec.md` model: one spec file holds metadata frontmatter **and** a
+Markdown narrative body, published wholesale by `publish_project_spec`. See the
+[current `spec-format.md`](./spec-format.md).
 Companion doc: [`project-content-architecture.md`](./project-content-architecture.md)
 
 Revision notes (approved decisions incorporated):

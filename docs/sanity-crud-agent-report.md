@@ -156,7 +156,10 @@ sync_local_to_production()
 ### 4.5 Deterministic Spec Pipeline (in agent orchestrator)
 - **Responsibility**: Parse Markdown spec → deterministic map → validate → stage → confirm.
 - **Artifacts**:
-  - `parse_spec_file(path)`: Deterministic Markdown bullet parser. Rejects non-`.md`, oversized specs (>30K chars), relative image paths. Returns `{fields, provenance, source_dir, warnings, spec_sha256}`.
+  - `parse_spec_file(path)`: Deterministic canonical Markdown spec parser (YAML
+    frontmatter metadata + Markdown body). Rejects non-`.md`, oversized specs
+    (>30K chars), relative image paths, and legacy bullet grammar. Returns
+    `{format, fields, body_md, sections, body_sha256, warnings}`.
   - `create_project_from_spec(spec_path)`: Orchestrator. Parse → schema → map → validate. LLM self-repair retry (exactly 1) if validation fails. Stages `PENDING_CREATE`.
   - `confirm_pending_create()`: Writes staged project + `.agents/spec-<slug>-<timestamp>.json` audit record.
   - `cancel_pending_create()`: Discards staged payload.

@@ -85,11 +85,12 @@ The publishing agent only *triggers* indexing via the `reindex_content` tool
 | `lib/project-docs-source.ts` | fumadocs tree builder for doc page navigation |
 | `.env.example` | All required env vars documented |
 
-## Project Schema (metadata + docs narrative)
+## Project Schema (canonical `project-spec.md`)
 
 Projects separate **structured metadata** (Sanity fields) from **narrative**
-(Markdown authored in the repo, rendered from `project.content`). Markdown docs
-in the repository are the source of truth; Portable Text on `content` is a
+(Markdown authored in the repo, rendered from `project.content`). The canonical
+authoring source is a single file per project — `projects/<slug>/project-spec.md`
+(YAML frontmatter metadata + a Markdown body). Portable Text on `content` is a
 derived, overwritten-on-publish representation. The renderer and retrieval read
 `content` only — there are no legacy flat narrative fields.
 
@@ -111,25 +112,27 @@ project appears on the public site. The agent's `publish_project` and
 
 ### Narrative `content`
 
-The narrative lives as Markdown under `projects/<slug>/docs/*.md` (each file an
-engineering document, ordered via `order` front-matter). The Publishing Agent
-publishes it to `project.content` (Portable Text) through `publish_docs` — a
-deterministic serializer that never mutates metadata.
+The narrative (frontmatter `schema_version: 1` + `type: project`, then a free-form
+Markdown body) lives in `projects/<slug>/project-spec.md`. The Publishing Agent
+publishes it to `project.content` (Portable Text) through `publish_project_spec`
+(in `create`/`update` mode) — a deterministic serializer that never mutates
+metadata and replaces `content` only.
 
-Storytelling sections for the docs (order is illustrative; any heading renders):
+Storytelling sections are `##` headings in the body (order is authoring position;
+any heading renders):
 
-| Section (docs file) | Purpose | Anchor |
+| Section | Purpose | Anchor |
 |-----|---------|--------|
-| `overview.md` | Why I built it / problem / solution | `#why-i-built-it`, `#the-problem`, `#the-solution` |
-| `architecture.md` | system diagram | `#system-architecture` |
-| `engineering-decisions.md` | design decisions + rationale | `#engineering-decisions` |
-| `challenges.md` | `**Problem:**/`**Solution:**/`**Outcome:**` cards | `#interesting-challenges` |
-| `results.md` | measurable outcomes | `#results` |
-| `future-improvements.md` | what's next | `#future-improvements` |
+| `## Why I built it {#why-i-built-it}` | why / problem / solution | explicit `{#id}` |
+| `## System architecture {#system-architecture}` | system diagram | explicit `{#id}` |
+| `## Engineering decisions {#engineering-decisions}` | design decisions + rationale | explicit `{#id}` |
+| `## Interesting challenges {#interesting-challenges}` | `**Problem:**`/`**Solution:**`/`**Outcome:**` cards | explicit `{#id}` |
+| `## Results {#results}` | measurable outcomes | explicit `{#id}` |
+| `## Future improvements {#future-improvements}` | what's next | explicit `{#id}` |
 
 Sections beyond these render automatically — the serializer is schema-free.
-Anchor/heading ids come from the shared `generateHeadingId()` so chat citations
-and deep links agree.
+Anchor/heading ids come from an explicit `{#id}` marker or the shared
+`generateHeadingId()` fallback, so chat citations and deep links agree.
 
 ### Status values
 
@@ -184,40 +187,51 @@ a **schema-aware mapper, never an author**: it copies spec content verbatim into
 matching Sanity fields, coerces types, flags uncertainty, and asks for
 confirmation before writing. It does not rewrite, summarize, or invent content.
 
-**Spec format** — every project field is a labeled bullet:
+**Spec format** — canonical `project-spec.md`: YAML frontmatter keys are *exactly*
+the Sanity schema field names, followed by a free-form Markdown body (headed
+sections become the narrative):
 
 ```markdown
-### Project Fields
-
-- **title**: Video Captioning Agent
-- **slug**: `video-captioning-agent`
-- **shortSummary**:
-  A hackathon project that watches…
-- **technologies**:
+---
+schema_version: 1
+type: project
+slug: video-captioning-agent
+title: Video Captioning Agent
+shortSummary: A hackathon project that watches…
+technologies:
   - Python
   - OpenCV
   - Docker
-- **keyMetrics**:
+keyMetrics:
   - "27 commits covering every major pipeline stage"
-- **githubUrl**: https://github.com/…
-- **demoUrl**: Not live yet - …
-- **featured**: `true`
-- **displayOrder**: `0`
-- **coverImage**: Not set - …
-- **screenshots**: Not set - …
+githubUrl: https://github.com/…
+featured: true
+displayOrder: 0
+---
+
+## Why I built it {#why-i-built-it}
+
+…
+
+## Results {#results}
+
+…
 ```
 
-`Not set - …` / `Not live yet - …` markers normalize to absent (never empty
-strings). Image paths MUST be absolute; relative paths are rejected.
+Frontmatter keys map 1:1 to `project` schema fields; unknown keys are surfaced
+as warnings, absent fields are omitted (never empty strings), and image paths
+MUST be absolute (relative paths are rejected).
 
-Narrative is NOT a spec field — author it as Markdown under
-`projects/<slug>/docs/*.md` and publish with `publish_docs`.
+Narrative is NOT a frontmatter field — it is the spec's Markdown body. The
+`publish_project_spec` tool publishes metadata **and** narrative from the one
+file (`docs/spec-format.md` is the canonical template).
 
 ## Workflow tools
 
 | Tool | What it does |
 |------|-------------|
-| `parse_spec_file(path)` | Deterministic Markdown bullet parser → JSON `{fields, provenance, source_dir, warnings, spec_sha256}`. Rejects non-`.md`, oversized specs (> `SPEC_MAX_CHARS`, default 30000), and relative image paths. |
+| `parse_spec_file(path)` | Deterministic canonical Markdown spec parser → JSON `{format, fields, body_md, sections, body_sha256, warnings}`. Requires frontmatter (`schema_version` + `type: project`); legacy bullet specs are rejected with a migration error. Rejects non-`.md`, oversized specs (> `SPEC_MAX_CHARS`, default 30000), and relative image paths. |
+| `publish_project_spec(spec_path, mode)` | Publishes a COMPLETE project from one canonical `project-spec.md`: frontmatter metadata via create/update + Markdown body serialized into `project.content` (a replace with stable keys). `mode` is `create` (fails if slug exists) or `update` (patches existing). |
 | `describe_project_schema()` | Discovers the live `project` schema from `sanity/schemaTypes/project.ts` (the single source of truth) by executing each validation function against a mock `Rule`. Cache is mtime-keyed and auto-refreshes when the schema changes. |
 | `create_project_from_spec(spec_path)` | Orchestrator: parse → schema → deterministic map/validate → (1 LLM self-repair retry if validation fails) → stage `PENDING_CREATE` and return proposed payload + provenance for confirmation. Does NOT write to Sanity. |
 | `confirm_pending_create()` | After the user replies `yes`: writes the staged project to Sanity (via `create_project`) and an audit record to `.agents/spec-<slug>-<timestamp>.json`. |
@@ -268,7 +282,7 @@ agent/publish_agent.py   ← Python REPL entry point (graph + REPL)
   ├── agent/bridges.py   ← TypeScript bridge subprocess execution
   └── agent/state.py     ← mutable state (schema cache, pending create)
         ↓  (shells out)
-scripts/{create-project,update-project,publish-project,unpublish-project,read-project,list-projects,delete-project,sync-dataset,describe-schema}.ts   ← thin TypeScript bridges
+scripts/{create-project,update-project,publish-project,unpublish-project,read-project,list-projects,delete-project,publish-project-spec,sync-dataset,describe-schema}.ts   ← thin TypeScript bridges
         ↓
 scripts/publish-tool.ts   ← pure side-effect layer (uploads, Sanity mutations)
 ```
@@ -284,6 +298,7 @@ scripts/publish-tool.ts   ← pure side-effect layer (uploads, Sanity mutations)
 | `scripts/read-project.ts <slug>` | Returns JSON of existing project data |
 | `scripts/list-projects.ts [search]` | Lists projects, optionally filtered by title |
 | `scripts/delete-project.ts <slug>` | Deletes project + documentation pages |
+| `scripts/publish-project-spec.ts <mode> <spec-path> <payload-json> [slug]` | Publishes a COMPLETE project from one canonical spec: metadata via create/update + Markdown body serialized into `project.content` (a replace with stable keys) |
 | `scripts/describe-schema.ts [project]` | Discovers the live `project` schema by executing each validation fn against a mock `Rule`; prints normalized JSON |  |
 | `scripts/sync-dataset.ts <prod-to-local\|local-to-prod>` | Exports source dataset, imports into destination with `--replace` |
 

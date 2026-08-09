@@ -89,7 +89,8 @@ def create_project(
             "screenshots[], screenshotAlts[]. "
             "Image paths must be relative to the markdown file's directory. "
             "Narrative (long-form storytelling) is NOT a field here — use "
-            "publish_docs(slug, docs_dir) after creating the project."
+            "publish_project_spec(spec_path) for a canonical project-spec.md "
+            "that publishes metadata AND narrative together."
         ),
     ],
 ) -> str:
@@ -109,7 +110,7 @@ def update_project(
             "METADATA ONLY: title, shortSummary, coverImage, coverImageAlt, technologies[], "
             "keyMetrics[], githubUrl, demoUrl, featured, displayOrder, "
             "screenshots[], screenshotAlts[]. "
-            "To change narrative documentation, use publish_docs(slug, docs_dir)."
+            "To publish narrative, use publish_project_spec(spec_path, mode='update')."
         ),
     ],
 ) -> str:
@@ -142,27 +143,6 @@ def delete_project(
 
 
 @tool
-def publish_docs(
-    slug: Annotated[str, "Slug of the existing project whose narrative to publish"],
-    docs_dir: Annotated[
-        str,
-        (
-            "Path to the project's Markdown documentation directory (e.g. "
-            "projects/<slug>/docs). Every .md document inside it is "
-            "deterministically serialized to Portable Text and written to "
-            "project.content as a replace (stable _key ids). Absolute image "
-            "paths resolve against this directory. Never mutates metadata."
-        ),
-    ],
-) -> str:
-    """Publish a project's `docs/` Markdown documentation into `project.content`.
-    Serialization is deterministic and schema-free; the documents are the
-    source of truth. Call this whenever the user points at a docs directory or
-    asks to publish/refresh a project's narrative documentation."""
-    return publishing_svc.publish_docs(slug, docs_dir)
-
-
-@tool
 def publish_project_spec(
     spec_path: Annotated[
         str,
@@ -177,8 +157,8 @@ def publish_project_spec(
     call: the frontmatter metadata is written via create/update AND the Markdown
     body is serialized into project.content (a replace with stable keys, so
     re-runs are idempotent). The spec body becomes the published narrative —
-    this REPLACES the separate create_project + publish_docs flow for canonical
-    specs. Use mode='update' when the slug already exists in Sanity."""
+    the single source for both metadata and narrative. Use mode='update' when
+    the slug already exists in Sanity."""
     return publishing_svc.publish_project_spec(spec_path, mode)
 
 
@@ -225,13 +205,15 @@ def sync_local_to_production() -> str:
 def parse_spec_file(
     path: Annotated[str, "Absolute or relative path to the Markdown spec file (.md)"],
 ) -> str:
-    """Deterministically parse a Markdown project spec produced in the rigid
-    `- **field**: value` grammar. Rejects non-Markdown files and oversized
-    specs. Returns JSON: {source_dir, raw_length, fields, provenance, warnings}.
+    """Deterministically parse a canonical Markdown project spec
+    (`project-spec.md`: YAML frontmatter metadata + Markdown body). Rejects
+    non-Markdown files, oversized specs, and legacy bullet grammar specs, which
+    are no longer supported (migrate to project-spec.md). Returns JSON:
+    {format, fields, body_md, sections, body_sha256, warnings}.
 
     The parser is field-name agnostic: it does not know the Sanity schema. Type
-    coercion happens later against the discovered schema. Absent fields
-    ('Not set - ...' / 'Not live yet - ...') are omitted, never empty strings.
+    coercion happens later against the discovered schema. Absent fields are
+    omitted, never empty strings.
     """
     return spec_pipeline.parse_spec_file(path)
 
@@ -286,8 +268,6 @@ tools = [
     publish_project,
     unpublish_project,
     delete_project,
-    # Narrative publishing (Markdown docs → project.content)
-    publish_docs,
     # Canonical project-spec publishing (metadata + content in one call)
     publish_project_spec,
     # Indexing trigger (transactional rebuild; no indexing logic lives here)

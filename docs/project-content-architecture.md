@@ -1,6 +1,10 @@
 # Project Content Architecture: Separating Metadata from Engineering Narrative
 
-Status: **Design proposal, revised and approved** (no implementation)
+Status: **Historical design analysis (superseded).** This document analyzed a
+`docs/`-directory narrative channel. The implemented final architecture instead
+uses one canonical spec file per project — `projects/<slug>/project-spec.md`
+(YAML frontmatter metadata + a Markdown narrative body), published wholesale by
+`publish_project_spec`. See the [current `spec-format.md`](./spec-format.md).
 Companion doc: [`migration-plan.md`](./migration-plan.md)
 
 Revision notes (approved decisions incorporated):

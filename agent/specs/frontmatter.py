@@ -7,7 +7,7 @@ import yaml
 
 """Frontmatter strip / parse / canonical detection.
 
-The delimiter regex is a parity copy of `lib/content/discover-docs.ts:50`
+The delimiter regex is a parity copy of `lib/content/frontmatter.ts`
 (`FRONT_MATTER_RE`), the single existing authority for frontmatter stripping.
 """
 
@@ -22,9 +22,9 @@ def strip_frontmatter(text: str) -> tuple[Optional[str], str]:
     """Split `text` into (frontmatter_str | None, body_md).
 
     Only a `---` block anchored at position 0 is recognized. The body is the
-    slice after the delimiter, stripped like `discover-docs.ts` (`raw =
-    text.slice(match[0].length).trim()`). When no delimiter is present the body
-    is the whole input (verbatim).
+    slice after the delimiter, stripped like `lib/content/frontmatter.ts`
+    (`raw = text.slice(match[0].length).trim()`). When no delimiter is present
+    the body is the whole input (verbatim).
     """
     match = FRONT_MATTER_RE.match(text)
     if not match:
@@ -54,7 +54,7 @@ def parse_frontmatter(yaml_str: Optional[str]) -> dict[str, Any]:
 def detect_canonical(meta: Optional[dict[str, Any]]) -> bool:
     """True when the metadata marks the canonical format.
 
-    Canonical = `schema_version` present (a file without frontmatter, or with
-    frontmatter lacking it, is routed to the legacy bullet adapter).
+    Canonical = `schema_version` present. Files without it (including legacy
+    bullet specs) are rejected by `parse_spec_file`.
     """
     return isinstance(meta, dict) and meta.get("schema_version") is not None

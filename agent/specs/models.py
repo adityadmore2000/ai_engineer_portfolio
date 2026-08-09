@@ -79,7 +79,7 @@ class ProjectSpec(BaseModel):
     source_dir: str
     raw_sha256: str
     raw_length: int
-    format: Literal["frontmatter", "legacy"]
+    format: Literal["frontmatter"]
     metadata: ProjectMetadata
     body_md: str = ""                        # full body; `{#id}` markers intact
     sections: list[MarkdownSection] = Field(default_factory=list)
