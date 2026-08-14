@@ -71,3 +71,9 @@ export type AdminRoute =
   | { view: 'project_edit'; projectId: string }
   | { view: 'experience' }
   | { view: 'preview'; projectId: string; isLivePublic?: boolean };
+
+export interface MaintenanceState {
+  enabled: boolean;
+  message: string;
+  criticalLock: boolean;
+}

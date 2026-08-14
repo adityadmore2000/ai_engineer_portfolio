@@ -15,6 +15,7 @@ import {
   AdminRoute,
   PublicationState,
   ProjectStatus,
+  MaintenanceState,
 } from './types';
 import { INITIAL_PROJECTS } from './mock-data/projects';
 import { INITIAL_EXPERIENCES } from './mock-data/experiences';
@@ -30,6 +31,7 @@ interface ToastInfo {
 interface PortfolioContextType {
   projects: Project[];
   experiences: Experience[];
+  maintenance: MaintenanceState;
   currentRoute: AdminRoute;
   activeProject: Project | null;
   toast: ToastInfo | null;
@@ -38,6 +40,8 @@ interface PortfolioContextType {
   sortBy: 'updated' | 'order' | 'title';
   hasUnsavedChanges: boolean;
   isCreateModalOpen: boolean;
+
+  updateMaintenance: (updates: Partial<MaintenanceState>) => void;
 
   navigateTo: (route: AdminRoute) => void;
   openCreateModal: () => void;
@@ -76,6 +80,13 @@ const PortfolioContext = createContext<PortfolioContextType | undefined>(undefin
 
 const STORAGE_KEY_PROJECTS = 'portfolio_cms_projects_v2';
 const STORAGE_KEY_EXPERIENCES = 'portfolio_cms_experiences_v1';
+const STORAGE_KEY_MAINTENANCE = 'portfolio_maintenance_v1';
+
+const DEFAULT_MAINTENANCE: MaintenanceState = {
+  enabled: false,
+  message: 'Website update in progress — some features may be temporarily unavailable.',
+  criticalLock: false,
+};
 
 function routeToPath(route: AdminRoute): string {
   switch (route.view) {
@@ -124,6 +135,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // SSR-safe: initialize with defaults, hydrate from localStorage on mount
   const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
   const [experiences, setExperiences] = useState<Experience[]>(INITIAL_EXPERIENCES);
+  const [maintenance, setMaintenance] = useState<MaintenanceState>(DEFAULT_MAINTENANCE);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [toast, setToast] = useState<ToastInfo | null>(null);
@@ -188,6 +200,30 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, [experiences]);
 
+  // Hydrate maintenance from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY_MAINTENANCE);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (typeof parsed === 'object' && parsed !== null) {
+          setMaintenance({ ...DEFAULT_MAINTENANCE, ...parsed });
+        }
+      }
+    } catch {
+      // Keep DEFAULT_MAINTENANCE
+    }
+  }, []);
+
+  // Persist maintenance to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_MAINTENANCE, JSON.stringify(maintenance));
+    } catch (e) {
+      console.error('Failed to persist maintenance state', e);
+    }
+  }, [maintenance]);
+
   // Synchronize activeProject when navigating to project_edit or preview
   useEffect(() => {
     if (currentRoute.view === 'project_edit') {
@@ -204,6 +240,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRoute, projects]);
+
+  const updateMaintenance = useCallback((updates: Partial<MaintenanceState>) => {
+    setMaintenance((prev) => ({ ...prev, ...updates }));
+  }, []);
 
   const showToast = useCallback(
     (type: ToastInfo['type'], title: string, subtitle?: string) => {
@@ -519,6 +559,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       value={{
         projects,
         experiences,
+        maintenance,
         currentRoute,
         activeProject,
         toast,
@@ -527,6 +568,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sortBy,
         hasUnsavedChanges,
         isCreateModalOpen,
+        updateMaintenance,
         navigateTo,
         openCreateModal,
         closeCreateModal,

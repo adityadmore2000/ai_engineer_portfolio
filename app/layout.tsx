@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { RootProvider } from "fumadocs-ui/provider/next";
-import { SiteNotice } from "@/components/SiteNotice";
+import { MaintenanceBanner } from "@/components/MaintenanceBanner";
+import { CriticalSiteLock } from "@/components/CriticalSiteLock";
 import { ChatProvider, FloatingButton, SlideOutPanel } from "@/components/Chat";
 import { GoogleAnalytics } from "@/components/Analytics";
 import { Analytics } from "@vercel/analytics/react";
@@ -44,10 +45,11 @@ export default function RootLayout({
       <body>
         <RootProvider search={{ enabled: false }} theme={{ enabled: false }}>
           <ChatProvider>
-            <SiteNotice />
+            <MaintenanceBanner />
             {children}
             <FloatingButton />
             <SlideOutPanel />
+            <CriticalSiteLock />
           </ChatProvider>
         </RootProvider>
         <Analytics />

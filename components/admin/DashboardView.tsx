@@ -16,9 +16,11 @@ import {
   Activity,
   Calendar,
   Briefcase,
+  Wrench,
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
 import { formatDateRelative } from '@/lib/admin/utils/slugify';
+import { MaintenanceCard } from './MaintenanceCard';
 
 export const DashboardView: React.FC = () => {
   const { projects, experiences, navigateTo, openCreateModal } = usePortfolio();
@@ -281,6 +283,17 @@ export const DashboardView: React.FC = () => {
             );
           })}
         </div>
+      </div>
+
+      {/* Maintenance Section */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Wrench className="w-4 h-4 text-slate-500" />
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-mono">
+            Site Maintenance
+          </h2>
+        </div>
+        <MaintenanceCard />
       </div>
     </div>
   );
