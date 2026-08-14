@@ -25,10 +25,6 @@ import { formatDateRelative } from '@/lib/admin/utils/slugify';
 import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
 import { ArchiveConfirmModal } from '@/components/admin/ArchiveConfirmModal';
 
-interface ProjectsListViewProps {
-  onOpenNewProject: () => void;
-}
-
 const STATUS_OPTIONS = [
   'ALL',
   'Active',
@@ -38,7 +34,7 @@ const STATUS_OPTIONS = [
   'Archived',
 ];
 
-export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenNewProject }) => {
+export const ProjectsListView: React.FC = () => {
   const {
     projects,
     navigateTo,
@@ -51,6 +47,7 @@ export const ProjectsListView: React.FC<ProjectsListViewProps> = ({ onOpenNewPro
     archiveProject,
     unarchiveProject,
     deleteProject,
+    openCreateModal: onOpenNewProject,
   } = usePortfolio();
 
   // Modals state

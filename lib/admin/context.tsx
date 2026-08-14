@@ -37,8 +37,11 @@ interface PortfolioContextType {
   statusFilter: string;
   sortBy: 'updated' | 'order' | 'title';
   hasUnsavedChanges: boolean;
+  isCreateModalOpen: boolean;
 
   navigateTo: (route: AdminRoute) => void;
+  openCreateModal: () => void;
+  closeCreateModal: () => void;
   setSearchQuery: (q: string) => void;
   setStatusFilter: (status: string) => void;
   setSortBy: (sort: 'updated' | 'order' | 'title') => void;
@@ -127,6 +130,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState<'updated' | 'order' | 'title'>('updated');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Derive currentRoute from URL (memoized so effect deps are stable)
   const currentRoute = useMemo(
@@ -222,6 +226,9 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     },
     [router]
   );
+
+  const openCreateModal = useCallback(() => setIsCreateModalOpen(true), []);
+  const closeCreateModal = useCallback(() => setIsCreateModalOpen(false), []);
 
   const getProjectById = useCallback(
     (id: string) => projects.find((p) => p.id === id),
@@ -519,7 +526,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         statusFilter,
         sortBy,
         hasUnsavedChanges,
+        isCreateModalOpen,
         navigateTo,
+        openCreateModal,
+        closeCreateModal,
         setSearchQuery,
         setStatusFilter,
         setSortBy,

@@ -20,12 +20,9 @@ import {
 import { usePortfolio } from '@/lib/admin/context';
 import { formatDateRelative } from '@/lib/admin/utils/slugify';
 
-interface DashboardViewProps {
-  onOpenNewProject: () => void;
-}
-
-export const DashboardView: React.FC<DashboardViewProps> = ({ onOpenNewProject }) => {
-  const { projects, experiences, navigateTo } = usePortfolio();
+export const DashboardView: React.FC = () => {
+  const { projects, experiences, navigateTo, openCreateModal } = usePortfolio();
+  const onOpenNewProject = openCreateModal;
 
   const total = projects.length;
   const published = projects.filter((p) => p.publicationState !== 'draft').length;
