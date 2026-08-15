@@ -93,6 +93,7 @@ const DEFAULT_MAINTENANCE: MaintenanceState = {
 function mapAdminProjectToProject(ap: AdminProject): Project {
   return {
     _id: ap._id,
+    _rev: ap._rev,
     title: ap.title,
     slug: ap.slug,
     shortSummary: ap.shortSummary,
@@ -334,6 +335,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
 
     try {
       const saved = await serverSaveProjectDraft(activeProject._id, {
+        _rev: activeProject._rev,
         title: activeProject.title,
         shortSummary: activeProject.shortSummary,
         coverImage: activeProject.coverImage?._ref
@@ -356,8 +358,21 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       setHasUnsavedChanges(false);
       showToast('info', 'Draft saved', 'Your changes are stored in Sanity.');
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to save draft';
-      showToast('error', 'Save failed', msg);
+      const isStale =
+        e instanceof Error &&
+        (e.message.includes('ifRevisionId') ||
+          e.message.includes('revision') ||
+          (e as { statusCode?: number }).statusCode === 409);
+      if (isStale) {
+        showToast(
+          'warning',
+          'Save conflict detected',
+          'This project was modified elsewhere. Use Discard to reload the latest version.'
+        );
+      } else {
+        const msg = e instanceof Error ? e.message : 'Failed to save draft';
+        showToast('error', 'Save failed', msg);
+      }
     }
   }, [activeProject, showToast]);
 

@@ -35,11 +35,32 @@ export const ProjectEditorView: React.FC = () => {
     publishProject,
     discardUnsavedChanges,
     hasUnsavedChanges,
+    isLoading,
     showToast,
   } = usePortfolio();
 
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+
+  if (isLoading && !activeProject) {
+    return (
+      <div className="p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8 animate-in fade-in duration-200">
+        <div className="h-12 w-64 rounded-xl bg-slate-100 animate-pulse" />
+        <div className="rounded-2xl border border-slate-200 bg-white p-6 space-y-4">
+          <div className="h-5 w-40 rounded-lg bg-slate-100 animate-pulse" />
+          <div className="h-10 rounded-xl bg-slate-100 animate-pulse" />
+          <div className="h-20 rounded-xl bg-slate-100 animate-pulse" />
+          <div className="h-10 rounded-xl bg-slate-100 animate-pulse" />
+          <div className="h-40 rounded-xl bg-slate-100 animate-pulse" />
+        </div>
+        <div className="space-y-3">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-32 rounded-2xl bg-slate-100 animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (!activeProject) {
     return (

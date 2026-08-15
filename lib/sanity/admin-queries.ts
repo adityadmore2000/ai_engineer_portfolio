@@ -1,6 +1,7 @@
 export const adminProjectsQuery = `
   *[_type == "project"] | order(displayOrder asc, title asc) {
     _id,
+    _rev,
     title,
     "slug": slug.current,
     shortSummary,
@@ -15,6 +16,7 @@ export const adminProjectsQuery = `
 export const adminProjectByIdQuery = `
   *[_type == "project" && _id == $id][0] {
     _id,
+    _rev,
     title,
     "slug": slug.current,
     shortSummary,

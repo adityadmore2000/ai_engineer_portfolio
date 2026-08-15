@@ -10,6 +10,7 @@ import {
 
 export type AdminProject = {
   _id: string;
+  _rev?: string;
   title: string;
   slug: string;
   shortSummary: string;
@@ -29,6 +30,7 @@ export type AdminProject = {
 };
 
 export type SaveProjectData = {
+  _rev?: string;
   title: string;
   shortSummary: string;
   coverImage?: {
@@ -90,7 +92,12 @@ export async function saveProjectDraft(
     patch["coverImage.alt"] = data.coverImage.alt;
   }
 
-  await writeClient.patch(id).set(patch).commit();
+  const patchBuilder = writeClient.patch(id);
+  if (data._rev) {
+    await patchBuilder.ifRevisionId(data._rev).set(patch).commit();
+  } else {
+    await patchBuilder.set(patch).commit();
+  }
 
   const updated = await getAdminProject(id);
   if (!updated) {

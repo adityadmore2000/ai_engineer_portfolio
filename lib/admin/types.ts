@@ -12,6 +12,7 @@ export interface ProjectImage {
 
 export interface Project {
   _id: string;
+  _rev?: string;
   title: string;
   slug: string;
   shortSummary: string;

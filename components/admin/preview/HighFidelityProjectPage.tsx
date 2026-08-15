@@ -29,12 +29,37 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
     navigateTo,
     publishProject,
     showToast,
+    isLoading,
   } = usePortfolio();
 
   const [deviceFrame, setDeviceFrame] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
 
   const project = getProjectById(projectId) || projects[0];
+
+  if (isLoading && !project) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
+        <div className="w-full max-w-4xl bg-white rounded-3xl border border-slate-200 shadow-sm p-10 space-y-8 animate-in fade-in duration-200">
+          <div className="h-10 w-2/3 rounded-xl bg-slate-100 animate-pulse" />
+          <div className="h-6 w-full rounded-lg bg-slate-100 animate-pulse" />
+          <div className="flex gap-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-7 w-20 rounded-lg bg-slate-100 animate-pulse" />
+            ))}
+          </div>
+          <div className="space-y-6 pt-6 border-t border-slate-100">
+            {[1, 2].map((i) => (
+              <div key={i} className="space-y-3">
+                <div className="h-8 w-48 rounded-lg bg-slate-100 animate-pulse" />
+                <div className="h-24 rounded-xl bg-slate-100 animate-pulse" />
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!project) {
     return (
