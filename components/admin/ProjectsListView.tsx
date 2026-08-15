@@ -11,6 +11,8 @@ import {
   Trash2,
   MoreHorizontal,
   Layers,
+  Globe,
+  EyeOff,
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
 import { Project } from '@/lib/admin/types';
@@ -29,6 +31,8 @@ export const ProjectsListView: React.FC = () => {
     sortBy,
     setSortBy,
     deleteProject,
+    publishProject,
+    unpublishProject,
     openCreateModal: onOpenNewProject,
     isLoading,
   } = usePortfolio();
@@ -316,7 +320,7 @@ export const ProjectsListView: React.FC = () => {
                   {activeMenuId === project._id && (
                     <div
                       onMouseLeave={() => setActiveMenuId(null)}
-                      className="absolute right-0 top-full mt-1 w-44 rounded-xl border border-slate-200 bg-white shadow-xl p-1.5 z-30 animate-in fade-in zoom-in-95 duration-100"
+                      className="absolute right-0 top-full mt-1 w-48 rounded-xl border border-slate-200 bg-white shadow-xl p-1.5 z-30 animate-in fade-in zoom-in-95 duration-100"
                     >
                       <button
                         onClick={() => {
@@ -329,8 +333,34 @@ export const ProjectsListView: React.FC = () => {
                         className="w-full text-left px-2.5 py-1.5 text-xs text-slate-700 hover:bg-slate-100 hover:text-slate-900 rounded-md transition-colors flex items-center gap-2 font-medium"
                       >
                         <Eye className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Preview Draft</span>
+                        <span>Preview</span>
                       </button>
+
+                      <div className="my-1 border-t border-slate-100" />
+
+                      {project.published ? (
+                        <button
+                          onClick={() => {
+                            setActiveMenuId(null);
+                            unpublishProject(project._id);
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 text-xs text-amber-700 hover:bg-amber-50 rounded-md transition-colors flex items-center gap-2 font-medium"
+                        >
+                          <EyeOff className="w-3.5 h-3.5" />
+                          <span>Unpublish</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setActiveMenuId(null);
+                            publishProject(project._id);
+                          }}
+                          className="w-full text-left px-2.5 py-1.5 text-xs text-emerald-700 hover:bg-emerald-50 rounded-md transition-colors flex items-center gap-2 font-medium"
+                        >
+                          <Globe className="w-3.5 h-3.5" />
+                          <span>Publish</span>
+                        </button>
+                      )}
 
                       <div className="my-1 border-t border-slate-100" />
 
