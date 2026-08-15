@@ -1,5 +1,6 @@
 import 'server-only';
 import { cookies } from 'next/headers';
+import { redirect } from 'next/navigation';
 import { adminAuth } from '@/lib/firebase/admin';
 
 export async function requireAdmin(): Promise<void> {
@@ -7,17 +8,17 @@ export async function requireAdmin(): Promise<void> {
   const sessionCookie = cookieStore.get('__session')?.value;
 
   if (!sessionCookie) {
-    throw new Error('Unauthorized');
+    redirect('/admin/login');
   }
 
   let decodedClaims;
   try {
     decodedClaims = await adminAuth.verifySessionCookie(sessionCookie, true);
   } catch {
-    throw new Error('Unauthorized');
+    redirect('/admin/login');
   }
 
   if (!decodedClaims.admin) {
-    throw new Error('Forbidden');
+    redirect('/admin/login');
   }
 }

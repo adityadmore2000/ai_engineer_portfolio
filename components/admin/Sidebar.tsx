@@ -1,7 +1,9 @@
 'use client';
 
-import React from 'react';
-import { usePathname } from 'next/navigation';
+import React, { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { signOut } from 'firebase/auth';
+import { auth } from '@/lib/firebase/client';
 import {
   LayoutDashboard,
   FolderGit2,
@@ -25,6 +27,21 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ onOpenNewProject }) => {
   const { navigateTo, projects, experiences, showToast } = usePortfolio();
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await fetch('/admin/api/auth/logout', { method: 'POST' });
+      await signOut(auth);
+    } catch {
+      showToast('error', 'Logout failed', 'Please try again.');
+      setIsLoggingOut(false);
+      return;
+    }
+    router.push('/admin/login');
+  };
 
   const isDashboard = pathname === '/admin';
   const isProjects = pathname.startsWith('/admin/projects');
@@ -218,8 +235,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenNewProject }) => {
             </button>
             <button
               type="button"
-              onClick={() => showToast('info', 'Auth Mock', 'You are currently authenticated as the admin in prototype mode.')}
-              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Logout"
             >
               <LogOut className="w-3.5 h-3.5" />
