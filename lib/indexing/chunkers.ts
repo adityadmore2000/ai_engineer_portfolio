@@ -12,31 +12,30 @@ export function chunkProject(project: SanityProject, baseUrl: string): Document[
   const slug = project.slug || "";
   const projectUrl = slug ? `${baseUrl}/projects/${slug}` : baseUrl;
 
-  const sections: { name: string; content: string }[] = [
-    { name: "Short Summary", content: project.shortSummary || "" },
-    { name: "Why I Built It", content: project.whyIBuiltIt || "" },
-    { name: "The Problem", content: project.theProblem || "" },
-    { name: "The Solution", content: project.theSolution || "" },
-    { name: "Engineering Decisions", content: project.engineeringDecisions || "" },
-    { name: "Results", content: project.results || "" },
-    { name: "What This Demonstrates", content: project.whatThisDemonstrates || "" },
-    { name: "Example Inputs / Outputs", content: project.exampleInputsOutputs || "" },
-    { name: "Lessons Learned", content: project.lessonsLearned || "" },
-    { name: "Limitations", content: project.limitations || "" },
-    { name: "Future Improvements", content: project.futureImprovements || "" },
-    { name: "Timeline", content: project.timeline || "" },
-  ];
-
-  for (const section of sections) {
-    if (!section.content) continue;
+  if (project.shortSummary) {
     docs.push(
       new Document({
-        pageContent: section.content,
+        pageContent: project.shortSummary,
         metadata: {
           projectTitle: project.title,
           slug,
-          section: section.name,
-          url: `${projectUrl}#${section.name.toLowerCase().replace(/\s+/g, "-")}`,
+          section: "Short Summary",
+          url: projectUrl,
+        },
+      })
+    );
+  }
+
+  for (const section of project.sections || []) {
+    if (!section.description) continue;
+    docs.push(
+      new Document({
+        pageContent: section.description,
+        metadata: {
+          projectTitle: project.title,
+          slug,
+          section: section.title,
+          url: `${projectUrl}#${section.title.toLowerCase().replace(/\s+/g, "-")}`,
         },
       })
     );
@@ -51,20 +50,6 @@ export function chunkProject(project: SanityProject, baseUrl: string): Document[
           slug,
           section: "Technologies",
           url: `${projectUrl}#technologies`,
-        },
-      })
-    );
-  }
-
-  if (project.keyMetrics?.length) {
-    docs.push(
-      new Document({
-        pageContent: `Key metrics for ${project.title}: ${project.keyMetrics.join(", ")}`,
-        metadata: {
-          projectTitle: project.title,
-          slug,
-          section: "Key Metrics",
-          url: `${projectUrl}#key-metrics`,
         },
       })
     );

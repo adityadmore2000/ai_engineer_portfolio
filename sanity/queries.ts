@@ -78,19 +78,8 @@ const projectSummaryFields = `
   shortSummary,
   coverImage{${imageFields}},
   technologies,
-  keyMetrics,
-  githubUrl,
-  demoUrl,
-  featured,
   displayOrder,
-  published,
-  status
-`;
-
-export const featuredProjectsQuery = groq`
-  *[_type == "project" && featured == true && published == true] | order(coalesce(displayOrder, 999) asc, title asc) {
-    ${projectSummaryFields}
-  }
+  published
 `;
 
 export const allProjectsQuery = groq`
@@ -101,36 +90,15 @@ export const allProjectsQuery = groq`
 
 export const projectBySlugQuery = groq`
   *[_type == "project" && slug.current == $slug && published == true][0] {
-    ${projectSummaryFields},
-    whyIBuiltIt,
-    theProblem,
-    theSolution,
-    architectureImage{${imageFields}},
-    engineeringDecisions,
-    interestingChallenges[]{
-      problem,
-      solution,
-      outcome
-    },
-    results,
-    whatThisDemonstrates,
-    screenshots[]{${imageFields}},
-    demoVideo,
-    beforeAfterComparisons[]{
-      beforeImage{${imageFields}},
-      afterImage{${imageFields}},
-      caption
-    },
-    exampleInputsOutputs,
-    lessonsLearned,
-    limitations,
-    futureImprovements,
-    timeline,
-    faq[]{
-      question,
-      answer
-    },
-    detailedContent
+    _id,
+    title,
+    "slug": slug.current,
+    shortSummary,
+    coverImage{${imageFields}},
+    technologies,
+    displayOrder,
+    published,
+    sections[]{ _key, title, description }
   }
 `;
 
@@ -242,12 +210,6 @@ export async function getSiteSettings(fetcher: SanityFetcher = sanityFetch) {
 export async function getExperiences(fetcher: SanityFetcher = sanityFetch) {
   return (
     (await fetcher<ExperienceItem[]>({ query: experiencesQuery })) || []
-  );
-}
-
-export async function getFeaturedProjects(fetcher: SanityFetcher = sanityFetch) {
-  return (
-    (await fetcher<ProjectSummary[]>({ query: featuredProjectsQuery })) || []
   );
 }
 

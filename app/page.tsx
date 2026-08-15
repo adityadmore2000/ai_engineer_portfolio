@@ -18,8 +18,8 @@ import {
   toProjectSummaries
 } from "@/sanity/fallbackContent";
 import {
+  getAllProjects,
   getExperiences,
-  getFeaturedProjects,
   getFeaturedTechnicalNotes,
   getSiteSettings,
   getSkillCategories
@@ -49,7 +49,7 @@ export default async function Home() {
     await Promise.all([
       getSiteSettings(),
       getExperiences(),
-      getFeaturedProjects(),
+      getAllProjects(),
       getSkillCategories(),
       getFeaturedTechnicalNotes()
     ]);

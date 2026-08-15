@@ -1,10 +1,7 @@
 import Link from "next/link";
-import { ExternalLink, Github } from "lucide-react";
 import type { ProjectSummary } from "@/sanity/types";
-import { AnalyticsEvents } from "@/lib/analytics";
 import { LightboxImage } from "./LightboxImage";
 import { Markdown } from "./Markdown";
-import { TrackLink } from "./Analytics";
 
 export function ProjectCard({ project }: { project: ProjectSummary }) {
   return (
@@ -32,12 +29,6 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
           </Markdown>
         ) : null}
 
-        {project.keyMetrics?.[0] ? (
-          <p className="mt-4 rounded-md bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-950">
-            {project.keyMetrics[0]}
-          </p>
-        ) : null}
-
         {project.technologies?.length ? (
           <div className="mt-4 flex flex-wrap gap-2">
             {project.technologies.slice(0, 6).map((technology) => (
@@ -51,7 +42,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
           </div>
         ) : null}
 
-        <div className="mt-auto flex flex-wrap items-center gap-3 pt-6">
+        <div className="mt-auto pt-6">
           {project.slug ? (
             <Link
               href={`/projects/${project.slug}`}
@@ -59,32 +50,6 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
             >
               View Details
             </Link>
-          ) : null}
-          {project.githubUrl ? (
-            <TrackLink
-              href={project.githubUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`${project.title} GitHub repository`}
-              event={AnalyticsEvents.ExternalClick}
-              metadata={{ destination: "github" }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
-            >
-              <Github aria-hidden="true" size={17} />
-            </TrackLink>
-          ) : null}
-          {project.demoUrl ? (
-            <TrackLink
-              href={project.demoUrl}
-              target="_blank"
-              rel="noreferrer"
-              aria-label={`${project.title} demo`}
-              event={AnalyticsEvents.ExternalClick}
-              metadata={{ destination: "demo" }}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-slate-300 text-slate-700 hover:bg-slate-50"
-            >
-              <ExternalLink aria-hidden="true" size={17} />
-            </TrackLink>
           ) : null}
         </div>
       </div>

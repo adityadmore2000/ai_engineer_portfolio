@@ -1,24 +1,18 @@
 import { groq } from "next-sanity";
 
+export type SanityProjectSection = {
+  _key: string;
+  title: string;
+  description: string | null;
+};
+
 export type SanityProject = {
   _id: string;
   title: string;
   slug: string | null;
   shortSummary: string | null;
-  status: string | null;
-  whyIBuiltIt: string | null;
-  theProblem: string | null;
-  theSolution: string | null;
-  engineeringDecisions: string | null;
-  results: string | null;
-  whatThisDemonstrates: string | null;
-  exampleInputsOutputs: string | null;
-  lessonsLearned: string | null;
-  limitations: string | null;
-  futureImprovements: string | null;
-  timeline: string | null;
   technologies: string[] | null;
-  keyMetrics: string[] | null;
+  sections: SanityProjectSection[] | null;
 };
 
 export type SanitySiteSettings = {
@@ -54,7 +48,7 @@ export type SanityTechnicalNote = {
   tags: string[] | null;
 };
 
-export const projectsQuery = groq`*[_type == "project" && published == true] { _id, title, "slug": slug.current, shortSummary, status, whyIBuiltIt, theProblem, theSolution, engineeringDecisions, results, whatThisDemonstrates, exampleInputsOutputs, lessonsLearned, limitations, futureImprovements, timeline, technologies, keyMetrics }`;
+export const projectsQuery = groq`*[_type == "project" && published == true] { _id, title, "slug": slug.current, shortSummary, technologies, sections[]{ _key, title, description } }`;
 
 export const siteSettingsQuery = groq`*[_type == "siteSettings"][0] { name, shortBio, aboutSummary, focusAreas, contactHeadline, contactDescription, heroDescription }`;
 
