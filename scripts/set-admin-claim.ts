@@ -2,6 +2,7 @@
  * Run once to grant admin access to a Firebase user:
  *   npx tsx scripts/set-admin-claim.ts <email-or-uid>
  */
+import './load-env.ts';
 import { initializeApp, cert } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
