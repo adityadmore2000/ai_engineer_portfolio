@@ -5,34 +5,29 @@ import {
   FolderGit2,
   CheckCircle2,
   FileEdit,
-  Archive,
   Plus,
   ArrowUpRight,
   Sparkles,
-  ExternalLink,
   Eye,
-  Clock,
   Layers,
   Activity,
-  Calendar,
   Briefcase,
   Wrench,
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
-import { formatDateRelative } from '@/lib/admin/utils/slugify';
 import { MaintenanceCard } from './MaintenanceCard';
 
 export const DashboardView: React.FC = () => {
-  const { projects, experiences, navigateTo, openCreateModal } = usePortfolio();
+  const { projects, experiences, navigateTo, openCreateModal, isLoading } = usePortfolio();
   const onOpenNewProject = openCreateModal;
 
   const total = projects.length;
-  const published = projects.filter((p) => p.publicationState !== 'draft').length;
-  const drafts = projects.filter((p) => p.publicationState === 'draft').length;
+  const published = projects.filter((p) => p.published).length;
+  const drafts = projects.filter((p) => !p.published).length;
   const experienceCount = experiences.length;
 
   const recentProjects = [...projects]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+    .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0))
     .slice(0, 6);
 
   return (
@@ -79,7 +74,9 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-slate-900 font-mono">{total}</span>
+            <span className="text-3xl font-bold text-slate-900 font-mono">
+              {isLoading ? '—' : total}
+            </span>
             <span className="text-xs text-slate-400">in catalog</span>
           </div>
         </div>
@@ -98,7 +95,9 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-emerald-600 font-mono">{published}</span>
+            <span className="text-3xl font-bold text-emerald-600 font-mono">
+              {isLoading ? '—' : published}
+            </span>
             <span className="text-xs text-slate-400">visible live</span>
           </div>
         </div>
@@ -117,7 +116,9 @@ export const DashboardView: React.FC = () => {
             </div>
           </div>
           <div className="mt-3 flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-amber-600 font-mono">{drafts}</span>
+            <span className="text-3xl font-bold text-amber-600 font-mono">
+              {isLoading ? '—' : drafts}
+            </span>
             <span className="text-xs text-slate-400">unpublished</span>
           </div>
         </div>
@@ -176,7 +177,7 @@ export const DashboardView: React.FC = () => {
           <div className="flex items-center gap-2">
             <Activity className="w-4 h-4 text-indigo-600" />
             <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-mono">
-              Recent Projects
+              Projects
             </h2>
           </div>
           <button
@@ -187,33 +188,40 @@ export const DashboardView: React.FC = () => {
           </button>
         </div>
 
-        {/* Clean compact list */}
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100 shadow-xs">
-          {recentProjects.map((project) => {
-            const isPublished = project.publicationState === 'published';
-            const isPubWithDraft = project.publicationState === 'published_with_draft_changes';
-            const isDraft = project.publicationState === 'draft';
-
-            return (
+        {isLoading ? (
+          <div className="space-y-2">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="h-16 rounded-2xl bg-slate-100 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden divide-y divide-slate-100 shadow-xs">
+            {recentProjects.map((project) => (
               <div
-                key={project.id}
+                key={project._id}
                 className="p-4 sm:px-6 hover:bg-slate-50/80 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 group"
               >
                 {/* Left info */}
                 <div className="flex items-center gap-3.5 min-w-0">
                   <div className="w-10 h-10 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                    <img
-                      src={project.coverImage?.url}
-                      alt={project.title}
-                      referrerPolicy="no-referrer"
-                      className="w-full h-full object-cover"
-                    />
+                    {project.coverImage?.url ? (
+                      <img
+                        src={project.coverImage.url}
+                        alt={project.title}
+                        referrerPolicy="no-referrer"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-400">
+                        <Layers className="w-4 h-4" />
+                      </div>
+                    )}
                   </div>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h4
                         onClick={() =>
-                          navigateTo({ view: 'project_edit', projectId: project.id })
+                          navigateTo({ view: 'project_edit', projectId: project._id })
                         }
                         className="font-bold text-sm text-slate-900 hover:text-indigo-600 cursor-pointer truncate transition-colors"
                       >
@@ -222,36 +230,19 @@ export const DashboardView: React.FC = () => {
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-slate-500 font-mono">
                       <span>/projects/{project.slug}</span>
-                      <span>•</span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3 text-slate-400" />
-                        {formatDateRelative(project.updatedAt)}
-                      </span>
                     </div>
                   </div>
                 </div>
 
                 {/* Right badges & actions */}
                 <div className="flex items-center gap-3 self-end sm:self-center">
-                  {/* Status badge */}
-                  <span className="text-[11px] font-mono px-2.5 py-1 rounded-md bg-slate-100 text-slate-700 border border-slate-200 font-medium">
-                    {project.status}
-                  </span>
-
                   {/* Publication pill */}
-                  {isPublished && (
+                  {project.published ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                       Published
                     </span>
-                  )}
-                  {isPubWithDraft && (
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
-                      Published (Draft updates)
-                    </span>
-                  )}
-                  {isDraft && (
+                  ) : (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                       Draft
@@ -262,7 +253,7 @@ export const DashboardView: React.FC = () => {
                   <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
                     <button
                       onClick={() =>
-                        navigateTo({ view: 'preview', projectId: project.id })
+                        navigateTo({ view: 'preview', projectId: project._id })
                       }
                       className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
                       title="Preview public representation"
@@ -271,7 +262,7 @@ export const DashboardView: React.FC = () => {
                     </button>
                     <button
                       onClick={() =>
-                        navigateTo({ view: 'project_edit', projectId: project.id })
+                        navigateTo({ view: 'project_edit', projectId: project._id })
                       }
                       className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-xs font-semibold text-slate-700 transition-colors"
                     >
@@ -280,9 +271,9 @@ export const DashboardView: React.FC = () => {
                   </div>
                 </div>
               </div>
-            );
-          })}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Maintenance Section */}

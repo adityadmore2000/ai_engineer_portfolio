@@ -66,7 +66,7 @@ export const ArchiveConfirmModal: React.FC<ArchiveConfirmModalProps> = ({
           <button
             type="button"
             onClick={() => {
-              onConfirm(project.id);
+              onConfirm(project._id);
               onClose();
             }}
             className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-xs font-semibold text-white transition-all shadow-xs flex items-center gap-1.5 cursor-pointer"

@@ -9,17 +9,19 @@ import React, {
   useCallback,
 } from 'react';
 import { useRouter, usePathname, useParams } from 'next/navigation';
-import {
-  Project,
-  Experience,
-  AdminRoute,
-  PublicationState,
-  ProjectStatus,
-  MaintenanceState,
-} from './types';
-import { INITIAL_PROJECTS } from './mock-data/projects';
+import { Project, Experience, AdminRoute, MaintenanceState } from './types';
 import { INITIAL_EXPERIENCES } from './mock-data/experiences';
 import { slugify } from './utils/slugify';
+import {
+  getAdminProjects,
+  getAdminProject,
+  saveProjectDraft as serverSaveProjectDraft,
+  createProject as serverCreateProject,
+  publishProject as serverPublishProject,
+  unpublishProject as serverUnpublishProject,
+  deleteProject as serverDeleteProject,
+  type AdminProject,
+} from '@/app/admin/actions/projects';
 
 interface ToastInfo {
   id: string;
@@ -40,6 +42,8 @@ interface PortfolioContextType {
   sortBy: 'updated' | 'order' | 'title';
   hasUnsavedChanges: boolean;
   isCreateModalOpen: boolean;
+  isLoading: boolean;
+  error: string | null;
 
   updateMaintenance: (updates: Partial<MaintenanceState>) => void;
 
@@ -54,15 +58,14 @@ interface PortfolioContextType {
 
   getProjectById: (id: string) => Project | undefined;
   getProjectBySlug: (slug: string) => Project | undefined;
-  createProject: (title: string, customSlug?: string) => Project;
+  createProject: (title: string, customSlug?: string) => Promise<Project>;
   updateActiveProject: (updater: Partial<Project> | ((prev: Project) => Project)) => void;
-  saveDraft: () => void;
-  publishProject: (id?: string) => void;
-  archiveProject: (id: string) => void;
-  unarchiveProject: (id: string) => void;
-  deleteProject: (id: string) => boolean;
-  discardUnsavedChanges: () => void;
-  resetAllToMockData: () => void;
+  saveDraft: () => Promise<void>;
+  publishProject: (id?: string) => Promise<void>;
+  unpublishProject: (id: string) => Promise<void>;
+  deleteProject: (id: string) => Promise<boolean>;
+  discardUnsavedChanges: () => Promise<void>;
+  refreshProjects: () => Promise<void>;
 
   createExperience: (exp: {
     companyName: string;
@@ -78,7 +81,6 @@ interface PortfolioContextType {
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
-const STORAGE_KEY_PROJECTS = 'portfolio_cms_projects_v2';
 const STORAGE_KEY_EXPERIENCES = 'portfolio_cms_experiences_v1';
 const STORAGE_KEY_MAINTENANCE = 'portfolio_maintenance_v1';
 
@@ -88,6 +90,26 @@ const DEFAULT_MAINTENANCE: MaintenanceState = {
   criticalLock: false,
 };
 
+function mapAdminProjectToProject(ap: AdminProject): Project {
+  return {
+    _id: ap._id,
+    title: ap.title,
+    slug: ap.slug,
+    shortSummary: ap.shortSummary,
+    coverImage: ap.coverImage
+      ? { url: ap.coverImage.url, alt: ap.coverImage.alt ?? '', _ref: ap.coverImage.assetRef }
+      : undefined,
+    displayOrder: ap.displayOrder,
+    technologies: ap.technologies,
+    sections: ap.sections.map((s) => ({
+      id: s._key,
+      title: s.title,
+      description: s.description ?? '',
+    })),
+    published: ap.published,
+  };
+}
+
 function routeToPath(route: AdminRoute): string {
   switch (route.view) {
     case 'dashboard':
@@ -95,7 +117,6 @@ function routeToPath(route: AdminRoute): string {
     case 'projects':
       return '/admin/projects';
     case 'project_new':
-      // Modal triggered from projects list — stay on that page
       return '/admin/projects';
     case 'project_edit':
       return `/admin/projects/${route.projectId}/edit`;
@@ -132,8 +153,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const pathname = usePathname();
   const params = useParams() as Record<string, string | string[]>;
 
-  // SSR-safe: initialize with defaults, hydrate from localStorage on mount
-  const [projects, setProjects] = useState<Project[]>(INITIAL_PROJECTS);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>(INITIAL_EXPERIENCES);
   const [maintenance, setMaintenance] = useState<MaintenanceState>(DEFAULT_MAINTENANCE);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
@@ -141,31 +161,34 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [toast, setToast] = useState<ToastInfo | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
-  const [sortBy, setSortBy] = useState<'updated' | 'order' | 'title'>('updated');
+  const [sortBy, setSortBy] = useState<'updated' | 'order' | 'title'>('order');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Derive currentRoute from URL (memoized so effect deps are stable)
   const currentRoute = useMemo(
     () => currentRouteFromPathname(pathname, params),
-    // params is tied to pathname — depend only on pathname
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [pathname]
   );
 
-  // Hydrate projects from localStorage on mount
-  useEffect(() => {
+  const refreshProjects = useCallback(async () => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY_PROJECTS);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].sections) {
-          setProjects(parsed);
-        }
-      }
-    } catch {
-      // Keep INITIAL_PROJECTS
+      setIsLoading(true);
+      setError(null);
+      const adminProjects = await getAdminProjects();
+      setProjects(adminProjects.map(mapAdminProjectToProject));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load projects');
+    } finally {
+      setIsLoading(false);
     }
   }, []);
+
+  // Load projects from Sanity on mount
+  useEffect(() => {
+    refreshProjects();
+  }, [refreshProjects]);
 
   // Hydrate experiences from localStorage on mount
   useEffect(() => {
@@ -181,15 +204,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       // Keep INITIAL_EXPERIENCES
     }
   }, []);
-
-  // Persist projects to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_PROJECTS, JSON.stringify(projects));
-    } catch (e) {
-      console.error('Failed to persist projects', e);
-    }
-  }, [projects]);
 
   // Persist experiences to localStorage
   useEffect(() => {
@@ -227,13 +241,13 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   // Synchronize activeProject when navigating to project_edit or preview
   useEffect(() => {
     if (currentRoute.view === 'project_edit') {
-      const p = projects.find((item) => item.id === currentRoute.projectId);
+      const p = projects.find((item) => item._id === currentRoute.projectId);
       if (p) {
         setActiveProject({ ...p });
         setHasUnsavedChanges(false);
       }
     } else if (currentRoute.view === 'preview') {
-      const p = projects.find((item) => item.id === currentRoute.projectId);
+      const p = projects.find((item) => item._id === currentRoute.projectId);
       if (p && !activeProject) {
         setActiveProject({ ...p });
       }
@@ -271,7 +285,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const closeCreateModal = useCallback(() => setIsCreateModalOpen(false), []);
 
   const getProjectById = useCallback(
-    (id: string) => projects.find((p) => p.id === id),
+    (id: string) => projects.find((p) => p._id === id),
     [projects]
   );
 
@@ -281,57 +295,25 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   );
 
   const createProject = useCallback(
-    (title: string, customSlug?: string): Project => {
+    async (title: string, customSlug?: string): Promise<Project> => {
       const finalSlug =
         (customSlug && customSlug.trim()) || slugify(title) || 'untitled-project';
-      const now = new Date().toISOString();
-      const maxOrder = projects.reduce(
-        (max, p) => Math.max(max, p.displayOrder || 0),
-        0
-      );
 
-      const newProject: Project = {
-        id: `proj-${Date.now()}`,
-        title: title.trim() || 'Untitled Project',
-        slug: finalSlug,
-        shortSummary:
-          'A concise summary of the engineering challenge and what was built.',
-        status: 'In Development',
-        publicationState: 'draft',
-        displayOrder: maxOrder + 1,
-        technologies: ['TypeScript', 'React'],
-        links: {},
-        metrics: [],
-        sections: [
-          {
-            id: `sec-${Date.now()}-1`,
-            title: 'Context & Motivation',
-            description:
-              'Explain why you initiated this project, the origin story, and the core problem being solved.',
-          },
-          {
-            id: `sec-${Date.now()}-2`,
-            title: 'System Architecture',
-            description:
-              'Outline the high-level architecture, key technical components, and data flow.',
-          },
-        ],
-        coverImage: {
-          url: 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1400&q=80',
-          alt: title || 'Project Cover Image',
-        },
-        createdAt: now,
-        updatedAt: now,
-        lastDraftSavedAt: now,
-      };
-
-      setProjects((prev) => [newProject, ...prev]);
-      setActiveProject(newProject);
-      setHasUnsavedChanges(false);
-      showToast('success', 'Project created', `Slug: ${finalSlug} (Immutable)`);
-      return newProject;
+      try {
+        const created = await serverCreateProject(title, finalSlug);
+        const project = mapAdminProjectToProject(created);
+        setProjects((prev) => [project, ...prev]);
+        setActiveProject(project);
+        setHasUnsavedChanges(false);
+        showToast('success', 'Project created', `Slug: ${finalSlug} (Immutable)`);
+        return project;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to create project';
+        showToast('error', 'Create failed', msg);
+        throw e;
+      }
     },
-    [projects, showToast]
+    [showToast]
   );
 
   const updateActiveProject = useCallback(
@@ -347,146 +329,140 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     []
   );
 
-  const saveDraft = useCallback(() => {
+  const saveDraft = useCallback(async () => {
     if (!activeProject) return;
-    const now = new Date().toISOString();
 
-    let newPubState: PublicationState = activeProject.publicationState;
-    if (activeProject.publicationState === 'published') {
-      newPubState = 'published_with_draft_changes';
+    try {
+      const saved = await serverSaveProjectDraft(activeProject._id, {
+        title: activeProject.title,
+        shortSummary: activeProject.shortSummary,
+        coverImage: activeProject.coverImage?._ref
+          ? { _ref: activeProject.coverImage._ref, alt: activeProject.coverImage.alt }
+          : activeProject.coverImage?.alt !== undefined
+          ? { alt: activeProject.coverImage.alt }
+          : undefined,
+        displayOrder: activeProject.displayOrder,
+        technologies: activeProject.technologies,
+        sections: activeProject.sections.map((s) => ({
+          _key: s.id,
+          title: s.title,
+          description: s.description,
+        })),
+      });
+
+      const updated = mapAdminProjectToProject(saved);
+      setActiveProject(updated);
+      setProjects((prev) => prev.map((p) => (p._id === updated._id ? updated : p)));
+      setHasUnsavedChanges(false);
+      showToast('info', 'Draft saved', 'Your changes are stored in Sanity.');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to save draft';
+      showToast('error', 'Save failed', msg);
     }
-
-    const updated: Project = {
-      ...activeProject,
-      publicationState: newPubState,
-      updatedAt: now,
-      lastDraftSavedAt: now,
-      hasUnsavedChanges: false,
-    };
-
-    setActiveProject(updated);
-    setProjects((prev) => prev.map((p) => (p.id === updated.id ? updated : p)));
-    setHasUnsavedChanges(false);
-    showToast('info', 'Draft saved just now', 'Your changes are stored and available in preview.');
   }, [activeProject, showToast]);
 
   const publishProject = useCallback(
-    (targetId?: string) => {
-      const idToPublish = targetId || activeProject?.id;
+    async (targetId?: string) => {
+      const idToPublish = targetId || activeProject?._id;
       if (!idToPublish) return;
 
-      const now = new Date().toISOString();
+      try {
+        await serverPublishProject(idToPublish);
 
-      setProjects((prev) =>
-        prev.map((p) => {
-          if (p.id === idToPublish) {
-            const base =
-              activeProject?.id === idToPublish ? activeProject : p;
-            return {
-              ...base,
-              publicationState: 'published' as PublicationState,
-              publishedAt: now,
-              updatedAt: now,
-              lastDraftSavedAt: now,
-              hasUnsavedChanges: false,
-            };
-          }
-          return p;
-        })
-      );
-
-      if (activeProject?.id === idToPublish) {
-        setActiveProject((prev) =>
-          prev
-            ? {
-                ...prev,
-                publicationState: 'published',
-                publishedAt: now,
-                updatedAt: now,
-                lastDraftSavedAt: now,
-                hasUnsavedChanges: false,
-              }
-            : null
+        setProjects((prev) =>
+          prev.map((p) =>
+            p._id === idToPublish ? { ...p, published: true } : p
+          )
         );
+
+        if (activeProject?._id === idToPublish) {
+          setActiveProject((prev) =>
+            prev ? { ...prev, published: true } : null
+          );
+        }
+
+        setHasUnsavedChanges(false);
+
+        if (typeof window !== 'undefined') {
+          import('canvas-confetti')
+            .then(({ default: confetti }) => {
+              confetti({
+                particleCount: 80,
+                spread: 60,
+                origin: { y: 0.65 },
+                colors: ['#6366f1', '#10b981', '#38bdf8', '#fbbf24', '#f43f5e'],
+              });
+            })
+            .catch(() => {});
+        }
+
+        showToast('success', 'Published successfully', 'Project is now live on the public website.');
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to publish';
+        showToast('error', 'Publish failed', msg);
       }
-
-      setHasUnsavedChanges(false);
-
-      if (typeof window !== 'undefined') {
-        import('canvas-confetti')
-          .then(({ default: confetti }) => {
-            confetti({
-              particleCount: 80,
-              spread: 60,
-              origin: { y: 0.65 },
-              colors: ['#6366f1', '#10b981', '#38bdf8', '#fbbf24', '#f43f5e'],
-            });
-          })
-          .catch(() => {});
-      }
-
-      showToast('success', 'Published successfully', 'Project is now live on the public website.');
     },
     [activeProject, showToast]
   );
 
-  const archiveProject = useCallback(
-    (id: string) => {
-      const now = new Date().toISOString();
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === id ? { ...p, status: 'Archived' as ProjectStatus, updatedAt: now } : p
-        )
-      );
-      if (activeProject?.id === id) {
-        setActiveProject((prev) =>
-          prev ? { ...prev, status: 'Archived' as ProjectStatus, updatedAt: now } : null
-        );
-      }
-      showToast('info', 'Project archived', 'Moved to archived projects filter.');
-    },
-    [activeProject, showToast]
-  );
+  const unpublishProject = useCallback(
+    async (id: string) => {
+      try {
+        await serverUnpublishProject(id);
 
-  const unarchiveProject = useCallback(
-    (id: string) => {
-      const now = new Date().toISOString();
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === id ? { ...p, status: 'Active' as ProjectStatus, updatedAt: now } : p
-        )
-      );
-      if (activeProject?.id === id) {
-        setActiveProject((prev) =>
-          prev ? { ...prev, status: 'Active' as ProjectStatus, updatedAt: now } : null
+        setProjects((prev) =>
+          prev.map((p) => (p._id === id ? { ...p, published: false } : p))
         );
+
+        if (activeProject?._id === id) {
+          setActiveProject((prev) =>
+            prev ? { ...prev, published: false } : null
+          );
+        }
+
+        showToast('info', 'Project unpublished', 'Removed from public site.');
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to unpublish';
+        showToast('error', 'Unpublish failed', msg);
       }
-      showToast('success', 'Project restored', 'Status changed to Active.');
     },
     [activeProject, showToast]
   );
 
   const deleteProject = useCallback(
-    (id: string): boolean => {
-      setProjects((prev) => prev.filter((p) => p.id !== id));
-      if (activeProject?.id === id) {
-        setActiveProject(null);
+    async (id: string): Promise<boolean> => {
+      try {
+        await serverDeleteProject(id);
+        setProjects((prev) => prev.filter((p) => p._id !== id));
+        if (activeProject?._id === id) {
+          setActiveProject(null);
+        }
+        showToast('warning', 'Project deleted permanently');
+        return true;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to delete';
+        showToast('error', 'Delete failed', msg);
+        return false;
       }
-      showToast('warning', 'Project deleted permanently');
-      return true;
     },
     [activeProject, showToast]
   );
 
-  const discardUnsavedChanges = useCallback(() => {
+  const discardUnsavedChanges = useCallback(async () => {
     if (!activeProject) return;
-    const original = projects.find((p) => p.id === activeProject.id);
-    if (original) {
-      setActiveProject({ ...original });
-      setHasUnsavedChanges(false);
-      showToast('info', 'Changes discarded', 'Reverted to last saved version.');
+    try {
+      const fresh = await getAdminProject(activeProject._id);
+      if (fresh) {
+        const project = mapAdminProjectToProject(fresh);
+        setActiveProject(project);
+        setHasUnsavedChanges(false);
+        showToast('info', 'Changes discarded', 'Reverted to last saved version.');
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to reload project';
+      showToast('error', 'Discard failed', msg);
     }
-  }, [activeProject, projects, showToast]);
+  }, [activeProject, showToast]);
 
   const createExperience = useCallback(
     (expData: {
@@ -545,15 +521,6 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     setExperiences(newExperiences);
   }, []);
 
-  const resetAllToMockData = useCallback(() => {
-    setProjects(INITIAL_PROJECTS);
-    setExperiences(INITIAL_EXPERIENCES);
-    setActiveProject(null);
-    setHasUnsavedChanges(false);
-    router.push('/admin');
-    showToast('info', 'Reset all sample projects and experiences');
-  }, [router, showToast]);
-
   return (
     <PortfolioContext.Provider
       value={{
@@ -568,6 +535,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         sortBy,
         hasUnsavedChanges,
         isCreateModalOpen,
+        isLoading,
+        error,
         updateMaintenance,
         navigateTo,
         openCreateModal,
@@ -583,11 +552,10 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         updateActiveProject,
         saveDraft,
         publishProject,
-        archiveProject,
-        unarchiveProject,
+        unpublishProject,
         deleteProject,
         discardUnsavedChanges,
-        resetAllToMockData,
+        refreshProjects,
         createExperience,
         updateExperience,
         deleteExperience,

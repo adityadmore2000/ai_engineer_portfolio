@@ -4,10 +4,6 @@ import React, { useState } from 'react';
 import {
   ArrowLeft,
   Globe,
-  Github,
-  Video,
-  ExternalLink,
-  CheckCircle2,
   Monitor,
   Tablet,
   Smartphone,
@@ -56,12 +52,9 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
     );
   }
 
-  const currentIndex = projects.findIndex((p) => p.id === project.id);
+  const currentIndex = projects.findIndex((p) => p._id === project._id);
   const prevProject = currentIndex > 0 ? projects[currentIndex - 1] : null;
   const nextProject = currentIndex < projects.length - 1 ? projects[currentIndex + 1] : null;
-
-  const isDraftState = project.publicationState === 'draft';
-  const isPubWithDraft = project.publicationState === 'published_with_draft_changes';
 
   const sections = project.sections || [];
 
@@ -80,7 +73,7 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
             onClick={() =>
               navigateTo({
                 view: 'project_edit',
-                projectId: project.id,
+                projectId: project._id,
               })
             }
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 transition-colors border border-slate-200 shadow-2xs cursor-pointer"
@@ -140,20 +133,15 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
 
         {/* Right: State indicator & Publish button */}
         <div className="flex items-center gap-2">
-          {isDraftState ? (
-            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-              <span className="w-2 h-2 rounded-full bg-amber-500" />
-              Previewing Draft
-            </span>
-          ) : isPubWithDraft ? (
-            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-              Live + Draft Changes
-            </span>
-          ) : (
+          {project.published ? (
             <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               Live Public Version
+            </span>
+          ) : (
+            <span className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              Previewing Draft
             </span>
           )}
 
@@ -206,26 +194,11 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
             </div>
             <div className="flex items-center gap-4">
               <span>Order #{project.displayOrder || 1}</span>
-              <span>•</span>
-              <span>
-                {project.publishedAt
-                  ? new Date(project.publishedAt).toLocaleDateString('en-US', {
-                      month: 'long',
-                      year: 'numeric',
-                    })
-                  : 'Draft Mode'}
-              </span>
             </div>
           </nav>
 
           {/* Project Hero Section */}
           <header className="space-y-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-xs font-mono px-3 py-1 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 font-bold">
-                {project.status}
-              </span>
-            </div>
-
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-slate-900 tracking-tight leading-[1.15]">
               {project.title}
             </h1>
@@ -244,69 +217,7 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
                 </span>
               ))}
             </div>
-
-            {project.links && (project.links.demo || project.links.github || project.links.videoDemo) && (
-              <div className="flex flex-wrap items-center gap-3 pt-3">
-                {project.links?.demo && (
-                  <a
-                    href={project.links.demo}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold shadow-xs transition-all"
-                  >
-                    <Globe className="w-4 h-4" />
-                    <span>Launch Live Demo</span>
-                    <ExternalLink className="w-3.5 h-3.5 opacity-70" />
-                  </a>
-                )}
-
-                {project.links?.github && (
-                  <a
-                    href={project.links.github}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-semibold border border-slate-200 shadow-2xs transition-all"
-                  >
-                    <Github className="w-4 h-4 text-slate-700" />
-                    <span>Source Code</span>
-                  </a>
-                )}
-
-                {project.links?.videoDemo && (
-                  <a
-                    href={project.links.videoDemo}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-900 text-xs font-semibold border border-slate-200 shadow-2xs transition-all"
-                  >
-                    <Video className="w-4 h-4 text-rose-500" />
-                    <span>Video Walkthrough</span>
-                  </a>
-                )}
-              </div>
-            )}
           </header>
-
-          {/* Key Metrics Highlight Grid */}
-          {project.metrics && project.metrics.length > 0 && (
-            <div className="p-6 sm:p-7 rounded-2xl border border-slate-200 bg-slate-50/80 space-y-4">
-              <h3 className="text-xs font-mono uppercase tracking-wider text-indigo-700 font-bold flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-indigo-600" />
-                <span>Key Deliverables &amp; Metrics</span>
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {project.metrics.map((metric) => (
-                  <div
-                    key={metric.id}
-                    className="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-slate-200 text-xs font-mono text-slate-800 shadow-2xs"
-                  >
-                    <span className="text-emerald-600 font-bold">✓</span>
-                    <span className="leading-snug font-medium">{metric.text}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
           {/* Dynamic Narrative Project Sections */}
           <article className="space-y-12 pt-6 border-t border-slate-100">
@@ -344,7 +255,7 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
             {prevProject ? (
               <button
                 type="button"
-                onClick={() => navigateTo({ view: 'preview', projectId: prevProject.id })}
+                onClick={() => navigateTo({ view: 'preview', projectId: prevProject._id })}
                 className="w-full sm:w-auto p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-indigo-300 text-left transition-all shadow-2xs group cursor-pointer"
               >
                 <span className="text-[10px] text-slate-400 font-mono uppercase font-bold block">
@@ -361,7 +272,7 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
             {nextProject ? (
               <button
                 type="button"
-                onClick={() => navigateTo({ view: 'preview', projectId: nextProject.id })}
+                onClick={() => navigateTo({ view: 'preview', projectId: nextProject._id })}
                 className="w-full sm:w-auto p-4 rounded-xl border border-slate-200 bg-slate-50 hover:bg-white hover:border-indigo-300 text-right transition-all shadow-2xs group cursor-pointer"
               >
                 <span className="text-[10px] text-slate-400 font-mono uppercase font-bold block">
@@ -383,7 +294,7 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
         isOpen={isPublishModalOpen}
         project={project}
         onClose={() => setIsPublishModalOpen(false)}
-        onConfirm={() => publishProject(project.id)}
+        onConfirm={() => publishProject(project._id)}
       />
     </div>
   );

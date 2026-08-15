@@ -30,7 +30,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenNewProject }) => {
   const isProjects = pathname.startsWith('/admin/projects');
   const isExperience = pathname === '/admin/experience';
 
-  const publishedCount = projects.filter((p) => p.publicationState !== 'draft').length;
+  const publishedCount = projects.filter((p) => p.published).length;
 
   return (
     <aside
@@ -178,9 +178,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenNewProject }) => {
           id="btn-nav-view-website"
           type="button"
           onClick={() => {
-            const firstPublished = projects.find((p) => p.publicationState !== 'draft') || projects[0];
+            const firstPublished = projects.find((p) => p.published) || projects[0];
             if (firstPublished) {
-              navigateTo({ view: 'preview', projectId: firstPublished.id, isLivePublic: true });
+              navigateTo({ view: 'preview', projectId: firstPublished._id, isLivePublic: true });
             } else {
               showToast('info', 'No published projects yet', 'Publish a project to see the public view.');
             }

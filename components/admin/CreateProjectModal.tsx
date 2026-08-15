@@ -39,7 +39,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
     setSlug(slugify(e.target.value));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) {
       setError('Please provide a project title.');
@@ -51,16 +51,19 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
       return;
     }
 
-    // Check slug uniqueness
     const exists = projects.some((p) => p.slug.toLowerCase() === finalSlug.toLowerCase());
     if (exists) {
       setError('A project with this slug already exists. Please choose a unique slug.');
       return;
     }
 
-    const created = createProject(title, finalSlug);
-    onClose();
-    navigateTo({ view: 'project_edit', projectId: created.id });
+    try {
+      const created = await createProject(title, finalSlug);
+      onClose();
+      navigateTo({ view: 'project_edit', projectId: created._id });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create project');
+    }
   };
 
   if (!isOpen) return null;

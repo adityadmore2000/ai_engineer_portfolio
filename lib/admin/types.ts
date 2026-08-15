@@ -1,54 +1,25 @@
-export type ProjectStatus =
-  | 'Active'
-  | 'Completed'
-  | 'Archived'
-  | 'Proof of Concept'
-  | 'In Development';
-
-export type PublicationState =
-  | 'draft'
-  | 'published'
-  | 'published_with_draft_changes';
-
 export interface ProjectSection {
   id: string;
   title: string;
   description: string;
 }
 
-export interface MetricItem {
-  id: string;
-  text: string;
-  value?: string;
-  label?: string;
-}
-
-export interface ProjectLinks {
-  github?: string;
-  demo?: string;
-  videoDemo?: string;
+export interface ProjectImage {
+  url: string;
+  alt: string;
+  _ref?: string;
 }
 
 export interface Project {
-  id: string;
+  _id: string;
   title: string;
-  slug: string; // Immutable after creation
+  slug: string;
   shortSummary: string;
-  status: ProjectStatus;
-  publicationState: PublicationState;
+  coverImage?: ProjectImage;
   displayOrder: number;
   technologies: string[];
   sections: ProjectSection[];
-  links?: ProjectLinks;
-  metrics?: MetricItem[];
-  coverImage?: {
-    url: string;
-    alt: string;
-  };
-  createdAt: string;
-  updatedAt: string;
-  publishedAt?: string;
-  lastDraftSavedAt?: string;
+  published: boolean;
   hasUnsavedChanges?: boolean;
 }
 

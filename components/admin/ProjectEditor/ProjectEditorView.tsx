@@ -16,12 +16,11 @@ import {
   Hash,
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
-import { ProjectSection, ProjectStatus } from '@/lib/admin/types';
-import { formatDateRelative } from '@/lib/admin/utils/slugify';
+import { ProjectSection } from '@/lib/admin/types';
 import { TagInput } from '@/components/admin/common/TagInput';
 import { SectionCard } from './SectionCard';
 import { PublishConfirmModal } from './PublishConfirmModal';
-import { SECTION_TEMPLATES } from '@/lib/admin/mock-data/projects';
+import { SECTION_TEMPLATES } from '@/lib/admin/section-templates';
 
 export const ProjectEditorView: React.FC = () => {
   const {
@@ -49,10 +48,6 @@ export const ProjectEditorView: React.FC = () => {
       </div>
     );
   }
-
-  const isPublished = activeProject.publicationState === 'published';
-  const isPubWithDraft = activeProject.publicationState === 'published_with_draft_changes';
-  const isDraft = activeProject.publicationState === 'draft';
 
   const sections = activeProject.sections || [];
 
@@ -141,26 +136,12 @@ export const ProjectEditorView: React.FC = () => {
 
           {/* Publication State Pills */}
           <div className="flex items-center gap-2.5 self-start sm:self-auto">
-            {isPublished && (
+            {activeProject.published ? (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <span className="w-2 h-2 rounded-full bg-emerald-500" />
                 Published
               </span>
-            )}
-
-            {isPubWithDraft && (
-              <div className="flex flex-col items-end">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                  <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
-                  Published
-                </span>
-                <span className="text-[10px] text-amber-600 font-mono mt-0.5 font-medium">
-                  Draft changes available
-                </span>
-              </div>
-            )}
-
-            {isDraft && (
+            ) : (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">
                 <span className="w-2 h-2 rounded-full bg-amber-500" />
                 Draft
@@ -241,7 +222,7 @@ export const ProjectEditorView: React.FC = () => {
             </div>
 
             {/* Secondary Metadata */}
-            <div className="md:col-span-2 pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="md:col-span-2 pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Locked Permalink Slug */}
               <div className="space-y-1">
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600 flex items-center gap-1">
@@ -251,24 +232,6 @@ export const ProjectEditorView: React.FC = () => {
                 <div className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-mono text-indigo-700 font-semibold truncate">
                   /projects/{activeProject.slug}
                 </div>
-              </div>
-
-              {/* Development Status */}
-              <div className="space-y-1">
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-slate-600">
-                  Development Status
-                </label>
-                <select
-                  value={activeProject.status}
-                  onChange={(e) => updateActiveProject({ status: e.target.value as ProjectStatus })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs font-medium text-slate-800 focus:outline-hidden focus:border-indigo-500 font-mono cursor-pointer"
-                >
-                  <option value="Active">Active (Maintained)</option>
-                  <option value="Completed">Completed (Shipped)</option>
-                  <option value="In Development">In Development (WIP)</option>
-                  <option value="Proof of Concept">Proof of Concept</option>
-                  <option value="Archived">Archived</option>
-                </select>
               </div>
 
               {/* Display Order */}
@@ -420,12 +383,7 @@ export const ProjectEditorView: React.FC = () => {
             ) : (
               <span className="flex items-center gap-1.5 text-slate-500">
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                <span>
-                  Last saved:{' '}
-                  {activeProject.lastDraftSavedAt
-                    ? formatDateRelative(activeProject.lastDraftSavedAt)
-                    : 'Just now'}
-                </span>
+                <span>All changes saved</span>
               </span>
             )}
 
@@ -456,7 +414,7 @@ export const ProjectEditorView: React.FC = () => {
               type="button"
               onClick={() => {
                 saveDraft();
-                navigateTo({ view: 'preview', projectId: activeProject.id });
+                navigateTo({ view: 'preview', projectId: activeProject._id });
               }}
               className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs font-semibold transition-all flex items-center gap-2 border border-slate-200 shadow-2xs cursor-pointer"
               title="Open high-fidelity preview as visitors see it"
@@ -483,7 +441,7 @@ export const ProjectEditorView: React.FC = () => {
         isOpen={isPublishModalOpen}
         project={activeProject}
         onClose={() => setIsPublishModalOpen(false)}
-        onConfirm={() => publishProject(activeProject.id)}
+        onConfirm={() => publishProject(activeProject._id)}
       />
     </div>
   );

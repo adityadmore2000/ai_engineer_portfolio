@@ -19,7 +19,7 @@ export const PublishConfirmModal: React.FC<PublishConfirmModalProps> = ({
 }) => {
   if (!isOpen || !project) return null;
 
-  const isAlreadyPublished = project.publicationState === 'published_with_draft_changes';
+  const isAlreadyPublished = project.published;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-in fade-in duration-150">
@@ -35,7 +35,7 @@ export const PublishConfirmModal: React.FC<PublishConfirmModalProps> = ({
             </div>
             <div>
               <h3 className="font-bold text-base text-slate-900">
-                {isAlreadyPublished ? 'Publish Draft Updates?' : 'Publish Project?'}
+                {isAlreadyPublished ? 'Re-publish Updates?' : 'Publish Project?'}
               </h3>
               <p className="text-xs text-indigo-700 font-medium">Make live on the public portfolio website</p>
             </div>
@@ -61,10 +61,6 @@ export const PublishConfirmModal: React.FC<PublishConfirmModalProps> = ({
               <span className="font-mono text-indigo-700 font-bold">/projects/{project.slug}</span>
             </div>
             <div className="flex items-center justify-between text-slate-600">
-              <span>Status:</span>
-              <span className="font-mono text-slate-800 font-semibold">{project.status}</span>
-            </div>
-            <div className="flex items-center justify-between text-slate-600">
               <span>Technologies:</span>
               <span className="font-mono text-slate-800 font-semibold">{project.technologies.slice(0, 3).join(', ')}</span>
             </div>
@@ -73,7 +69,7 @@ export const PublishConfirmModal: React.FC<PublishConfirmModalProps> = ({
           <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-start gap-2">
             <Check className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
             <span className="leading-relaxed">
-              This will update the live public website and instantly render all narrative story sections, metrics, and media configurations.
+              This will update the live public website and instantly render all narrative story sections.
             </span>
           </div>
         </div>
