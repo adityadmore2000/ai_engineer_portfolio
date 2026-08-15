@@ -14,13 +14,17 @@ import {
   BookOpen,
   Tag,
   Hash,
+  ImageIcon,
+  RotateCcw,
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
 import { ProjectSection } from '@/lib/admin/types';
 import { TagInput } from '@/components/admin/common/TagInput';
+import { ImagePickerModal } from '@/components/admin/common/ImagePickerModal';
 import { SectionCard } from './SectionCard';
 import { PublishConfirmModal } from './PublishConfirmModal';
 import { SECTION_TEMPLATES } from '@/lib/admin/section-templates';
+import { uploadProjectImage } from '@/app/admin/actions/projects';
 
 export const ProjectEditorView: React.FC = () => {
   const {
@@ -29,11 +33,13 @@ export const ProjectEditorView: React.FC = () => {
     updateActiveProject,
     saveDraft,
     publishProject,
+    discardUnsavedChanges,
     hasUnsavedChanges,
     showToast,
   } = usePortfolio();
 
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
 
   if (!activeProject) {
     return (
@@ -221,6 +227,46 @@ export const ProjectEditorView: React.FC = () => {
               />
             </div>
 
+            {/* Cover Image */}
+            <div className="md:col-span-2 space-y-2">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <ImageIcon className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Cover Image</span> <span className="text-rose-500">*</span>
+              </label>
+              {activeProject.coverImage?.url ? (
+                <div className="relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-50">
+                  <img
+                    src={activeProject.coverImage.url}
+                    alt={activeProject.coverImage.alt || 'Cover'}
+                    className="w-full h-48 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setIsImagePickerOpen(true)}
+                      className="opacity-0 group-hover:opacity-100 px-4 py-2 rounded-xl bg-white/90 text-xs font-semibold text-slate-800 shadow-md transition-opacity cursor-pointer"
+                    >
+                      Change Image
+                    </button>
+                  </div>
+                  {activeProject.coverImage.alt && (
+                    <div className="absolute bottom-2 left-2 px-2 py-1 rounded-md bg-black/60 text-[10px] text-white/80 font-mono">
+                      alt: {activeProject.coverImage.alt}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsImagePickerOpen(true)}
+                  className="w-full h-36 border-2 border-dashed border-slate-300 hover:border-indigo-400 rounded-xl bg-slate-50 hover:bg-indigo-50/30 flex flex-col items-center justify-center gap-2 transition-colors cursor-pointer"
+                >
+                  <ImageIcon className="w-8 h-8 text-slate-400" />
+                  <span className="text-xs font-medium text-slate-500">Click to select a cover image</span>
+                </button>
+              )}
+            </div>
+
             {/* Secondary Metadata */}
             <div className="md:col-span-2 pt-2 border-t border-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Locked Permalink Slug */}
@@ -395,6 +441,18 @@ export const ProjectEditorView: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            {hasUnsavedChanges && (
+              <button
+                id="btn-editor-discard"
+                type="button"
+                onClick={discardUnsavedChanges}
+                className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+                <span>Discard</span>
+              </button>
+            )}
+
             <button
               id="btn-editor-save-draft"
               type="button"
@@ -442,6 +500,19 @@ export const ProjectEditorView: React.FC = () => {
         project={activeProject}
         onClose={() => setIsPublishModalOpen(false)}
         onConfirm={() => publishProject(activeProject._id)}
+      />
+
+      {/* Image Picker Modal */}
+      <ImagePickerModal
+        isOpen={isImagePickerOpen}
+        onClose={() => setIsImagePickerOpen(false)}
+        title="Select Cover Image"
+        onUpload={uploadProjectImage}
+        onSelect={(url, alt, assetRef) => {
+          updateActiveProject({
+            coverImage: { url, alt: alt || '', _ref: assetRef },
+          });
+        }}
       />
     </div>
   );

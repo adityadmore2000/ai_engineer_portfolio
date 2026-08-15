@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
-import { X, Upload, Image as ImageIcon, Link as LinkIcon, Check } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { X, Upload, Image as ImageIcon, Link as LinkIcon, Check, Loader2 } from 'lucide-react';
 
 interface ImagePickerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (url: string, altText?: string) => void;
+  onSelect: (url: string, altText?: string, assetRef?: string) => void;
+  onUpload?: (formData: FormData) => Promise<{ url: string; assetId: string }>;
   title?: string;
 }
 
@@ -57,6 +58,7 @@ export const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
   isOpen,
   onClose,
   onSelect,
+  onUpload,
   title = 'Select Media Image',
 }) => {
   const [activeTab, setActiveTab] = useState<'preset' | 'custom' | 'upload'>('preset');
@@ -64,22 +66,45 @@ export const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
   const [altText, setAltText] = useState('');
   const [selectedPresetUrl, setSelectedPresetUrl] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<{ url: string; assetId: string } | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (file: File) => {
+    if (!onUpload) return;
+    setIsUploading(true);
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const result = await onUpload(formData);
+      setUploadedFile(result);
+      if (!altText) setAltText(file.name.replace(/\.[^.]+$/, ''));
+    } catch (e) {
+      setUploadError(e instanceof Error ? e.message : 'Upload failed');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
   const handleConfirm = () => {
     let finalUrl = '';
+    let assetRef: string | undefined;
+
     if (activeTab === 'preset') {
       finalUrl = selectedPresetUrl;
     } else if (activeTab === 'custom') {
       finalUrl = customUrl.trim();
-    } else if (activeTab === 'upload') {
-      // Mock uploaded URL
-      finalUrl = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1400&q=80';
+    } else if (activeTab === 'upload' && uploadedFile) {
+      finalUrl = uploadedFile.url;
+      assetRef = uploadedFile.assetId;
     }
 
     if (finalUrl) {
-      onSelect(finalUrl, altText.trim() || undefined);
+      onSelect(finalUrl, altText.trim() || undefined, assetRef);
       onClose();
     }
   };
@@ -225,10 +250,10 @@ export const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
               onDrop={(e) => {
                 e.preventDefault();
                 setIsDragging(false);
-                setSelectedPresetUrl(
-                  'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1400&q=80'
-                );
-                setActiveTab('preset');
+                const file = e.dataTransfer.files[0];
+                if (file && file.type.startsWith('image/')) {
+                  handleFileUpload(file);
+                }
               }}
               className={`border-2 border-dashed rounded-2xl p-8 text-center transition-all flex flex-col items-center justify-center gap-3 ${
                 isDragging
@@ -236,27 +261,65 @@ export const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
                   : 'border-zinc-800 bg-zinc-950/40 hover:border-zinc-700'
               }`}
             >
-              <div className="w-12 h-12 rounded-xl bg-zinc-800/80 flex items-center justify-center text-zinc-400">
-                <Upload className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-sm font-medium text-zinc-200">
-                  Drag and drop your image file here
-                </p>
-                <p className="text-xs text-zinc-400 mt-0.5">Supports PNG, JPG, WebP, GIF up to 10MB</p>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedPresetUrl(
-                    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1400&q=80'
-                  );
-                  setActiveTab('preset');
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFileUpload(file);
                 }}
-                className="mt-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition-colors"
-              >
-                Simulate File Selection
-              </button>
+              />
+
+              {isUploading ? (
+                <>
+                  <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                  <p className="text-sm font-medium text-zinc-200">Uploading...</p>
+                </>
+              ) : uploadedFile ? (
+                <>
+                  <img
+                    src={uploadedFile.url}
+                    alt="Uploaded"
+                    className="max-h-32 max-w-full object-contain rounded-lg border border-zinc-700"
+                  />
+                  <p className="text-xs text-emerald-400 font-medium">Upload complete</p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setUploadedFile(null);
+                      fileInputRef.current?.click();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition-colors"
+                  >
+                    Choose Different File
+                  </button>
+                </>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-xl bg-zinc-800/80 flex items-center justify-center text-zinc-400">
+                    <Upload className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-zinc-200">
+                      Drag and drop your image file here
+                    </p>
+                    <p className="text-xs text-zinc-400 mt-0.5">Supports PNG, JPG, WebP, GIF up to 10MB</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="mt-2 px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-medium text-zinc-200 transition-colors"
+                  >
+                    Browse Files
+                  </button>
+                </>
+              )}
+
+              {uploadError && (
+                <p className="text-xs text-rose-400 mt-2">{uploadError}</p>
+              )}
             </div>
           )}
 
@@ -289,7 +352,8 @@ export const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
             onClick={handleConfirm}
             disabled={
               (activeTab === 'preset' && !selectedPresetUrl) ||
-              (activeTab === 'custom' && !customUrl.trim())
+              (activeTab === 'custom' && !customUrl.trim()) ||
+              (activeTab === 'upload' && !uploadedFile)
             }
             className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium text-white transition-colors flex items-center gap-1.5 shadow-md shadow-indigo-950"
           >
