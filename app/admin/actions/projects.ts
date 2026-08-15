@@ -7,6 +7,7 @@ import {
   adminProjectsQuery,
   adminProjectByIdQuery,
 } from "@/lib/sanity/admin-queries";
+import { requireAdmin } from "@/lib/admin/auth";
 
 export type AdminProject = {
   _id: string;
@@ -67,6 +68,7 @@ export async function saveProjectDraft(
   id: string,
   data: SaveProjectData
 ): Promise<AdminProject> {
+  await requireAdmin();
   const writeClient = getWriteClient();
 
   const patch: Record<string, unknown> = {
@@ -110,6 +112,7 @@ export async function createProject(
   title: string,
   slug: string
 ): Promise<AdminProject> {
+  await requireAdmin();
   const writeClient = getWriteClient();
 
   const existing = await writeClient.fetch<{ _id: string } | null>(
@@ -139,6 +142,7 @@ export async function createProject(
 }
 
 export async function publishProject(id: string): Promise<void> {
+  await requireAdmin();
   const writeClient = getWriteClient();
   await writeClient.patch(id).set({ published: true }).commit();
 
@@ -154,6 +158,7 @@ export async function publishProject(id: string): Promise<void> {
 }
 
 export async function unpublishProject(id: string): Promise<void> {
+  await requireAdmin();
   const writeClient = getWriteClient();
   await writeClient.patch(id).set({ published: false }).commit();
 
@@ -169,6 +174,7 @@ export async function unpublishProject(id: string): Promise<void> {
 }
 
 export async function deleteProject(id: string): Promise<void> {
+  await requireAdmin();
   const writeClient = getWriteClient();
 
   const project = await readClient.fetch<{ slug: string } | null>(
@@ -192,6 +198,7 @@ export type UploadResult = {
 export async function uploadProjectImage(
   formData: FormData
 ): Promise<UploadResult> {
+  await requireAdmin();
   const file = formData.get("file") as File | null;
   if (!file) {
     throw new Error("No file provided");
