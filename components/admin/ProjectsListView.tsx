@@ -274,9 +274,6 @@ export const ProjectsListView: React.FC = () => {
                     </span>
                   </div>
                 )}
-                <span className="text-[10px] text-slate-400 font-mono">
-                  Order #{project.displayOrder}
-                </span>
               </div>
 
               {/* Actions (Col 2) */}
