@@ -36,8 +36,11 @@ export async function middleware(req: NextRequest) {
   }
 
   try {
-    await getAdminAuth().verifySessionCookie(sessionCookie, true);
-    // Valid session: redirect away from login, allow everything else
+    const decoded = await getAdminAuth().verifySessionCookie(sessionCookie, true);
+    if (!decoded.admin) {
+      throw new Error('missing admin claim');
+    }
+    // Valid admin session: redirect away from login, allow everything else
     if (isLoginPage) {
       return NextResponse.redirect(new URL('/admin', req.url));
     }
@@ -47,7 +50,14 @@ export async function middleware(req: NextRequest) {
     const destination = isPublic
       ? NextResponse.next()
       : NextResponse.redirect(new URL('/admin/login', req.url));
-    destination.cookies.delete(SESSION_COOKIE_NAME);
+    // Must specify path:/admin to match the cookie's original path
+    destination.cookies.set(SESSION_COOKIE_NAME, '', {
+      path: '/admin',
+      maxAge: 0,
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+    });
     return destination;
   }
 }
