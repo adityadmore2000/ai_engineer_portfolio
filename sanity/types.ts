@@ -1,5 +1,3 @@
-import type { PortableTextBlock } from "next-sanity";
-
 export type SanityImage = {
   url?: string;
   alt?: string;
@@ -72,32 +70,6 @@ export type ProjectDetail = ProjectSummary & {
   sections?: ProjectSection[];
 };
 
-export type ProjectDocumentationPage = {
-  _id: string;
-  title: string;
-  slug?: string;
-  description?: string;
-  body?: PortableTextBlock[];
-  order?: number;
-  showInNavigation?: boolean;
-  showInExploreMore?: boolean;
-  statusLabel?: string;
-  project?: {
-    _id: string;
-    title?: string;
-    slug?: string;
-  };
-  projectRef?: string;
-  parentPage?: {
-    _id: string;
-    title?: string;
-    slug?: string;
-  };
-  seoTitle?: string;
-  seoDescription?: string;
-  socialImage?: SanityImage;
-};
-
 export type SkillCategory = {
   _id: string;
   title: string;
@@ -105,17 +77,3 @@ export type SkillCategory = {
   displayOrder?: number;
 };
 
-export type TechnicalNoteSummary = {
-  _id: string;
-  title: string;
-  slug?: string;
-  shortSummary?: string;
-  tags?: string[];
-  publishedDate?: string;
-  featured?: boolean;
-  coverImage?: SanityImage;
-};
-
-export type TechnicalNoteDetail = TechnicalNoteSummary & {
-  content?: PortableTextBlock[];
-};

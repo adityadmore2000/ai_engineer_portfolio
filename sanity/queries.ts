@@ -2,13 +2,10 @@ import { groq } from "next-sanity";
 import { sanityFetch } from "./client";
 import type {
   ExperienceItem,
-  ProjectDocumentationPage,
   ProjectDetail,
   ProjectSummary,
   SiteSettings,
-  SkillCategory,
-  TechnicalNoteDetail,
-  TechnicalNoteSummary
+  SkillCategory
 } from "./types";
 
 type SanityFetchParams = Record<string, string | number | boolean>;
@@ -102,104 +99,12 @@ export const projectBySlugQuery = groq`
   }
 `;
 
-export const projectDocumentationPagesByProjectSlugQuery = groq`
-  *[
-    _type == "projectDocumentationPage" &&
-    (
-      project->slug.current == $projectSlug ||
-      project._ref == $projectId
-    )
-  ] | order(coalesce(order, 0) asc, title asc) {
-    _id,
-    title,
-    "slug": slug.current,
-    description,
-    body,
-    "order": coalesce(order, 0),
-    "showInNavigation": coalesce(showInNavigation, true),
-    "showInExploreMore": coalesce(showInExploreMore, true),
-    statusLabel,
-    project->{
-      _id,
-      title,
-      "slug": slug.current
-    },
-    "projectRef": project._ref,
-    parentPage->{
-      _id,
-      title,
-      "slug": slug.current
-    },
-    seoTitle,
-    seoDescription,
-    socialImage{${imageFields}}
-  }
-`;
-
-export const allProjectDocumentationPagesQuery = groq`
-  *[_type == "projectDocumentationPage"] | order(coalesce(order, 0) asc, title asc) {
-    _id,
-    title,
-    "slug": slug.current,
-    description,
-    body,
-    "order": coalesce(order, 0),
-    "showInNavigation": coalesce(showInNavigation, true),
-    "showInExploreMore": coalesce(showInExploreMore, true),
-    statusLabel,
-    project->{
-      _id,
-      title,
-      "slug": slug.current
-    },
-    "projectRef": project._ref,
-    parentPage->{
-      _id,
-      title,
-      "slug": slug.current
-    },
-    seoTitle,
-    seoDescription,
-    socialImage{${imageFields}}
-  }
-`;
-
 export const skillCategoriesQuery = groq`
   *[_type == "skillCategory"] | order(coalesce(displayOrder, 999) asc, title asc) {
     _id,
     title,
     skills,
     displayOrder
-  }
-`;
-
-const noteSummaryFields = `
-  _id,
-  title,
-  "slug": slug.current,
-  shortSummary,
-  tags,
-  publishedDate,
-  featured,
-  coverImage{${imageFields}}
-`;
-
-export const featuredTechnicalNotesQuery = groq`
-  *[_type == "technicalNote" && featured == true && defined(publishedDate)] | order(publishedDate desc) {
-    ${noteSummaryFields}
-  }
-`;
-
-export const allTechnicalNotesQuery = groq`
-  *[_type == "technicalNote" && defined(publishedDate)] | order(publishedDate desc) {
-    ${noteSummaryFields}
-  }
-`;
-
-export const technicalNoteBySlugQuery = groq`
-  *[_type == "technicalNote" && slug.current == $slug && defined(publishedDate)][0] {
-    ${noteSummaryFields},
-    content
   }
 `;
 
@@ -227,59 +132,8 @@ export async function getProjectBySlug(
   });
 }
 
-export async function getProjectDocumentationPagesByProjectSlug(
-  projectSlug: string,
-  projectId = "",
-  fetcher: SanityFetcher = sanityFetch
-) {
-  return (
-    (await fetcher<ProjectDocumentationPage[]>({
-      query: projectDocumentationPagesByProjectSlugQuery,
-      params: { projectSlug, projectId }
-    })) || []
-  );
-}
-
-export async function getAllProjectDocumentationPages(
-  fetcher: SanityFetcher = sanityFetch
-) {
-  return (
-    (await fetcher<ProjectDocumentationPage[]>({
-      query: allProjectDocumentationPagesQuery
-    })) || []
-  );
-}
-
 export async function getSkillCategories(fetcher: SanityFetcher = sanityFetch) {
   return (
     (await fetcher<SkillCategory[]>({ query: skillCategoriesQuery })) || []
   );
-}
-
-export async function getFeaturedTechnicalNotes(
-  fetcher: SanityFetcher = sanityFetch
-) {
-  return (
-    (await fetcher<TechnicalNoteSummary[]>({
-      query: featuredTechnicalNotesQuery
-    })) || []
-  );
-}
-
-export async function getAllTechnicalNotes(fetcher: SanityFetcher = sanityFetch) {
-  return (
-    (await fetcher<TechnicalNoteSummary[]>({
-      query: allTechnicalNotesQuery
-    })) || []
-  );
-}
-
-export async function getTechnicalNoteBySlug(
-  slug: string,
-  fetcher: SanityFetcher = sanityFetch
-) {
-  return fetcher<TechnicalNoteDetail>({
-    query: technicalNoteBySlugQuery,
-    params: { slug }
-  });
 }
