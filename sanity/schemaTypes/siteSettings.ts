@@ -146,7 +146,25 @@ export const siteSettings = defineType({
       title: "SEO Description",
       type: "text",
       rows: 3
-    })
+    }),
+    defineField({
+      name: "maintenanceEnabled",
+      title: "Maintenance Mode",
+      type: "boolean",
+      initialValue: false,
+    }),
+    defineField({
+      name: "maintenanceMessage",
+      title: "Maintenance Message",
+      type: "string",
+      initialValue: "Website update in progress — some features may be temporarily unavailable.",
+    }),
+    defineField({
+      name: "criticalLock",
+      title: "Critical Site Lock",
+      type: "boolean",
+      initialValue: false,
+    }),
   ],
   preview: {
     select: {

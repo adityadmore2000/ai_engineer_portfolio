@@ -4,40 +4,21 @@ import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import { AlertTriangle } from "lucide-react";
 
-const STORAGE_KEY_MAINTENANCE = "portfolio_maintenance_v1";
-
-function readCriticalLock(): boolean {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY_MAINTENANCE);
-    if (stored) return !!JSON.parse(stored).criticalLock;
-  } catch {}
-  return false;
-}
-
 interface CriticalSiteLockProps {
+  criticalLock: boolean;
   email?: string;
   linkedinUrl?: string;
   githubUrl?: string;
 }
 
-export function CriticalSiteLock({ email, linkedinUrl, githubUrl }: CriticalSiteLockProps) {
+export function CriticalSiteLock({ criticalLock, email, linkedinUrl, githubUrl }: CriticalSiteLockProps) {
   const pathname = usePathname();
-  const [criticalLock, setCriticalLock] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
 
-  useEffect(() => {
-    const sync = () => setCriticalLock(readCriticalLock());
-    sync();
-    window.addEventListener("storage", sync);
-    return () => window.removeEventListener("storage", sync);
-  }, []);
-
-  // Reset acknowledged state whenever the lock toggles
   useEffect(() => {
     if (!criticalLock) setAcknowledged(false);
   }, [criticalLock]);
 
-  // Prevent body scroll while lock is active on a public route
   useEffect(() => {
     const isAdmin = pathname.startsWith("/admin");
     if (criticalLock && !isAdmin) {
@@ -49,7 +30,6 @@ export function CriticalSiteLock({ email, linkedinUrl, githubUrl }: CriticalSite
     }
   }, [criticalLock, pathname]);
 
-  // Don't render on admin routes or when lock is off
   if (!criticalLock || pathname.startsWith("/admin")) return null;
 
   return (

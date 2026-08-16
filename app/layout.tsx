@@ -48,11 +48,15 @@ export default async function RootLayout({
       <body>
         <RootProvider search={{ enabled: false }} theme={{ enabled: false }}>
           <ChatProvider>
-            <MaintenanceBanner />
+            <MaintenanceBanner
+              enabled={siteSettings?.maintenanceEnabled ?? false}
+              message={siteSettings?.maintenanceMessage ?? ''}
+            />
             {children}
             <FloatingButton />
             <SlideOutPanel />
             <CriticalSiteLock
+              criticalLock={siteSettings?.criticalLock ?? false}
               email={siteSettings?.email}
               linkedinUrl={siteSettings?.linkedinUrl}
               githubUrl={siteSettings?.githubUrl}

@@ -48,7 +48,10 @@ export const siteSettingsQuery = groq`
     contactHeadline,
     contactDescription,
     seoTitle,
-    seoDescription
+    seoDescription,
+    maintenanceEnabled,
+    maintenanceMessage,
+    criticalLock
   }
 `;
 
