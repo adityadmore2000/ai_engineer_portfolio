@@ -8,7 +8,8 @@ const nextConfig: NextConfig = {
         hostname: "cdn.sanity.io"
       }
     ]
-  }
+  },
+  transpilePackages: ["firebase-admin"]
 };
 
 export default nextConfig;
