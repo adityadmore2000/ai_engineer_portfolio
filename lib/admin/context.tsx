@@ -5,6 +5,7 @@ import React, {
   useContext,
   useState,
   useEffect,
+  useRef,
   useMemo,
   useCallback,
 } from 'react';
@@ -30,6 +31,10 @@ import {
   type CreateExperienceData,
   type UpdateExperienceData,
 } from '@/app/admin/actions/experiences';
+import {
+  getSiteSettings as getAdminSiteSettings,
+  updateSiteStateSettings,
+} from '@/app/admin/actions/settings';
 
 interface ToastInfo {
   id: string;
@@ -53,7 +58,7 @@ interface PortfolioContextType {
   isLoading: boolean;
   error: string | null;
 
-  updateMaintenance: (updates: Partial<MaintenanceState>) => void;
+  updateMaintenance: (updates: Partial<MaintenanceState>) => Promise<void>;
 
   navigateTo: (route: AdminRoute) => void;
   openCreateModal: () => void;
@@ -83,8 +88,6 @@ interface PortfolioContextType {
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
-
-const STORAGE_KEY_MAINTENANCE = 'portfolio_maintenance_v1';
 
 const DEFAULT_MAINTENANCE: MaintenanceState = {
   enabled: false,
@@ -159,6 +162,8 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const [projects, setProjects] = useState<Project[]>([]);
   const [experiences, setExperiences] = useState<Experience[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceState>(DEFAULT_MAINTENANCE);
+  const maintenanceRef = useRef<MaintenanceState>(DEFAULT_MAINTENANCE);
+  const siteSettingsIdRef = useRef<string | null>(null);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [toast, setToast] = useState<ToastInfo | null>(null);
@@ -206,29 +211,30 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     refreshExperiences();
   }, [refreshExperiences]);
 
-  // Hydrate maintenance from localStorage on mount
+  // Sync maintenanceRef with state so updateMaintenance callback stays stable
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_MAINTENANCE);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (typeof parsed === 'object' && parsed !== null) {
-          setMaintenance({ ...DEFAULT_MAINTENANCE, ...parsed });
-        }
-      }
-    } catch {
-      // Keep DEFAULT_MAINTENANCE
-    }
-  }, []);
-
-  // Persist maintenance to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_MAINTENANCE, JSON.stringify(maintenance));
-    } catch (e) {
-      console.error('Failed to persist maintenance state', e);
-    }
+    maintenanceRef.current = maintenance;
   }, [maintenance]);
+
+  // Load maintenance state from Sanity on mount
+  useEffect(() => {
+    async function loadSiteSettings() {
+      try {
+        const settings = await getAdminSiteSettings();
+        if (settings) {
+          siteSettingsIdRef.current = settings._id;
+          setMaintenance({
+            enabled: settings.maintenanceEnabled ?? false,
+            message: settings.maintenanceMessage ?? DEFAULT_MAINTENANCE.message,
+            criticalLock: settings.criticalLock ?? false,
+          });
+        }
+      } catch {
+        // Keep DEFAULT_MAINTENANCE on load failure
+      }
+    }
+    loadSiteSettings();
+  }, []);
 
   // Synchronize activeProject when navigating to project_edit or preview
   useEffect(() => {
@@ -247,8 +253,16 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentRoute, projects]);
 
-  const updateMaintenance = useCallback((updates: Partial<MaintenanceState>) => {
-    setMaintenance((prev) => ({ ...prev, ...updates }));
+  const updateMaintenance = useCallback(async (updates: Partial<MaintenanceState>) => {
+    const next = { ...maintenanceRef.current, ...updates };
+    setMaintenance(next);
+    if (siteSettingsIdRef.current) {
+      await updateSiteStateSettings(siteSettingsIdRef.current, {
+        maintenanceEnabled: next.enabled,
+        maintenanceMessage: next.message,
+        criticalLock: next.criticalLock,
+      });
+    }
   }, []);
 
   const showToast = useCallback(

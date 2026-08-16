@@ -21,6 +21,9 @@ export type AdminSiteSettings = {
   linkedinUrl?: string;
   githubUrl?: string;
   aboutSummary?: string;
+  maintenanceEnabled?: boolean;
+  maintenanceMessage?: string;
+  criticalLock?: boolean;
 };
 
 export type SaveSiteSettingsData = {
@@ -81,6 +84,20 @@ export async function saveSiteSettings(
 
   revalidatePath("/");
   return updated;
+}
+
+export async function updateSiteStateSettings(
+  id: string,
+  state: { maintenanceEnabled: boolean; maintenanceMessage: string; criticalLock: boolean }
+): Promise<void> {
+  await requireAdmin();
+  const writeClient = getWriteClient();
+  await writeClient.patch(id).set({
+    maintenanceEnabled: state.maintenanceEnabled,
+    maintenanceMessage: state.maintenanceMessage,
+    criticalLock: state.criticalLock,
+  }).commit();
+  revalidatePath('/', 'layout');
 }
 
 export async function uploadSettingsImage(

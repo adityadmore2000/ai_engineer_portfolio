@@ -19,19 +19,27 @@ export const MaintenanceCard: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [maintenance.message]);
 
-  const handleToggleNotice = () => {
+  const handleToggleNotice = async () => {
     const next = !maintenance.enabled;
-    updateMaintenance({ enabled: next });
-    showToast(
-      next ? 'warning' : 'info',
-      next ? 'Maintenance notice enabled' : 'Maintenance notice disabled',
-    );
+    try {
+      await updateMaintenance({ enabled: next });
+      showToast(
+        next ? 'warning' : 'info',
+        next ? 'Maintenance notice enabled' : 'Maintenance notice disabled',
+      );
+    } catch {
+      showToast('error', 'Failed to update maintenance state');
+    }
   };
 
-  const handleSaveMessage = () => {
-    updateMaintenance({ message: localMessage });
-    setIsDirty(false);
-    showToast('success', 'Maintenance message saved');
+  const handleSaveMessage = async () => {
+    try {
+      await updateMaintenance({ message: localMessage });
+      setIsDirty(false);
+      showToast('success', 'Maintenance message saved');
+    } catch {
+      showToast('error', 'Failed to save maintenance message');
+    }
   };
 
   const handleDiscard = () => {
@@ -39,14 +47,22 @@ export const MaintenanceCard: React.FC = () => {
     setIsDirty(false);
   };
 
-  const handleEnableLock = () => {
-    updateMaintenance({ criticalLock: true });
-    showToast('warning', 'Critical site lock enabled', 'Public website is now inaccessible.');
+  const handleEnableLock = async () => {
+    try {
+      await updateMaintenance({ criticalLock: true });
+      showToast('warning', 'Critical site lock enabled', 'Public website is now inaccessible.');
+    } catch {
+      showToast('error', 'Failed to enable critical lock');
+    }
   };
 
-  const handleDisableLock = () => {
-    updateMaintenance({ criticalLock: false });
-    showToast('success', 'Critical site lock disabled', 'Public website is now accessible.');
+  const handleDisableLock = async () => {
+    try {
+      await updateMaintenance({ criticalLock: false });
+      showToast('success', 'Critical site lock disabled', 'Public website is now accessible.');
+    } catch {
+      showToast('error', 'Failed to disable critical lock');
+    }
   };
 
   return (

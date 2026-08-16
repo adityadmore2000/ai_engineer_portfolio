@@ -33,6 +33,9 @@ export type SiteSettings = {
   contactDescription?: string;
   seoTitle?: string;
   seoDescription?: string;
+  maintenanceEnabled?: boolean;
+  maintenanceMessage?: string;
+  criticalLock?: boolean;
 };
 
 export type ExperienceItem = {

@@ -39,7 +39,10 @@ export const adminSiteSettingsQuery = `
     profileImage{ "url": asset->url, "alt": coalesce(alt, ""), "assetRef": asset->_id },
     linkedinUrl,
     githubUrl,
-    aboutSummary
+    aboutSummary,
+    maintenanceEnabled,
+    maintenanceMessage,
+    criticalLock
   }
 `;
 
