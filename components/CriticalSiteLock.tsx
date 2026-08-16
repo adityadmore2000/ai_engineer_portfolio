@@ -14,7 +14,13 @@ function readCriticalLock(): boolean {
   return false;
 }
 
-export function CriticalSiteLock() {
+interface CriticalSiteLockProps {
+  email?: string;
+  linkedinUrl?: string;
+  githubUrl?: string;
+}
+
+export function CriticalSiteLock({ email, linkedinUrl, githubUrl }: CriticalSiteLockProps) {
   const pathname = usePathname();
   const [criticalLock, setCriticalLock] = useState(false);
   const [acknowledged, setAcknowledged] = useState(false);
@@ -74,6 +80,48 @@ export function CriticalSiteLock() {
             Normal access will be restored once maintenance is complete. Thank
             you for your patience.
           </p>
+          {(email || linkedinUrl || githubUrl) && (
+            <div className="text-xs text-slate-500 bg-slate-50 px-3.5 py-3 rounded-xl border border-slate-100 space-y-1.5">
+              <p className="font-medium text-slate-600">Meanwhile, you can contact me at</p>
+              {email && (
+                <p>
+                  <span className="text-slate-400">Email: </span>
+                  <a
+                    href={`mailto:${email}`}
+                    className="text-slate-700 hover:text-slate-900 underline underline-offset-2"
+                  >
+                    {email}
+                  </a>
+                </p>
+              )}
+              {linkedinUrl && (
+                <p>
+                  <span className="text-slate-400">LinkedIn: </span>
+                  <a
+                    href={linkedinUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-700 hover:text-slate-900 underline underline-offset-2"
+                  >
+                    {linkedinUrl}
+                  </a>
+                </p>
+              )}
+              {githubUrl && (
+                <p>
+                  <span className="text-slate-400">GitHub: </span>
+                  <a
+                    href={githubUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-700 hover:text-slate-900 underline underline-offset-2"
+                  >
+                    {githubUrl}
+                  </a>
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Footer */}

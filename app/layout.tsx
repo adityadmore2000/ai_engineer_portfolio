@@ -6,6 +6,7 @@ import { CriticalSiteLock } from "@/components/CriticalSiteLock";
 import { ChatProvider, FloatingButton, SlideOutPanel } from "@/components/Chat";
 import { GoogleAnalytics } from "@/components/Analytics";
 import { Analytics } from "@vercel/analytics/react";
+import { getSiteSettings } from "@/sanity/queries";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -35,11 +36,13 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const siteSettings = await getSiteSettings();
+
   return (
     <html lang="en">
       <body>
@@ -49,7 +52,11 @@ export default function RootLayout({
             {children}
             <FloatingButton />
             <SlideOutPanel />
-            <CriticalSiteLock />
+            <CriticalSiteLock
+              email={siteSettings?.email}
+              linkedinUrl={siteSettings?.linkedinUrl}
+              githubUrl={siteSettings?.githubUrl}
+            />
           </ChatProvider>
         </RootProvider>
         <Analytics />
