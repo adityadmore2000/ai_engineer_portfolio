@@ -27,3 +27,18 @@ export const adminProjectByIdQuery = `
     sections[]{ _key, title, description }
   }
 `;
+
+export const adminSiteSettingsQuery = `
+  *[_type == "siteSettings"][0] {
+    _id,
+    _rev,
+    email,
+    role,
+    shortBio,
+    heroDescription,
+    profileImage{ "url": asset->url, "alt": coalesce(alt, ""), "assetRef": asset->_id },
+    linkedinUrl,
+    githubUrl,
+    aboutSummary
+  }
+`;

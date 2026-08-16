@@ -23,6 +23,10 @@
   --tw-enter-opacity: 0;
 }
 
+@utility slide-in-from-bottom-1 {
+  --tw-enter-translate-y: 0.25rem;
+}
+
 @utility slide-in-from-bottom-5 {
   --tw-enter-translate-y: 1.25rem;
 }
