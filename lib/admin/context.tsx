@@ -10,7 +10,6 @@ import React, {
 } from 'react';
 import { useRouter, usePathname, useParams } from 'next/navigation';
 import { Project, Experience, AdminRoute, MaintenanceState } from './types';
-import { INITIAL_EXPERIENCES } from './mock-data/experiences';
 import { slugify } from './utils/slugify';
 import {
   getAdminProjects,
@@ -22,6 +21,15 @@ import {
   deleteProject as serverDeleteProject,
   type AdminProject,
 } from '@/app/admin/actions/projects';
+import {
+  getAdminExperiences,
+  createExperience as serverCreateExperience,
+  updateExperience as serverUpdateExperience,
+  deleteExperience as serverDeleteExperience,
+  reorderExperiences as serverReorderExperiences,
+  type CreateExperienceData,
+  type UpdateExperienceData,
+} from '@/app/admin/actions/experiences';
 
 interface ToastInfo {
   id: string;
@@ -67,21 +75,15 @@ interface PortfolioContextType {
   discardUnsavedChanges: () => Promise<void>;
   refreshProjects: () => Promise<void>;
 
-  createExperience: (exp: {
-    companyName: string;
-    role: string;
-    duration: string;
-    location: string;
-    description: string;
-  }) => Experience;
-  updateExperience: (id: string, updated: Partial<Experience>) => void;
-  deleteExperience: (id: string) => void;
-  reorderExperiences: (newExperiences: Experience[]) => void;
+  refreshExperiences: () => Promise<void>;
+  createExperience: (data: CreateExperienceData) => Promise<Experience>;
+  updateExperience: (id: string, data: UpdateExperienceData) => Promise<void>;
+  deleteExperience: (id: string) => Promise<void>;
+  reorderExperiences: (newExperiences: Experience[]) => Promise<void>;
 }
 
 const PortfolioContext = createContext<PortfolioContextType | undefined>(undefined);
 
-const STORAGE_KEY_EXPERIENCES = 'portfolio_cms_experiences_v1';
 const STORAGE_KEY_MAINTENANCE = 'portfolio_maintenance_v1';
 
 const DEFAULT_MAINTENANCE: MaintenanceState = {
@@ -155,7 +157,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const params = useParams() as Record<string, string | string[]>;
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [experiences, setExperiences] = useState<Experience[]>(INITIAL_EXPERIENCES);
+  const [experiences, setExperiences] = useState<Experience[]>([]);
   const [maintenance, setMaintenance] = useState<MaintenanceState>(DEFAULT_MAINTENANCE);
   const [activeProject, setActiveProject] = useState<Project | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
@@ -186,34 +188,23 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
     }
   }, []);
 
-  // Load projects from Sanity on mount
+  const refreshExperiences = useCallback(async () => {
+    try {
+      const data = await getAdminExperiences();
+      setExperiences(data);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load experiences');
+    }
+  }, []);
+
+  // Load projects and experiences from Sanity on mount
   useEffect(() => {
     refreshProjects();
   }, [refreshProjects]);
 
-  // Hydrate experiences from localStorage on mount
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_EXPERIENCES);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setExperiences(parsed);
-        }
-      }
-    } catch {
-      // Keep INITIAL_EXPERIENCES
-    }
-  }, []);
-
-  // Persist experiences to localStorage
-  useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY_EXPERIENCES, JSON.stringify(experiences));
-    } catch (e) {
-      console.error('Failed to persist experiences', e);
-    }
-  }, [experiences]);
+    refreshExperiences();
+  }, [refreshExperiences]);
 
   // Hydrate maintenance from localStorage on mount
   useEffect(() => {
@@ -480,61 +471,80 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   }, [activeProject, showToast]);
 
   const createExperience = useCallback(
-    (expData: {
-      companyName: string;
-      role: string;
-      duration: string;
-      location: string;
-      description: string;
-    }): Experience => {
-      const now = new Date().toISOString();
-      const maxOrder = experiences.reduce(
-        (max, e) => Math.max(max, e.displayOrder || 0),
-        0
-      );
-      const newExp: Experience = {
-        id: `exp-${Date.now()}`,
-        companyName: expData.companyName.trim() || 'New Company',
-        role: expData.role.trim() || 'Role Title',
-        duration: expData.duration.trim() || 'Present',
-        location: expData.location.trim() || 'Remote',
-        description:
-          expData.description.trim() ||
-          '* Key responsibility or accomplishment\n* Another notable engineering impact',
-        displayOrder: maxOrder + 1,
-        createdAt: now,
-        updatedAt: now,
-      };
-
-      setExperiences((prev) => [newExp, ...prev]);
-      showToast('success', 'Experience added', `${newExp.companyName} — ${newExp.role}`);
-      return newExp;
+    async (data: CreateExperienceData): Promise<Experience> => {
+      try {
+        const created = await serverCreateExperience(data);
+        setExperiences((prev) => [created, ...prev]);
+        showToast('success', 'Experience added', `${created.company} — ${created.role}`);
+        return created;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to create experience';
+        showToast('error', 'Create failed', msg);
+        throw e;
+      }
     },
-    [experiences, showToast]
+    [showToast]
   );
 
   const updateExperience = useCallback(
-    (id: string, updatedFields: Partial<Experience>) => {
-      const now = new Date().toISOString();
-      setExperiences((prev) =>
-        prev.map((e) => (e.id === id ? { ...e, ...updatedFields, updatedAt: now } : e))
-      );
-      showToast('info', 'Experience updated');
+    async (id: string, data: UpdateExperienceData): Promise<void> => {
+      try {
+        const updated = await serverUpdateExperience(id, data);
+        setExperiences((prev) => prev.map((e) => (e._id === id ? updated : e)));
+        showToast('info', 'Experience updated');
+      } catch (e) {
+        const isStale =
+          e instanceof Error &&
+          (e.message.includes('ifRevisionId') ||
+            e.message.includes('revision') ||
+            (e as { statusCode?: number }).statusCode === 409);
+        if (isStale) {
+          showToast(
+            'warning',
+            'Save conflict detected',
+            'This experience was modified elsewhere. Reload to get the latest version.'
+          );
+        } else {
+          const msg = e instanceof Error ? e.message : 'Failed to update experience';
+          showToast('error', 'Update failed', msg);
+        }
+        throw e;
+      }
     },
     [showToast]
   );
 
   const deleteExperience = useCallback(
-    (id: string) => {
-      setExperiences((prev) => prev.filter((e) => e.id !== id));
-      showToast('warning', 'Experience deleted');
+    async (id: string): Promise<void> => {
+      try {
+        await serverDeleteExperience(id);
+        setExperiences((prev) => prev.filter((e) => e._id !== id));
+        showToast('warning', 'Experience deleted');
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'Failed to delete experience';
+        showToast('error', 'Delete failed', msg);
+        throw e;
+      }
     },
     [showToast]
   );
 
-  const reorderExperiences = useCallback((newExperiences: Experience[]) => {
-    setExperiences(newExperiences);
-  }, []);
+  const reorderExperiences = useCallback(
+    async (newExperiences: Experience[]): Promise<void> => {
+      const reordered = newExperiences.map((e, i) => ({ ...e, displayOrder: i + 1 }));
+      setExperiences(reordered);
+      try {
+        await serverReorderExperiences(
+          reordered.map((e) => ({ _id: e._id, displayOrder: e.displayOrder! }))
+        );
+      } catch (e) {
+        await refreshExperiences();
+        const msg = e instanceof Error ? e.message : 'Reorder failed';
+        showToast('error', 'Reorder failed', msg);
+      }
+    },
+    [refreshExperiences, showToast]
+  );
 
   return (
     <PortfolioContext.Provider
@@ -571,6 +581,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         deleteProject,
         discardUnsavedChanges,
         refreshProjects,
+        refreshExperiences,
         createExperience,
         updateExperience,
         deleteExperience,

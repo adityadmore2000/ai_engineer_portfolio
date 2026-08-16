@@ -42,3 +42,20 @@ export const adminSiteSettingsQuery = `
     aboutSummary
   }
 `;
+
+export const adminExperiencesQuery = `
+  *[_type == "experience"] | order(coalesce(displayOrder, 999) asc, startDate desc) {
+    _id,
+    _rev,
+    role,
+    company,
+    location,
+    startDate,
+    endDate,
+    currentRole,
+    shortDescription,
+    bulletPoints,
+    skills,
+    displayOrder
+  }
+`;

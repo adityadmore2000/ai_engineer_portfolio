@@ -21,49 +21,75 @@ import { usePortfolio } from '@/lib/admin/context';
 import { Experience } from '@/lib/admin/types';
 import { renderMarkdown } from '@/lib/admin/utils/markdown-parser';
 import { MarkdownEditor } from '@/components/admin/common/MarkdownEditor';
+import { TagInput } from '@/components/admin/common/TagInput';
+
+function formatDuration(
+  startDate?: string,
+  endDate?: string,
+  currentRole?: boolean
+): string {
+  if (!startDate && !currentRole) return '';
+  const fmt = (d: string) =>
+    new Intl.DateTimeFormat('en', { month: 'short', year: 'numeric' }).format(
+      new Date(d + 'T00:00:00')
+    );
+  const start = startDate ? fmt(startDate) : '';
+  const end = currentRole ? 'Present' : endDate ? fmt(endDate) : '';
+  if (!start && !end) return '';
+  if (!start) return end;
+  if (!end) return start;
+  return `${start} – ${end}`;
+}
+
+const EMPTY_FORM = {
+  company: '',
+  role: '',
+  startDate: '',
+  endDate: '',
+  currentRole: false,
+  location: '',
+  shortDescription: '',
+  bulletPoints: [] as string[],
+  skills: [] as string[],
+};
 
 export const ExperienceView: React.FC = () => {
-  const { experiences, createExperience, updateExperience, deleteExperience, reorderExperiences, showToast } =
-    usePortfolio();
+  const {
+    experiences,
+    createExperience,
+    updateExperience,
+    deleteExperience,
+    reorderExperiences,
+    showToast,
+  } = usePortfolio();
 
   const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  const [formState, setFormState] = useState<{
-    companyName: string;
-    role: string;
-    duration: string;
-    location: string;
-    description: string;
-  }>({
-    companyName: '',
-    role: '',
-    duration: '',
-    location: '',
-    description: '',
-  });
+  const [isSaving, setIsSaving] = useState(false);
+  const [formState, setFormState] = useState(EMPTY_FORM);
 
   const handleStartAdd = () => {
     setEditingId(null);
     setFormState({
-      companyName: '',
-      role: '',
-      duration: '',
-      location: '',
-      description: `* Built and scaled core platform services with high reliability.\n* Collaborated across engineering teams to ship major architectural upgrades.\n* Optimized system performance and reduced latency across key workflows.`,
+      ...EMPTY_FORM,
+      shortDescription: `* Built and scaled core platform services with high reliability.\n* Collaborated across engineering teams to ship major architectural upgrades.\n* Optimized system performance and reduced latency across key workflows.`,
     });
     setIsAdding(true);
   };
 
   const handleStartEdit = (exp: Experience) => {
     setIsAdding(false);
-    setEditingId(exp.id);
+    setEditingId(exp._id);
     setFormState({
-      companyName: exp.companyName,
+      company: exp.company,
       role: exp.role,
-      duration: exp.duration,
-      location: exp.location,
-      description: exp.description,
+      startDate: exp.startDate ?? '',
+      endDate: exp.endDate ?? '',
+      currentRole: exp.currentRole ?? false,
+      location: exp.location ?? '',
+      shortDescription: exp.shortDescription ?? '',
+      bulletPoints: exp.bulletPoints ?? [],
+      skills: exp.skills ?? [],
     });
   };
 
@@ -72,42 +98,50 @@ export const ExperienceView: React.FC = () => {
     setEditingId(null);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formState.companyName.trim() || !formState.role.trim()) {
+    if (!formState.company.trim() || !formState.role.trim()) {
       showToast('error', 'Required fields missing', 'Please provide both Company Name and Role.');
       return;
     }
 
-    if (isAdding) {
-      createExperience({
-        companyName: formState.companyName,
-        role: formState.role,
-        duration: formState.duration,
-        location: formState.location,
-        description: formState.description,
-      });
-      setIsAdding(false);
-    } else if (editingId) {
-      updateExperience(editingId, {
-        companyName: formState.companyName,
-        role: formState.role,
-        duration: formState.duration,
-        location: formState.location,
-        description: formState.description,
-      });
-      setEditingId(null);
+    setIsSaving(true);
+    const payload = {
+      company: formState.company.trim(),
+      role: formState.role.trim(),
+      location: formState.location.trim() || undefined,
+      startDate: formState.startDate || undefined,
+      endDate: formState.currentRole ? undefined : (formState.endDate || undefined),
+      currentRole: formState.currentRole,
+      shortDescription: formState.shortDescription.trim() || undefined,
+      bulletPoints: formState.bulletPoints.map((b) => b.trim()).filter(Boolean),
+      skills: formState.skills,
+    };
+
+    try {
+      if (isAdding) {
+        await createExperience(payload);
+        setIsAdding(false);
+      } else if (editingId) {
+        const currentExp = experiences.find((e) => e._id === editingId);
+        await updateExperience(editingId, { ...payload, _rev: currentExp?._rev });
+        setEditingId(null);
+      }
+    } catch {
+      // error toast already shown by context
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  const handleMove = (index: number, direction: 'up' | 'down') => {
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
     const targetIdx = direction === 'up' ? index - 1 : index + 1;
     if (targetIdx < 0 || targetIdx >= experiences.length) return;
 
     const list = [...experiences];
     const [moved] = list.splice(index, 1);
     list.splice(targetIdx, 0, moved);
-    reorderExperiences(list);
+    await reorderExperiences(list);
     showToast('info', 'Experience reordered');
   };
 
@@ -149,7 +183,7 @@ export const ExperienceView: React.FC = () => {
         )}
       </div>
 
-      {/* Clean Add / Edit Form */}
+      {/* Add / Edit Form */}
       {(isAdding || editingId) && (
         <section
           id="experience-editor-form-card"
@@ -173,9 +207,8 @@ export const ExperienceView: React.FC = () => {
           </div>
 
           <form onSubmit={handleSave} className="space-y-5">
-            {/* Grid of the 4 metadata fields */}
+            {/* Row 1: Company Name + Role */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              {/* 1. Company Name */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <Building2 className="w-3.5 h-3.5 text-indigo-600" />
@@ -185,14 +218,13 @@ export const ExperienceView: React.FC = () => {
                   id="input-exp-company"
                   type="text"
                   required
-                  value={formState.companyName}
-                  onChange={(e) => setFormState({ ...formState, companyName: e.target.value })}
+                  value={formState.company}
+                  onChange={(e) => setFormState({ ...formState, company: e.target.value })}
                   placeholder="e.g. Anthropic, Stripe, Google, or Vercel"
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all"
                 />
               </div>
 
-              {/* 2. Role */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <Briefcase className="w-3.5 h-3.5 text-indigo-600" />
@@ -208,24 +240,24 @@ export const ExperienceView: React.FC = () => {
                   className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-semibold text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all"
                 />
               </div>
+            </div>
 
-              {/* 3. Duration */}
+            {/* Row 2: Start Date + Location */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <Calendar className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Duration</span>
+                  <span>Start Date</span>
                 </label>
                 <input
-                  id="input-exp-duration"
-                  type="text"
-                  value={formState.duration}
-                  onChange={(e) => setFormState({ ...formState, duration: e.target.value })}
-                  placeholder="e.g. 2024 — Present, or Jan 2022 — Dec 2023"
-                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all font-mono"
+                  id="input-exp-start-date"
+                  type="date"
+                  value={formState.startDate}
+                  onChange={(e) => setFormState({ ...formState, startDate: e.target.value })}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-900 focus:outline-hidden focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all"
                 />
               </div>
 
-              {/* 4. Location */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-indigo-600" />
@@ -242,24 +274,120 @@ export const ExperienceView: React.FC = () => {
               </div>
             </div>
 
-            {/* 5. Description (supports Markdown and intended for bullet-point content) */}
+            {/* Row 3: Currently working here + End Date */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+              <div className="flex items-center gap-3 pt-1">
+                <input
+                  id="input-exp-current-role"
+                  type="checkbox"
+                  checked={formState.currentRole}
+                  onChange={(e) =>
+                    setFormState({
+                      ...formState,
+                      currentRole: e.target.checked,
+                      endDate: e.target.checked ? '' : formState.endDate,
+                    })
+                  }
+                  className="w-4 h-4 rounded accent-indigo-600 cursor-pointer"
+                />
+                <label
+                  htmlFor="input-exp-current-role"
+                  className="text-xs font-bold uppercase tracking-wider text-slate-700 cursor-pointer select-none"
+                >
+                  Currently working here
+                </label>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                  <Calendar className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>End Date</span>
+                </label>
+                <input
+                  id="input-exp-end-date"
+                  type="date"
+                  value={formState.endDate}
+                  onChange={(e) => setFormState({ ...formState, endDate: e.target.value })}
+                  disabled={formState.currentRole}
+                  className="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-900 focus:outline-hidden focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                />
+              </div>
+            </div>
+
+            {/* Short Description (Markdown) */}
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
                   <FileText className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Description (Markdown &amp; Bullet Points)</span>
+                  <span>Short Description (Markdown)</span>
                 </label>
-                <div className="flex items-center gap-2 text-[11px] text-slate-400 font-mono">
-                  <List className="w-3 h-3 text-indigo-500" />
-                  <span>Use * or - for bullet points</span>
-                </div>
               </div>
-
               <MarkdownEditor
-                value={formState.description}
-                onChange={(val) => setFormState({ ...formState, description: val })}
-                placeholder="* Highlight key technical responsibility&#10;* Quantified achievement (e.g. reduced latency by 35%)&#10;* Architectural decisions and frameworks used..."
-                minHeight="160px"
+                value={formState.shortDescription}
+                onChange={(val) => setFormState({ ...formState, shortDescription: val })}
+                placeholder="A brief summary of the role and impact..."
+                minHeight="100px"
+              />
+            </div>
+
+            {/* Bullet Points */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <List className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Bullet Points</span>
+              </label>
+              <div className="space-y-2">
+                {formState.bulletPoints.map((pt, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={pt}
+                      onChange={(e) => {
+                        const updated = [...formState.bulletPoints];
+                        updated[i] = e.target.value;
+                        setFormState({ ...formState, bulletPoints: updated });
+                      }}
+                      placeholder="e.g. Reduced p99 latency by 40% across 3 services"
+                      className="flex-1 px-4 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm font-medium text-slate-900 placeholder-slate-400 focus:outline-hidden focus:border-indigo-500 focus:bg-white focus:ring-1 focus:ring-indigo-500 transition-all"
+                    />
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFormState({
+                          ...formState,
+                          bulletPoints: formState.bulletPoints.filter((_, j) => j !== i),
+                        })
+                      }
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors shrink-0"
+                      title="Remove bullet"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setFormState({ ...formState, bulletPoints: [...formState.bulletPoints, ''] })
+                  }
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-indigo-600 hover:bg-indigo-50 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Bullet Point
+                </button>
+              </div>
+            </div>
+
+            {/* Skills & Tags */}
+            <div className="space-y-1.5">
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Skills &amp; Tags</span>
+              </label>
+              <TagInput
+                tags={formState.skills}
+                onChange={(skills) => setFormState({ ...formState, skills })}
+                placeholder="Add skill or tag..."
               />
             </div>
 
@@ -275,10 +403,17 @@ export const ExperienceView: React.FC = () => {
               <button
                 id="btn-save-experience"
                 type="submit"
-                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold shadow-sm shadow-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer"
+                disabled={isSaving}
+                className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-xs font-bold shadow-sm shadow-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <Check className="w-3.5 h-3.5" />
-                <span>{isAdding ? 'Create Position' : 'Save Changes'}</span>
+                {isSaving ? (
+                  <span className="animate-pulse">Saving…</span>
+                ) : (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>{isAdding ? 'Create Position' : 'Save Changes'}</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
@@ -289,16 +424,17 @@ export const ExperienceView: React.FC = () => {
       <section className="space-y-4">
         {experiences.length > 0 ? (
           experiences.map((exp, index) => {
-            const isCurrentlyEditing = editingId === exp.id;
+            const isCurrentlyEditing = editingId === exp._id;
             if (isCurrentlyEditing) return null;
 
             const isFirst = index === 0;
             const isLast = index === experiences.length - 1;
+            const duration = formatDuration(exp.startDate, exp.endDate, exp.currentRole);
 
             return (
               <div
-                key={exp.id}
-                id={`experience-card-${exp.id}`}
+                key={exp._id}
+                id={`experience-card-${exp._id}`}
                 className="group relative rounded-2xl border border-slate-200 bg-white p-5 sm:p-6 shadow-2xs hover:border-slate-300 hover:shadow-xs transition-all"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-slate-100 pb-4">
@@ -311,15 +447,15 @@ export const ExperienceView: React.FC = () => {
                       <span className="text-slate-300 hidden sm:inline">•</span>
                       <span className="text-sm font-semibold text-indigo-600 flex items-center gap-1">
                         <Building2 className="w-3.5 h-3.5" />
-                        {exp.companyName}
+                        {exp.company}
                       </span>
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500 font-mono pt-0.5">
-                      {exp.duration && (
+                      {duration && (
                         <span className="flex items-center gap-1 bg-slate-100 px-2.5 py-0.5 rounded-md text-slate-700 font-medium border border-slate-200">
                           <Calendar className="w-3 h-3 text-slate-400" />
-                          {exp.duration}
+                          {duration}
                         </span>
                       )}
                       {exp.location && (
@@ -333,10 +469,9 @@ export const ExperienceView: React.FC = () => {
 
                   {/* Right: Actions */}
                   <div className="flex items-center gap-1 shrink-0 self-start">
-                    {/* Move Up */}
                     <button
                       type="button"
-                      onClick={() => handleMove(index, 'up')}
+                      onClick={() => void handleMove(index, 'up')}
                       disabled={isFirst}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
                       title="Move up"
@@ -344,10 +479,9 @@ export const ExperienceView: React.FC = () => {
                       <ArrowUp className="w-3.5 h-3.5" />
                     </button>
 
-                    {/* Move Down */}
                     <button
                       type="button"
-                      onClick={() => handleMove(index, 'down')}
+                      onClick={() => void handleMove(index, 'down')}
                       disabled={isLast}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-slate-900 hover:bg-slate-100 disabled:opacity-30 disabled:hover:bg-transparent disabled:cursor-not-allowed transition-colors"
                       title="Move down"
@@ -357,7 +491,6 @@ export const ExperienceView: React.FC = () => {
 
                     <div className="w-px h-4 bg-slate-200 mx-0.5" />
 
-                    {/* Edit */}
                     <button
                       type="button"
                       onClick={() => handleStartEdit(exp)}
@@ -367,10 +500,9 @@ export const ExperienceView: React.FC = () => {
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
 
-                    {/* Delete */}
                     <button
                       type="button"
-                      onClick={() => deleteExperience(exp.id)}
+                      onClick={() => void deleteExperience(exp._id)}
                       className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
                       title="Delete experience"
                     >
@@ -379,10 +511,35 @@ export const ExperienceView: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Description (Rendered Markdown Bullet Points) */}
-                <div className="pt-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                  {renderMarkdown(exp.description)}
-                </div>
+                {/* Short Description */}
+                {exp.shortDescription && (
+                  <div className="pt-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
+                    {renderMarkdown(exp.shortDescription)}
+                  </div>
+                )}
+
+                {/* Bullet Points */}
+                {exp.bulletPoints && exp.bulletPoints.length > 0 && (
+                  <ul className="mt-3 space-y-1 list-disc pl-5 text-xs text-slate-700">
+                    {exp.bulletPoints.map((pt, i) => (
+                      <li key={i}>{pt}</li>
+                    ))}
+                  </ul>
+                )}
+
+                {/* Skills */}
+                {exp.skills && exp.skills.length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-1.5">
+                    {exp.skills.map((s) => (
+                      <span
+                        key={s}
+                        className="px-2 py-0.5 rounded-md bg-slate-100 text-xs font-medium text-slate-700 border border-slate-200"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })
@@ -395,7 +552,7 @@ export const ExperienceView: React.FC = () => {
             <div className="max-w-md mx-auto space-y-1">
               <h3 className="text-sm font-bold text-slate-900">No experience records added yet</h3>
               <p className="text-xs text-slate-500">
-                Add your career history positions with company names, roles, durations, locations, and markdown bullets.
+                Add your career history positions with company names, roles, dates, locations, and bullet points.
               </p>
             </div>
             <button

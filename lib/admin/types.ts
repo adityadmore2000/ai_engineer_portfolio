@@ -25,15 +25,18 @@ export interface Project {
 }
 
 export interface Experience {
-  id: string;
-  companyName: string;
+  _id: string;
+  _rev?: string;
   role: string;
-  duration: string;
-  location: string;
-  description: string;
+  company: string;
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+  currentRole?: boolean;
+  shortDescription?: string;
+  bulletPoints?: string[];
+  skills?: string[];
   displayOrder?: number;
-  createdAt?: string;
-  updatedAt?: string;
 }
 
 export type AdminRoute =
