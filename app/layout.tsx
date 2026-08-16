@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { RootProvider } from "fumadocs-ui/provider/next";
-import { SiteNotice } from "@/components/SiteNotice";
+import { MaintenanceBanner } from "@/components/MaintenanceBanner";
+import { CriticalSiteLock } from "@/components/CriticalSiteLock";
 import { ChatProvider, FloatingButton, SlideOutPanel } from "@/components/Chat";
 import { GoogleAnalytics } from "@/components/Analytics";
 import { Analytics } from "@vercel/analytics/react";
+import { getSiteSettings } from "@/sanity/queries";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
@@ -34,20 +36,27 @@ export const metadata: Metadata = {
   }
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children
 }: Readonly<{
   children: ReactNode;
 }>) {
+  const siteSettings = await getSiteSettings();
+
   return (
     <html lang="en">
       <body>
         <RootProvider search={{ enabled: false }} theme={{ enabled: false }}>
           <ChatProvider>
-            <SiteNotice />
+            <MaintenanceBanner />
             {children}
             <FloatingButton />
             <SlideOutPanel />
+            <CriticalSiteLock
+              email={siteSettings?.email}
+              linkedinUrl={siteSettings?.linkedinUrl}
+              githubUrl={siteSettings?.githubUrl}
+            />
           </ChatProvider>
         </RootProvider>
         <Analytics />

@@ -7,7 +7,6 @@ import {
   chunkProject,
   chunkSiteSettings,
   chunkSkillCategory,
-  chunkTechnicalNote,
   getContent,
   QdrantConnectionError,
 } from "../lib/indexing";
@@ -46,7 +45,7 @@ async function main() {
   const vectorUrl = process.env.VECTOR_URL || "http://localhost:6333";
   const collectionName = process.env.QDRANT_COLLECTION || "portfolio_chunks";
 
-  const [projects, settings, experiences, skillCategories, technicalNotes] = await getContent();
+  const [projects, settings, experiences, skillCategories] = await getContent();
 
   const documents: Document[] = [];
 
@@ -64,10 +63,6 @@ async function main() {
 
   for (const cat of skillCategories || []) {
     documents.push(...chunkSkillCategory(cat, baseUrl));
-  }
-
-  for (const note of technicalNotes || []) {
-    documents.push(...chunkTechnicalNote(note, baseUrl));
   }
 
   console.log(`Generated ${documents.length} document chunks.`);
@@ -91,7 +86,6 @@ async function main() {
       settings,
       experiences,
       skillCategories,
-      technicalNotes,
     ]),
   };
 

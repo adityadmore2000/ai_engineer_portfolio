@@ -22,7 +22,10 @@
     "@sanity/image-url": "^1.1.0",
     "@sanity/vision": "^3.88.3",
     "@vercel/analytics": "^2.0.1",
+    "canvas-confetti": "^1.9.4",
     "easymde": "^2.21.0",
+    "firebase": "^12.17.1",
+    "firebase-admin": "^14.2.0",
     "fumadocs-core": "^15.8.5",
     "fumadocs-ui": "^15.8.5",
     "langfuse": "^3.38.20",
@@ -43,6 +46,7 @@
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
     "@tailwindcss/postcss": "^4.1.8",
+    "@types/canvas-confetti": "^1.9.0",
     "@types/node": "^22.15.29",
     "@types/react": "^19.0.12",
     "@types/react-dom": "^19.0.4",
@@ -50,5 +54,10 @@
     "eslint-config-next": "^15.3.3",
     "tailwindcss": "^4.1.8",
     "typescript": "^5.8.3"
+  },
+  "allowScripts": {
+    "@firebase/util@1.15.2": true,
+    "protobufjs@7.6.5": true,
+    "unrs-resolver@1.12.2": true
   }
 }

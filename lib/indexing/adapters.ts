@@ -19,20 +19,12 @@ export function fallbackToSanityProject(
     title: fb.title,
     slug: fb.slug || null,
     shortSummary: fb.shortSummary || null,
-    status: fb.status || null,
-    whyIBuiltIt: fb.whyIBuiltIt || null,
-    theProblem: fb.theProblem || null,
-    theSolution: fb.theSolution || null,
-    engineeringDecisions: fb.engineeringDecisions || null,
-    results: fb.results || null,
-    whatThisDemonstrates: fb.whatThisDemonstrates || null,
-    exampleInputsOutputs: fb.exampleInputsOutputs || null,
-    lessonsLearned: fb.lessonsLearned || null,
-    limitations: fb.limitations || null,
-    futureImprovements: fb.futureImprovements || null,
-    timeline: fb.timeline || null,
     technologies: fb.technologies || null,
-    keyMetrics: fb.keyMetrics || null,
+    sections: fb.sections?.map((s) => ({
+      _key: s._key,
+      title: s.title,
+      description: s.description || null,
+    })) || null,
   };
 }
 

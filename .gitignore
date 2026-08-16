@@ -14,3 +14,4 @@ package-lock.json
 .venv/
 *.gz
 __pycache__/
+portfolio-admin-cms/
