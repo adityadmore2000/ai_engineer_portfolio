@@ -9,8 +9,6 @@ import {
   FolderGit2,
   Briefcase,
   Wrench,
-  BookOpen,
-  FileCode2,
   ExternalLink,
   Settings,
   LogOut,
@@ -179,8 +177,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenNewProject }) => {
 
           {[
             { label: 'Skills', icon: Wrench },
-            { label: 'Technical Notes', icon: BookOpen },
-            { label: 'Documentation', icon: FileCode2 },
           ].map(({ label, icon: Icon }) => (
             <div
               key={label}

@@ -17,14 +17,12 @@ import {
   projectsQuery,
   siteSettingsQuery,
   skillCategoriesQuery,
-  technicalNotesQuery,
 } from "./types";
 import type {
   SanityExperience,
   SanityProject,
   SanitySiteSettings,
   SanitySkillCategory,
-  SanityTechnicalNote,
 } from "./types";
 
 export async function fetchFromSanity() {
@@ -34,7 +32,6 @@ export async function fetchFromSanity() {
     client.fetch<SanitySiteSettings>(siteSettingsQuery),
     client.fetch<SanityExperience[]>(experiencesQuery),
     client.fetch<SanitySkillCategory[]>(skillCategoriesQuery),
-    client.fetch<SanityTechnicalNote[]>(technicalNotesQuery),
   ]);
 }
 
@@ -45,9 +42,8 @@ export function getFallbackContent() {
   const experiences: SanityExperience[] = fallbackExperiences.map(fallbackToSanityExperience);
   const skillCategories: SanitySkillCategory[] =
     fallbackSkillCategories.map(fallbackToSanitySkillCategory);
-  const technicalNotes: SanityTechnicalNote[] = [];
 
-  return [projects, settings, experiences, skillCategories, technicalNotes] as const;
+  return [projects, settings, experiences, skillCategories] as const;
 }
 
 export async function getContent() {

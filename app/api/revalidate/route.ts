@@ -75,15 +75,6 @@ function revalidatePaths(body: WebhookPayload): string[] {
         paths.add(`/projects/${body.slug}`);
       }
       break;
-    case "projectDocumentationPage":
-      // Documentation pages live under their project; refresh project routes.
-      paths.add("/sitemap.xml");
-      break;
-    case "technicalNote":
-      if (body.slug) {
-        paths.add(`/notes/${body.slug}`);
-      }
-      break;
     default:
       break;
   }

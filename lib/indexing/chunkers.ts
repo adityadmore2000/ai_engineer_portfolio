@@ -4,7 +4,6 @@ import type {
   SanityProject,
   SanitySiteSettings,
   SanitySkillCategory,
-  SanityTechnicalNote,
 } from "./types";
 
 export function chunkProject(project: SanityProject, baseUrl: string): Document[] {
@@ -145,40 +144,4 @@ export function chunkSkillCategory(cat: SanitySkillCategory, baseUrl: string): D
       },
     }),
   ];
-}
-
-export function chunkTechnicalNote(note: SanityTechnicalNote, baseUrl: string): Document[] {
-  const slug = note.slug || "";
-  const noteUrl = slug ? `${baseUrl}/notes/${slug}` : baseUrl;
-  const docs: Document[] = [];
-
-  if (note.shortSummary) {
-    docs.push(
-      new Document({
-        pageContent: note.shortSummary,
-        metadata: {
-          section: "Short Summary",
-          title: note.title,
-          slug,
-          url: noteUrl,
-        },
-      })
-    );
-  }
-
-  if (note.tags?.length) {
-    docs.push(
-      new Document({
-        pageContent: `Tags: ${note.tags.join(", ")}`,
-        metadata: {
-          section: "Tags",
-          title: note.title,
-          slug,
-          url: noteUrl,
-        },
-      })
-    );
-  }
-
-  return docs;
 }

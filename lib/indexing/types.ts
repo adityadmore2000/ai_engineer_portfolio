@@ -40,14 +40,6 @@ export type SanitySkillCategory = {
   skills: string[] | null;
 };
 
-export type SanityTechnicalNote = {
-  _id: string;
-  title: string | null;
-  slug: string | null;
-  shortSummary: string | null;
-  tags: string[] | null;
-};
-
 export const projectsQuery = groq`*[_type == "project" && published == true] { _id, title, "slug": slug.current, shortSummary, technologies, sections[]{ _key, title, description } }`;
 
 export const siteSettingsQuery = groq`*[_type == "siteSettings"][0] { name, shortBio, aboutSummary, focusAreas, contactHeadline, contactDescription, heroDescription }`;
@@ -55,5 +47,3 @@ export const siteSettingsQuery = groq`*[_type == "siteSettings"][0] { name, shor
 export const experiencesQuery = groq`*[_type == "experience"] { _id, role, company, shortDescription, bulletPoints, skills }`;
 
 export const skillCategoriesQuery = groq`*[_type == "skillCategory"] { _id, title, skills }`;
-
-export const technicalNotesQuery = groq`*[_type == "technicalNote" && defined(publishedDate)] { _id, title, "slug": slug.current, shortSummary, tags }`;

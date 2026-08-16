@@ -7,7 +7,6 @@ import { Hero } from "@/components/Hero";
 import { Projects } from "@/components/Projects";
 import { ResumeSection } from "@/components/ResumeSection";
 import { Skills } from "@/components/Skills";
-import { TechnicalNotes } from "@/components/TechnicalNotes";
 import type { Metadata } from "next";
 import { isSanityConfigured } from "@/sanity/env";
 import {
@@ -20,7 +19,6 @@ import {
 import {
   getAllProjects,
   getExperiences,
-  getFeaturedTechnicalNotes,
   getSiteSettings,
   getSkillCategories
 } from "@/sanity/queries";
@@ -45,13 +43,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [settings, experiences, projects, skillCategories, notes] =
+  const [settings, experiences, projects, skillCategories] =
     await Promise.all([
       getSiteSettings(),
       getExperiences(),
       getAllProjects(),
-      getSkillCategories(),
-      getFeaturedTechnicalNotes()
+      getSkillCategories()
     ]);
   const pageSettings = settings || fallbackSiteSettings;
   const pageExperiences = experiences.length ? experiences : fallbackExperiences;
@@ -70,7 +67,6 @@ export default async function Home() {
         <Projects projects={pageProjects} />
         <Skills categories={pageSkillCategories} />
         <ResumeSection settings={pageSettings} />
-        <TechnicalNotes notes={notes} />
         <Contact settings={pageSettings} />
       </main>
       <Footer settings={pageSettings} />
