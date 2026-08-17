@@ -491,8 +491,8 @@ export const ProjectEditorView: React.FC = () => {
             <button
               id="btn-editor-preview"
               type="button"
-              onClick={() => {
-                saveDraft();
+              onClick={async () => {
+                await saveDraft();
                 navigateTo({ view: 'preview', projectId: activeProject._id });
               }}
               className="px-4 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 text-xs font-semibold transition-all flex items-center gap-2 border border-slate-200 shadow-2xs cursor-pointer"

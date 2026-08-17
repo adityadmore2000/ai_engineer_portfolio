@@ -141,7 +141,7 @@ export async function createProject(
   return created;
 }
 
-export async function publishProject(id: string): Promise<void> {
+export async function publishProject(id: string): Promise<AdminProject> {
   await requireAdmin();
   const writeClient = getWriteClient();
   await writeClient.patch(id).set({ published: true }).commit();
@@ -155,9 +155,13 @@ export async function publishProject(id: string): Promise<void> {
   if (project?.slug) {
     revalidatePath(`/projects/${project.slug}`);
   }
+
+  const updated = await getAdminProject(id);
+  if (!updated) throw new Error("Failed to fetch project after publish");
+  return updated;
 }
 
-export async function unpublishProject(id: string): Promise<void> {
+export async function unpublishProject(id: string): Promise<AdminProject> {
   await requireAdmin();
   const writeClient = getWriteClient();
   await writeClient.patch(id).set({ published: false }).commit();
@@ -171,6 +175,10 @@ export async function unpublishProject(id: string): Promise<void> {
   if (project?.slug) {
     revalidatePath(`/projects/${project.slug}`);
   }
+
+  const updated = await getAdminProject(id);
+  if (!updated) throw new Error("Failed to fetch project after unpublish");
+  return updated;
 }
 
 export async function deleteProject(id: string): Promise<void> {
