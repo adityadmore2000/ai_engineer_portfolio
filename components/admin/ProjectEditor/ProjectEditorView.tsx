@@ -106,6 +106,12 @@ export const ProjectEditorView: React.FC = () => {
     showToast('info', 'Section rearranged', `Moved to position ${targetIndex + 1}.`);
   };
 
+  const handleAddMediaAsset = (asset: import('@/lib/admin/types').MediaAsset) => {
+    updateActiveProject({
+      mediaAssets: [...(activeProject.mediaAssets ?? []), asset],
+    });
+  };
+
   const handleDuplicateSection = (index: number) => {
     const original = sections[index];
     const duplicated: ProjectSection = {
@@ -391,6 +397,7 @@ export const ProjectEditorView: React.FC = () => {
                   totalCount={sections.length}
                   mediaAssets={activeProject.mediaAssets}
                   onUpdate={(fields) => handleUpdateSection(section.id, fields)}
+                  onAddMediaAsset={handleAddMediaAsset}
                   onMoveUp={() => handleMoveSection(index, 'up')}
                   onMoveDown={() => handleMoveSection(index, 'down')}
                   onDuplicate={() => handleDuplicateSection(index)}

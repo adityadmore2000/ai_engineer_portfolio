@@ -11,6 +11,7 @@ import {
   ListOrdered,
   Quote,
   Link as LinkIcon,
+  ImagePlus,
   Table as TableIcon,
   Eye,
   Edit3,
@@ -27,6 +28,7 @@ interface MarkdownEditorProps {
   label?: string;
   badge?: string;
   mediaAssets?: Array<{ refId: string; url?: string; alt?: string }>;
+  onInsertImage?: (insertAtCursor: (text: string) => void) => void;
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
@@ -37,12 +39,14 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   label,
   badge,
   mediaAssets = [],
+  onInsertImage,
 }) => {
   const resolvedValue = resolveMediaReferences(value, mediaAssets);
   const [viewMode, setViewMode] = useState<'write' | 'preview' | 'split'>('write');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const isSyncingRef = useRef<boolean>(false);
+  const savedCursorRef = useRef<number>(0);
 
   const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (isSyncingRef.current) return;
@@ -91,6 +95,22 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         start + before.length + selectedText.length
       );
     }, 10);
+  };
+
+  const handleInsertImageClick = () => {
+    if (!onInsertImage) return;
+    if (textareaRef.current) {
+      savedCursorRef.current = textareaRef.current.selectionStart;
+    }
+    const pos = savedCursorRef.current;
+    onInsertImage((text: string) => {
+      const newValue = value.substring(0, pos) + text + value.substring(pos);
+      onChange(newValue);
+      setTimeout(() => {
+        textareaRef.current?.focus();
+        textareaRef.current?.setSelectionRange(pos + text.length, pos + text.length);
+      }, 10);
+    });
   };
 
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
@@ -195,6 +215,16 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           >
             <LinkIcon className="w-3.5 h-3.5" />
           </button>
+          {onInsertImage && (
+            <button
+              type="button"
+              onClick={handleInsertImageClick}
+              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
+              title="Insert Image"
+            >
+              <ImagePlus className="w-3.5 h-3.5" />
+            </button>
+          )}
           <button
             type="button"
             onClick={() =>
@@ -263,6 +293,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               value={value}
               onChange={(e) => onChange(e.target.value)}
               onScroll={handleTextareaScroll}
+              onSelect={(e) => { savedCursorRef.current = e.currentTarget.selectionStart; }}
+              onClick={(e) => { savedCursorRef.current = e.currentTarget.selectionStart; }}
+              onKeyUp={(e) => { savedCursorRef.current = (e.target as HTMLTextAreaElement).selectionStart; }}
               placeholder={placeholder}
               style={{ minHeight }}
               className="w-full bg-white p-4 font-mono text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-hidden overflow-y-auto max-h-[450px] leading-relaxed"
@@ -281,6 +314,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onSelect={(e) => { savedCursorRef.current = e.currentTarget.selectionStart; }}
+            onClick={(e) => { savedCursorRef.current = e.currentTarget.selectionStart; }}
+            onKeyUp={(e) => { savedCursorRef.current = (e.target as HTMLTextAreaElement).selectionStart; }}
             placeholder={placeholder}
             style={{ minHeight }}
             className="w-full bg-white p-4 font-mono text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-hidden resize-y leading-relaxed"

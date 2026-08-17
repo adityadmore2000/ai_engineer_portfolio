@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   GripVertical,
   ArrowUp,
@@ -14,6 +14,9 @@ import {
 } from 'lucide-react';
 import { MediaAsset, ProjectSection } from '@/lib/admin/types';
 import { MarkdownEditor } from '@/components/admin/common/MarkdownEditor';
+import { MediaPickerModal, MediaInsertResult } from '@/components/admin/common/MediaPickerModal';
+import { uploadProjectImage } from '@/app/admin/actions/projects';
+import { generateMediaRefId } from '@/lib/utils/media-ref';
 
 interface SectionCardProps {
   section: ProjectSection;
@@ -21,6 +24,7 @@ interface SectionCardProps {
   totalCount: number;
   mediaAssets?: MediaAsset[];
   onUpdate: (updated: Partial<ProjectSection>) => void;
+  onAddMediaAsset: (asset: MediaAsset) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
   onDuplicate: () => void;
@@ -33,12 +37,41 @@ export const SectionCard: React.FC<SectionCardProps> = ({
   totalCount,
   mediaAssets = [],
   onUpdate,
+  onAddMediaAsset,
   onMoveUp,
   onMoveDown,
   onDuplicate,
   onDelete,
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMediaPickerOpen, setIsMediaPickerOpen] = useState(false);
+  const pendingInsertRef = useRef<((text: string) => void) | null>(null);
+
+  const handleInsertImage = (insertAtCursor: (text: string) => void) => {
+    pendingInsertRef.current = insertAtCursor;
+    setIsMediaPickerOpen(true);
+  };
+
+  const handleMediaInsert = (result: MediaInsertResult) => {
+    const insertFn = pendingInsertRef.current;
+    if (!insertFn) return;
+
+    if (result.type === 'new') {
+      const refId = generateMediaRefId('img');
+      onAddMediaAsset({
+        refId,
+        alt: result.alt,
+        caption: result.caption,
+        url: result.url,
+        assetRef: result.assetRef,
+      });
+      insertFn(`![${result.alt}](asset://${refId})`);
+    } else {
+      insertFn(`![${result.alt}](asset://${result.refId})`);
+    }
+
+    pendingInsertRef.current = null;
+  };
 
   const isFirst = index === 0;
   const isLast = index === totalCount - 1;
@@ -161,10 +194,19 @@ export const SectionCard: React.FC<SectionCardProps> = ({
               placeholder="Write the section narrative in markdown... Describe the problem, technical diagrams, code snippets, engineering decisions, or results."
               minHeight="170px"
               mediaAssets={mediaAssets}
+              onInsertImage={handleInsertImage}
             />
           </div>
         </div>
       )}
+
+      <MediaPickerModal
+        isOpen={isMediaPickerOpen}
+        onClose={() => { setIsMediaPickerOpen(false); pendingInsertRef.current = null; }}
+        onInsert={handleMediaInsert}
+        mediaAssets={mediaAssets}
+        onUpload={uploadProjectImage}
+      />
     </div>
   );
 };
