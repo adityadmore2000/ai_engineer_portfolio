@@ -14,6 +14,7 @@ interface MediaPickerModalProps {
   onInsert: (result: MediaInsertResult) => void;
   mediaAssets: MediaAsset[];
   onUpload: (formData: FormData) => Promise<{ url: string; assetId: string }>;
+  mode?: 'insert' | 'replace';
 }
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -25,6 +26,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
   onInsert,
   mediaAssets,
   onUpload,
+  mode = 'insert',
 }) => {
   const [activeTab, setActiveTab] = useState<'upload' | 'existing'>('upload');
   const [altText, setAltText] = useState('');
@@ -107,8 +109,14 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
               <ImageIcon className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-base text-zinc-100">Insert Image</h3>
-              <p className="text-xs text-zinc-400">Upload a new image or select from existing project media</p>
+              <h3 className="font-semibold text-base text-zinc-100">
+                {mode === 'replace' ? 'Replace Image' : 'Insert Image'}
+              </h3>
+              <p className="text-xs text-zinc-400">
+                {mode === 'replace'
+                  ? 'Upload a new image to replace the existing one'
+                  : 'Upload a new image or select from existing project media'}
+              </p>
             </div>
           </div>
           <button onClick={handleClose} className="text-zinc-500 hover:text-zinc-300 p-1 rounded-lg transition-colors">
@@ -116,37 +124,39 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-zinc-800 bg-zinc-950/50 px-6">
-          <button
-            onClick={() => setActiveTab('upload')}
-            className={`py-3 px-4 text-xs font-medium border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === 'upload'
-                ? 'border-indigo-500 text-indigo-400 font-semibold'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Upload className="w-3.5 h-3.5" />
-            Upload
-          </button>
-          <button
-            onClick={() => setActiveTab('existing')}
-            disabled={mediaAssets.length === 0}
-            className={`py-3 px-4 text-xs font-medium border-b-2 transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${
-              activeTab === 'existing'
-                ? 'border-indigo-500 text-indigo-400 font-semibold'
-                : 'border-transparent text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <Images className="w-3.5 h-3.5" />
-            Existing Media
-            {mediaAssets.length > 0 && (
-              <span className="ml-1 px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-[10px] font-mono">
-                {mediaAssets.length}
-              </span>
-            )}
-          </button>
-        </div>
+        {/* Tabs — hidden in replace mode (upload only) */}
+        {mode === 'insert' && (
+          <div className="flex border-b border-zinc-800 bg-zinc-950/50 px-6">
+            <button
+              onClick={() => setActiveTab('upload')}
+              className={`py-3 px-4 text-xs font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                activeTab === 'upload'
+                  ? 'border-indigo-500 text-indigo-400 font-semibold'
+                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Upload className="w-3.5 h-3.5" />
+              Upload
+            </button>
+            <button
+              onClick={() => setActiveTab('existing')}
+              disabled={mediaAssets.length === 0}
+              className={`py-3 px-4 text-xs font-medium border-b-2 transition-colors flex items-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                activeTab === 'existing'
+                  ? 'border-indigo-500 text-indigo-400 font-semibold'
+                  : 'border-transparent text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Images className="w-3.5 h-3.5" />
+              Existing Media
+              {mediaAssets.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-full bg-zinc-800 text-zinc-400 text-[10px] font-mono">
+                  {mediaAssets.length}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         <div className="p-6 max-h-[400px] overflow-y-auto space-y-4">
@@ -301,7 +311,7 @@ export const MediaPickerModal: React.FC<MediaPickerModalProps> = ({
             className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-xs font-medium text-white transition-colors flex items-center gap-1.5 shadow-md shadow-indigo-950"
           >
             <Check className="w-3.5 h-3.5" />
-            Insert Image
+            {mode === 'replace' ? 'Replace Image' : 'Insert Image'}
           </button>
         </div>
       </div>
