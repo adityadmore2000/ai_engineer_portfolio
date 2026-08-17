@@ -37,6 +37,36 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<'write' | 'preview' | 'split'>('write');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+  const isSyncingRef = useRef<boolean>(false);
+
+  const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
+    if (isSyncingRef.current) return;
+    const el = e.currentTarget;
+    const scrollable = el.scrollHeight - el.clientHeight;
+    if (scrollable <= 0) return;
+    isSyncingRef.current = true;
+    const pct = el.scrollTop / scrollable;
+    if (previewRef.current) {
+      const previewScrollable = previewRef.current.scrollHeight - previewRef.current.clientHeight;
+      previewRef.current.scrollTop = pct * previewScrollable;
+    }
+    requestAnimationFrame(() => { isSyncingRef.current = false; });
+  };
+
+  const handlePreviewScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    if (isSyncingRef.current) return;
+    const el = e.currentTarget;
+    const scrollable = el.scrollHeight - el.clientHeight;
+    if (scrollable <= 0) return;
+    isSyncingRef.current = true;
+    const pct = el.scrollTop / scrollable;
+    if (textareaRef.current) {
+      const textareaScrollable = textareaRef.current.scrollHeight - textareaRef.current.clientHeight;
+      textareaRef.current.scrollTop = pct * textareaScrollable;
+    }
+    requestAnimationFrame(() => { isSyncingRef.current = false; });
+  };
 
   const insertFormat = (before: string, after: string = '', defaultText: string = '') => {
     const textarea = textareaRef.current;
@@ -228,13 +258,16 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               ref={textareaRef}
               value={value}
               onChange={(e) => onChange(e.target.value)}
+              onScroll={handleTextareaScroll}
               placeholder={placeholder}
               style={{ minHeight }}
-              className="w-full bg-white p-4 font-mono text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-hidden resize-y leading-relaxed"
+              className="w-full bg-white p-4 font-mono text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-hidden overflow-y-auto max-h-[450px] leading-relaxed"
             />
             <div
+              ref={previewRef}
               style={{ minHeight }}
               className="p-4 bg-slate-50/50 overflow-y-auto max-h-[450px]"
+              onScroll={handlePreviewScroll}
             >
               {renderMarkdown(value)}
             </div>
