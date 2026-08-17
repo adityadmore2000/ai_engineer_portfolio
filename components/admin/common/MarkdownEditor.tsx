@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { renderMarkdown } from '@/lib/admin/utils/markdown-parser';
+import { resolveMediaReferences } from '@/lib/utils/resolve-media-references';
 
 interface MarkdownEditorProps {
   value: string;
@@ -25,6 +26,7 @@ interface MarkdownEditorProps {
   minHeight?: string;
   label?: string;
   badge?: string;
+  mediaAssets?: Array<{ refId: string; url?: string; alt?: string }>;
 }
 
 export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
@@ -34,7 +36,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   minHeight = '180px',
   label,
   badge,
+  mediaAssets = [],
 }) => {
+  const resolvedValue = resolveMediaReferences(value, mediaAssets);
   const [viewMode, setViewMode] = useState<'write' | 'preview' | 'split'>('write');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
@@ -269,7 +273,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               className="p-4 bg-slate-50/50 overflow-y-auto max-h-[450px]"
               onScroll={handlePreviewScroll}
             >
-              {renderMarkdown(value)}
+              {renderMarkdown(resolvedValue)}
             </div>
           </div>
         ) : viewMode === 'write' ? (

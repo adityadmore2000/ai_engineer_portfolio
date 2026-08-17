@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
 import { renderMarkdown } from '@/lib/admin/utils/markdown-parser';
+import { resolveMediaReferences } from '@/lib/utils/resolve-media-references';
 import { PublishConfirmModal } from '@/components/admin/ProjectEditor/PublishConfirmModal';
 
 interface HighFidelityProjectPageProps {
@@ -260,7 +261,7 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
                     </div>
                   )}
                   <div className="text-slate-700 leading-relaxed text-sm sm:text-base">
-                    {renderMarkdown(section.description || '')}
+                    {renderMarkdown(resolveMediaReferences(section.description || '', project.mediaAssets || []))}
                   </div>
                 </section>
               ))

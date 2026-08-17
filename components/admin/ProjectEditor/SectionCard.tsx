@@ -12,13 +12,14 @@ import {
   Type,
   FileText,
 } from 'lucide-react';
-import { ProjectSection } from '@/lib/admin/types';
+import { MediaAsset, ProjectSection } from '@/lib/admin/types';
 import { MarkdownEditor } from '@/components/admin/common/MarkdownEditor';
 
 interface SectionCardProps {
   section: ProjectSection;
   index: number;
   totalCount: number;
+  mediaAssets?: MediaAsset[];
   onUpdate: (updated: Partial<ProjectSection>) => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -30,6 +31,7 @@ export const SectionCard: React.FC<SectionCardProps> = ({
   section,
   index,
   totalCount,
+  mediaAssets = [],
   onUpdate,
   onMoveUp,
   onMoveDown,
@@ -158,6 +160,7 @@ export const SectionCard: React.FC<SectionCardProps> = ({
               onChange={(val) => onUpdate({ description: val })}
               placeholder="Write the section narrative in markdown... Describe the problem, technical diagrams, code snippets, engineering decisions, or results."
               minHeight="170px"
+              mediaAssets={mediaAssets}
             />
           </div>
         </div>

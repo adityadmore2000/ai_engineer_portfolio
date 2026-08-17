@@ -389,6 +389,7 @@ export const ProjectEditorView: React.FC = () => {
                   section={section}
                   index={index}
                   totalCount={sections.length}
+                  mediaAssets={activeProject.mediaAssets}
                   onUpdate={(fields) => handleUpdateSection(section.id, fields)}
                   onMoveUp={() => handleMoveSection(index, 'up')}
                   onMoveDown={() => handleMoveSection(index, 'down')}
