@@ -387,18 +387,15 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (!idToPublish) return;
 
       try {
-        await serverPublishProject(idToPublish);
+        const saved = await serverPublishProject(idToPublish);
+        const updated = mapAdminProjectToProject(saved);
 
         setProjects((prev) =>
-          prev.map((p) =>
-            p._id === idToPublish ? { ...p, published: true } : p
-          )
+          prev.map((p) => (p._id === updated._id ? updated : p))
         );
 
         if (activeProject?._id === idToPublish) {
-          setActiveProject((prev) =>
-            prev ? { ...prev, published: true } : null
-          );
+          setActiveProject(updated);
         }
 
         setHasUnsavedChanges(false);
@@ -428,16 +425,15 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   const unpublishProject = useCallback(
     async (id: string) => {
       try {
-        await serverUnpublishProject(id);
+        const saved = await serverUnpublishProject(id);
+        const updated = mapAdminProjectToProject(saved);
 
         setProjects((prev) =>
-          prev.map((p) => (p._id === id ? { ...p, published: false } : p))
+          prev.map((p) => (p._id === updated._id ? updated : p))
         );
 
         if (activeProject?._id === id) {
-          setActiveProject((prev) =>
-            prev ? { ...prev, published: false } : null
-          );
+          setActiveProject(updated);
         }
 
         showToast('info', 'Project unpublished', 'Removed from public site.');
