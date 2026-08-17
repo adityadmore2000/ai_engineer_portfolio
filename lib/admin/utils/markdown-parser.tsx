@@ -197,6 +197,27 @@ export function renderMarkdown(content?: string): React.ReactNode {
     }
 
     flushList();
+
+    const blockImgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
+    if (blockImgMatch) {
+      const [, altText, imgUrl] = blockImgMatch;
+      elements.push(
+        <figure key={`img-${index++}`} className="my-4">
+          <img
+            src={imgUrl}
+            alt={altText}
+            className="rounded-lg border border-slate-200 max-w-full h-auto shadow-sm"
+          />
+          {altText && (
+            <figcaption className="mt-1.5 text-center text-xs text-slate-500 italic">
+              {altText}
+            </figcaption>
+          )}
+        </figure>
+      );
+      continue;
+    }
+
     if (trimmed.length > 0) {
       elements.push(
         <p key={`p-${index++}`} className="my-2.5 text-sm text-slate-700 leading-relaxed font-normal">
@@ -214,7 +235,7 @@ export function renderMarkdown(content?: string): React.ReactNode {
 
 function parseInline(text: string): React.ReactNode[] {
   const result: React.ReactNode[] = [];
-  const pattern = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|\[[^\]]+\]\([^)]+\))/g;
+  const pattern = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\))/g;
   let lastIdx = 0;
   let match: RegExpExecArray | null;
   let keyIdx = 0;
@@ -246,6 +267,18 @@ function parseInline(text: string): React.ReactNode[] {
         <em key={`italic-${keyIdx++}`} className="italic text-slate-700">
           {token.slice(1, -1)}
         </em>
+      );
+    } else if (token.startsWith('![') && token.includes('](') && token.endsWith(')')) {
+      const splitIdx = token.indexOf('](');
+      const altText = token.slice(2, splitIdx);
+      const imgUrl = token.slice(splitIdx + 2, -1);
+      result.push(
+        <img
+          key={`img-inline-${keyIdx++}`}
+          src={imgUrl}
+          alt={altText}
+          className="rounded border border-slate-200 max-h-40 inline-block align-middle"
+        />
       );
     } else if (token.startsWith('[') && token.includes('](') && token.endsWith(')')) {
       const splitIdx = token.indexOf('](');
