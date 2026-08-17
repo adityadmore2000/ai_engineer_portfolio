@@ -8,6 +8,11 @@ import {
   adminProjectByIdQuery,
 } from "@/lib/sanity/admin-queries";
 import { requireAdmin } from "@/lib/admin/auth";
+import {
+  ALLOWED_UPLOAD_MIME_TYPES,
+  MAX_UPLOAD_FILE_SIZE,
+  ASSET_REF_PATTERN,
+} from "@/lib/utils/media-ref";
 
 export type AdminProject = {
   _id: string;
@@ -97,17 +102,22 @@ export async function saveProjectDraft(
       title: s.title,
       description: s.description ?? "",
     })),
-    mediaAssets: (data.mediaAssets ?? []).map((ma) => ({
-      _key: ma.refId,
-      _type: "mediaAsset",
-      refId: ma.refId,
-      alt: ma.alt ?? "",
-      ...(ma.caption !== undefined && { caption: ma.caption }),
-      asset: {
-        _type: "image",
-        asset: { _type: "reference", _ref: ma.assetRef },
-      },
-    })),
+    mediaAssets: (data.mediaAssets ?? []).map((ma) => {
+      if (!ASSET_REF_PATTERN.test(ma.refId)) {
+        throw new Error(`Invalid media asset refId: "${ma.refId}"`);
+      }
+      return {
+        _key: ma.refId,
+        _type: "mediaAsset",
+        refId: ma.refId,
+        alt: ma.alt ?? "",
+        ...(ma.caption !== undefined && { caption: ma.caption }),
+        asset: {
+          _type: "image",
+          asset: { _type: "reference", _ref: ma.assetRef },
+        },
+      };
+    }),
   };
 
   if (data.coverImage?._ref) {
@@ -236,6 +246,15 @@ export async function uploadProjectImage(
   const file = formData.get("file") as File | null;
   if (!file) {
     throw new Error("No file provided");
+  }
+
+  if (!(ALLOWED_UPLOAD_MIME_TYPES as readonly string[]).includes(file.type)) {
+    throw new Error(
+      "File type not supported. Allowed types: PNG, JPEG, WebP, GIF."
+    );
+  }
+  if (file.size > MAX_UPLOAD_FILE_SIZE) {
+    throw new Error("File too large. Maximum size is 5MB.");
   }
 
   const writeClient = getWriteClient();

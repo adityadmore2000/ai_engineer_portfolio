@@ -206,6 +206,11 @@ export function renderMarkdown(content?: string): React.ReactNode {
           <img
             src={imgUrl}
             alt={altText}
+            loading="lazy"
+            onError={(e) => {
+              e.currentTarget.src =
+                "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='120'%3E%3Crect fill='%23f1f5f9' width='100%25' height='100%25' rx='8'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='13' fill='%2394a3b8'%3E⚠ Image unavailable%3C/text%3E%3C/svg%3E";
+            }}
             className="rounded-lg border border-slate-200 max-w-full h-auto shadow-sm"
           />
           {altText && (
@@ -277,6 +282,11 @@ function parseInline(text: string): React.ReactNode[] {
           key={`img-inline-${keyIdx++}`}
           src={imgUrl}
           alt={altText}
+          loading="lazy"
+          onError={(e) => {
+            e.currentTarget.src =
+              "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='60'%3E%3Crect fill='%23f1f5f9' width='100%25' height='100%25' rx='4'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='10' fill='%2394a3b8'%3E⚠ unavailable%3C/text%3E%3C/svg%3E";
+          }}
           className="rounded border border-slate-200 max-h-40 inline-block align-middle"
         />
       );
