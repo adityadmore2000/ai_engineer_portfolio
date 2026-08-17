@@ -73,6 +73,19 @@ export const ImagePickerModal: React.FC<ImagePickerModalProps> = ({
 
   const handleFileUpload = async (file: File) => {
     if (!onUpload) return;
+
+    const MAX_FILE_SIZE = 10 * 1024 * 1024;
+    const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setUploadError('File type not supported. Use PNG, JPG, WebP, or GIF.');
+      return;
+    }
+    if (file.size > MAX_FILE_SIZE) {
+      setUploadError('File too large. Maximum size is 10MB.');
+      return;
+    }
+
     setIsUploading(true);
     setUploadError(null);
     try {
