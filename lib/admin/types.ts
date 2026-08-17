@@ -10,6 +10,14 @@ export interface ProjectImage {
   _ref?: string;
 }
 
+export interface MediaAsset {
+  refId: string;
+  alt: string;
+  caption?: string;
+  url: string;
+  assetRef: string;
+}
+
 export interface Project {
   _id: string;
   _rev?: string;
@@ -20,6 +28,7 @@ export interface Project {
   displayOrder: number;
   technologies: string[];
   sections: ProjectSection[];
+  mediaAssets: MediaAsset[];
   published: boolean;
   hasUnsavedChanges?: boolean;
 }

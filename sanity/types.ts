@@ -69,8 +69,16 @@ export type ProjectSection = {
   description?: string;
 };
 
+export type MediaAsset = {
+  refId: string;
+  alt?: string;
+  caption?: string;
+  url?: string;
+};
+
 export type ProjectDetail = ProjectSummary & {
   sections?: ProjectSection[];
+  mediaAssets?: MediaAsset[];
 };
 
 export type SkillCategory = {

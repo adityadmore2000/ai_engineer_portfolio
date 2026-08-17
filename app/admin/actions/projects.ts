@@ -28,6 +28,20 @@ export type AdminProject = {
     title: string;
     description?: string;
   }>;
+  mediaAssets?: Array<{
+    refId: string;
+    alt?: string;
+    caption?: string;
+    url?: string;
+    assetRef?: string;
+  }>;
+};
+
+export type MediaAssetData = {
+  refId: string;
+  alt?: string;
+  caption?: string;
+  assetRef: string;
 };
 
 export type SaveProjectData = {
@@ -45,6 +59,7 @@ export type SaveProjectData = {
     title: string;
     description?: string;
   }>;
+  mediaAssets?: MediaAssetData[];
 };
 
 export async function getAdminProjects(): Promise<AdminProject[]> {
@@ -81,6 +96,17 @@ export async function saveProjectDraft(
       _type: "object",
       title: s.title,
       description: s.description ?? "",
+    })),
+    mediaAssets: (data.mediaAssets ?? []).map((ma) => ({
+      _key: ma.refId,
+      _type: "mediaAsset",
+      refId: ma.refId,
+      alt: ma.alt ?? "",
+      ...(ma.caption !== undefined && { caption: ma.caption }),
+      asset: {
+        _type: "image",
+        asset: { _type: "reference", _ref: ma.assetRef },
+      },
     })),
   };
 

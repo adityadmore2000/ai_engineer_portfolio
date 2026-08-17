@@ -98,7 +98,8 @@ export const projectBySlugQuery = groq`
     technologies,
     displayOrder,
     published,
-    sections[]{ _key, title, description }
+    sections[]{ _key, title, description },
+    mediaAssets[]{ refId, alt, caption, "url": asset.asset->url }
   }
 `;
 

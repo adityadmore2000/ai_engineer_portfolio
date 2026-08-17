@@ -112,6 +112,13 @@ function mapAdminProjectToProject(ap: AdminProject): Project {
       title: s.title,
       description: s.description ?? '',
     })),
+    mediaAssets: (ap.mediaAssets ?? []).map((ma) => ({
+      refId: ma.refId,
+      alt: ma.alt ?? '',
+      caption: ma.caption,
+      url: ma.url ?? '',
+      assetRef: ma.assetRef ?? '',
+    })),
     published: ap.published,
   };
 }
@@ -354,6 +361,12 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
           _key: s.id,
           title: s.title,
           description: s.description,
+        })),
+        mediaAssets: activeProject.mediaAssets.map((ma) => ({
+          refId: ma.refId,
+          alt: ma.alt,
+          caption: ma.caption,
+          assetRef: ma.assetRef,
         })),
       });
 
