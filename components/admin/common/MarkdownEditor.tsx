@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import {
   Heading2,
   Heading3,
@@ -12,13 +13,24 @@ import {
   Quote,
   Link as LinkIcon,
   ImagePlus,
+  Play,
   Table as TableIcon,
   Eye,
   Edit3,
   Sparkles,
+  Type,
+  ChevronDown,
 } from 'lucide-react';
-import { renderMarkdown } from '@/lib/admin/utils/markdown-parser';
-import { resolveMediaReferences } from '@/lib/utils/resolve-media-references';
+import { Markdown } from '@/components/Markdown';
+import { YouTubeInsertModal } from './YouTubeInsertModal';
+
+const SIZE_OPTIONS = [
+  { label: 'Small', token: 'sm' },
+  { label: 'Base', token: 'base' },
+  { label: 'Large', token: 'lg' },
+  { label: 'Extra Large', token: 'xl' },
+  { label: '2XL', token: '2xl' },
+] as const;
 
 interface MarkdownEditorProps {
   value: string;
@@ -41,12 +53,39 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   mediaAssets = [],
   onInsertImage,
 }) => {
-  const resolvedValue = resolveMediaReferences(value, mediaAssets);
   const [viewMode, setViewMode] = useState<'write' | 'preview' | 'split'>('write');
+  const [showSizeDropdown, setShowSizeDropdown] = useState(false);
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number } | null>(null);
+  const [showYouTubeModal, setShowYouTubeModal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const isSyncingRef = useRef<boolean>(false);
   const savedCursorRef = useRef<number>(0);
+  const sizeButtonRef = useRef<HTMLButtonElement>(null);
+  const sizeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showSizeDropdown) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const inDropdown = sizeDropdownRef.current?.contains(target);
+      const inButton = sizeButtonRef.current?.contains(target);
+      if (!inDropdown && !inButton) setShowSizeDropdown(false);
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSizeDropdown(false);
+    };
+    // Close and reposition if the page scrolls while the menu is open
+    const handleScroll = () => setShowSizeDropdown(false);
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    window.addEventListener('scroll', handleScroll, true);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [showSizeDropdown]);
 
   const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (isSyncingRef.current) return;
@@ -97,6 +136,23 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }, 10);
   };
 
+  const handleInsertVideoClick = () => {
+    if (textareaRef.current) {
+      savedCursorRef.current = textareaRef.current.selectionStart;
+    }
+    setShowYouTubeModal(true);
+  };
+
+  const handleVideoInsert = (markdown: string) => {
+    const pos = savedCursorRef.current;
+    const newValue = value.substring(0, pos) + markdown + value.substring(pos);
+    onChange(newValue);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(pos + markdown.length, pos + markdown.length);
+    }, 10);
+  };
+
   const handleInsertImageClick = () => {
     if (!onInsertImage) return;
     if (textareaRef.current) {
@@ -111,6 +167,28 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         textareaRef.current?.setSelectionRange(pos + text.length, pos + text.length);
       }, 10);
     });
+  };
+
+  const applyTextSize = (token: string) => {
+    setShowSizeDropdown(false);
+    if (token === 'base') {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = value.substring(start, end);
+      const stripped = selectedText
+        .replace(/\{size:(?:sm|base|lg|xl|2xl)\}/g, '')
+        .replace(/\{\/size\}/g, '');
+      const newValue = value.substring(0, start) + stripped + value.substring(end);
+      onChange(newValue);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start, start + stripped.length);
+      }, 10);
+    } else {
+      insertFormat(`{size:${token}}`, `{/size}`, 'text');
+    }
   };
 
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
@@ -216,14 +294,24 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             <LinkIcon className="w-3.5 h-3.5" />
           </button>
           {onInsertImage && (
-            <button
-              type="button"
-              onClick={handleInsertImageClick}
-              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
-              title="Insert Image"
-            >
-              <ImagePlus className="w-3.5 h-3.5" />
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleInsertImageClick}
+                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
+                title="Insert Image"
+              >
+                <ImagePlus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleInsertVideoClick}
+                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
+                title="Insert YouTube Video"
+              >
+                <Play className="w-3.5 h-3.5" />
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -238,6 +326,27 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             title="Insert Table"
           >
             <TableIcon className="w-3.5 h-3.5" />
+          </button>
+          <div className="h-3.5 w-px bg-slate-200 mx-0.5" />
+          <button
+            ref={sizeButtonRef}
+            type="button"
+            onClick={() => {
+              if (showSizeDropdown) {
+                setShowSizeDropdown(false);
+              } else if (sizeButtonRef.current) {
+                const rect = sizeButtonRef.current.getBoundingClientRect();
+                setDropdownCoords({ top: rect.bottom + 4, left: rect.left });
+                setShowSizeDropdown(true);
+              }
+            }}
+            className="flex items-center gap-0.5 p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
+            title="Text Size"
+            aria-haspopup="listbox"
+            aria-expanded={showSizeDropdown}
+          >
+            <Type className="w-3.5 h-3.5" />
+            <ChevronDown className="w-2.5 h-2.5" />
           </button>
         </div>
 
@@ -306,7 +415,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               className="p-4 bg-slate-50/50 overflow-y-auto max-h-[450px]"
               onScroll={handlePreviewScroll}
             >
-              {renderMarkdown(resolvedValue)}
+              <Markdown mediaAssets={mediaAssets}>{value}</Markdown>
             </div>
           </div>
         ) : viewMode === 'write' ? (
@@ -326,7 +435,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             style={{ minHeight }}
             className="p-4 bg-slate-50/50 overflow-y-auto max-h-[450px]"
           >
-            {renderMarkdown(value)}
+            <Markdown mediaAssets={mediaAssets}>{value}</Markdown>
           </div>
         )}
       </div>
@@ -343,6 +452,41 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           <span>{charCount} chars</span>
         </span>
       </div>
+
+      <YouTubeInsertModal
+        isOpen={showYouTubeModal}
+        onClose={() => setShowYouTubeModal(false)}
+        onInsert={handleVideoInsert}
+      />
+
+      {showSizeDropdown && dropdownCoords && typeof document !== 'undefined' &&
+        ReactDOM.createPortal(
+          <div
+            ref={sizeDropdownRef}
+            role="listbox"
+            aria-label="Text size"
+            style={{ position: 'fixed', top: dropdownCoords.top, left: dropdownCoords.left, zIndex: 9999 }}
+            className="bg-white border border-slate-200 rounded-lg shadow-lg min-w-[130px] py-1"
+          >
+            {SIZE_OPTIONS.map(({ label, token }) => (
+              <button
+                key={token}
+                type="button"
+                role="option"
+                aria-selected={false}
+                onClick={() => applyTextSize(token)}
+                className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between gap-3"
+              >
+                <span>{label}</span>
+                {token !== 'base' && (
+                  <span className="text-slate-400 font-mono text-[10px]">{token}</span>
+                )}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )
+      }
     </div>
   );
 };

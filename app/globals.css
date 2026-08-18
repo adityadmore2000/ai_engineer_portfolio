@@ -144,3 +144,9 @@ a {
 .prose-content :last-child {
   margin-bottom: 0;
 }
+
+.prose-content .text-size-sm { font-size: 0.875rem; }
+.prose-content .text-size-base { font-size: 1rem; }
+.prose-content .text-size-lg { font-size: 1.125rem; }
+.prose-content .text-size-xl { font-size: 1.25rem; }
+.prose-content .text-size-2xl { font-size: 1.5rem; }

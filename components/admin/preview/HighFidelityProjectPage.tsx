@@ -11,8 +11,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
-import { renderMarkdown } from '@/lib/admin/utils/markdown-parser';
-import { resolveMediaReferences } from '@/lib/utils/resolve-media-references';
+import { Markdown } from '@/components/Markdown';
 import { PublishConfirmModal } from '@/components/admin/ProjectEditor/PublishConfirmModal';
 
 interface HighFidelityProjectPageProps {
@@ -261,7 +260,7 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
                     </div>
                   )}
                   <div className="text-slate-700 leading-relaxed text-sm sm:text-base">
-                    {renderMarkdown(resolveMediaReferences(section.description || '', project.mediaAssets || []))}
+                    <Markdown mediaAssets={project.mediaAssets || []}>{section.description}</Markdown>
                   </div>
                 </section>
               ))

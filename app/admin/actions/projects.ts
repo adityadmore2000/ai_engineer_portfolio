@@ -13,6 +13,32 @@ import {
   MAX_UPLOAD_FILE_SIZE,
   ASSET_REF_PATTERN,
 } from "@/lib/utils/media-ref";
+import { isValidTextSizeToken } from "@/lib/utils/text-size";
+import { isValidYouTubeId } from "@/lib/utils/youtube";
+
+function warnInvalidMarkdownSyntax(content: string, location: string): string[] {
+  const warnings: string[] = [];
+  const sizePattern = /\{size:([^}]*)\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = sizePattern.exec(content)) !== null) {
+    if (!isValidTextSizeToken(match[1])) {
+      warnings.push(
+        `Invalid text size token "${match[1]}" in ${location}`
+      );
+    }
+  }
+
+  const youtubePattern = /youtube:\/\/([^\s)]*)/g;
+  while ((match = youtubePattern.exec(content)) !== null) {
+    if (!isValidYouTubeId(match[1])) {
+      warnings.push(
+        `Invalid YouTube video ID "${match[1]}" in ${location}`
+      );
+    }
+  }
+
+  return warnings;
+}
 
 export type AdminProject = {
   _id: string;
@@ -128,6 +154,19 @@ export async function saveProjectDraft(
     };
   } else if (data.coverImage?.alt !== undefined) {
     patch["coverImage.alt"] = data.coverImage.alt;
+  }
+
+  const syntaxWarnings: string[] = [];
+  if (data.shortSummary) {
+    syntaxWarnings.push(...warnInvalidMarkdownSyntax(data.shortSummary, "shortSummary"));
+  }
+  for (const section of data.sections) {
+    if (section.description) {
+      syntaxWarnings.push(...warnInvalidMarkdownSyntax(section.description, `section "${section._key}"`));
+    }
+  }
+  for (const warning of syntaxWarnings) {
+    console.warn(`[saveProjectDraft] ${warning}`);
   }
 
   const patchBuilder = writeClient.patch(id);

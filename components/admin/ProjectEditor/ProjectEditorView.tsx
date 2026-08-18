@@ -32,6 +32,7 @@ import { SectionCard } from './SectionCard';
 import { PublishConfirmModal } from './PublishConfirmModal';
 import { SECTION_TEMPLATES } from '@/lib/admin/section-templates';
 import { uploadProjectImage } from '@/app/admin/actions/projects';
+import { MARKDOWN_ASSET_IMAGE_PATTERN } from '@/lib/utils/media-ref';
 
 export const ProjectEditorView: React.FC = () => {
   const {
@@ -66,9 +67,9 @@ export const ProjectEditorView: React.FC = () => {
   const mediaUsageCounts = useCallback((): Record<string, number> => {
     const counts: Record<string, number> = {};
     for (const section of sections) {
-      const matches = section.description?.matchAll(/!\[[^\]]*\]\(asset:\/\/((?:img|vid)_[a-z0-9]{8})\)/g) ?? [];
+      const matches = section.description?.matchAll(MARKDOWN_ASSET_IMAGE_PATTERN) ?? [];
       for (const m of matches) {
-        counts[m[1]] = (counts[m[1]] ?? 0) + 1;
+        counts[m[2]] = (counts[m[2]] ?? 0) + 1;
       }
     }
     return counts;
