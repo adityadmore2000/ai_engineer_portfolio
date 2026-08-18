@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import {
   Heading2,
   Heading3,
@@ -25,10 +26,10 @@ import { YouTubeInsertModal } from './YouTubeInsertModal';
 
 const SIZE_OPTIONS = [
   { label: 'Small', token: 'sm' },
-  { label: 'Normal', token: 'base' },
+  { label: 'Base', token: 'base' },
   { label: 'Large', token: 'lg' },
   { label: 'Extra Large', token: 'xl' },
-  { label: 'Display', token: '2xl' },
+  { label: '2XL', token: '2xl' },
 ] as const;
 
 interface MarkdownEditorProps {
@@ -54,28 +55,35 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 }) => {
   const [viewMode, setViewMode] = useState<'write' | 'preview' | 'split'>('write');
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number } | null>(null);
   const [showYouTubeModal, setShowYouTubeModal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const isSyncingRef = useRef<boolean>(false);
   const savedCursorRef = useRef<number>(0);
+  const sizeButtonRef = useRef<HTMLButtonElement>(null);
   const sizeDropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!showSizeDropdown) return;
     const handleClick = (e: MouseEvent) => {
-      if (sizeDropdownRef.current && !sizeDropdownRef.current.contains(e.target as Node)) {
-        setShowSizeDropdown(false);
-      }
+      const target = e.target as Node;
+      const inDropdown = sizeDropdownRef.current?.contains(target);
+      const inButton = sizeButtonRef.current?.contains(target);
+      if (!inDropdown && !inButton) setShowSizeDropdown(false);
     };
     const handleKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setShowSizeDropdown(false);
     };
+    // Close and reposition if the page scrolls while the menu is open
+    const handleScroll = () => setShowSizeDropdown(false);
     document.addEventListener('mousedown', handleClick);
     document.addEventListener('keydown', handleKey);
+    window.addEventListener('scroll', handleScroll, true);
     return () => {
       document.removeEventListener('mousedown', handleClick);
       document.removeEventListener('keydown', handleKey);
+      window.removeEventListener('scroll', handleScroll, true);
     };
   }, [showSizeDropdown]);
 
@@ -320,34 +328,26 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             <TableIcon className="w-3.5 h-3.5" />
           </button>
           <div className="h-3.5 w-px bg-slate-200 mx-0.5" />
-          <div className="relative" ref={sizeDropdownRef}>
-            <button
-              type="button"
-              onClick={() => setShowSizeDropdown(v => !v)}
-              className="flex items-center gap-0.5 p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
-              title="Text Size"
-            >
-              <Type className="w-3.5 h-3.5" />
-              <ChevronDown className="w-2.5 h-2.5" />
-            </button>
-            {showSizeDropdown && (
-              <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg min-w-[130px] py-1">
-                {SIZE_OPTIONS.map(({ label, token }) => (
-                  <button
-                    key={token}
-                    type="button"
-                    onClick={() => applyTextSize(token)}
-                    className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between gap-3"
-                  >
-                    <span>{label}</span>
-                    {token !== 'base' && (
-                      <span className="text-slate-400 font-mono text-[10px]">{token}</span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <button
+            ref={sizeButtonRef}
+            type="button"
+            onClick={() => {
+              if (showSizeDropdown) {
+                setShowSizeDropdown(false);
+              } else if (sizeButtonRef.current) {
+                const rect = sizeButtonRef.current.getBoundingClientRect();
+                setDropdownCoords({ top: rect.bottom + 4, left: rect.left });
+                setShowSizeDropdown(true);
+              }
+            }}
+            className="flex items-center gap-0.5 p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
+            title="Text Size"
+            aria-haspopup="listbox"
+            aria-expanded={showSizeDropdown}
+          >
+            <Type className="w-3.5 h-3.5" />
+            <ChevronDown className="w-2.5 h-2.5" />
+          </button>
         </div>
 
         {/* View Mode Toggle (Write / Preview / Split) */}
@@ -458,6 +458,35 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         onClose={() => setShowYouTubeModal(false)}
         onInsert={handleVideoInsert}
       />
+
+      {showSizeDropdown && dropdownCoords && typeof document !== 'undefined' &&
+        ReactDOM.createPortal(
+          <div
+            ref={sizeDropdownRef}
+            role="listbox"
+            aria-label="Text size"
+            style={{ position: 'fixed', top: dropdownCoords.top, left: dropdownCoords.left, zIndex: 9999 }}
+            className="bg-white border border-slate-200 rounded-lg shadow-lg min-w-[130px] py-1"
+          >
+            {SIZE_OPTIONS.map(({ label, token }) => (
+              <button
+                key={token}
+                type="button"
+                role="option"
+                aria-selected={false}
+                onClick={() => applyTextSize(token)}
+                className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between gap-3"
+              >
+                <span>{label}</span>
+                {token !== 'base' && (
+                  <span className="text-slate-400 font-mono text-[10px]">{token}</span>
+                )}
+              </button>
+            ))}
+          </div>,
+          document.body
+        )
+      }
     </div>
   );
 };
