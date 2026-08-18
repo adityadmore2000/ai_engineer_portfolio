@@ -1,11 +1,6 @@
 import ReactMarkdown from "react-markdown";
+import { rehypeTextSize } from "@/lib/utils/rehype-text-size";
 
-/**
- * Renders Markdown text coming from Sanity `markdown` fields.
- *
- * Supports bullet lists, bold, italic, and inline code via react-markdown.
- * The `.prose-content` class (see app/globals.css) provides readable typography.
- */
 export function Markdown({
   children,
   className = ""
@@ -19,7 +14,7 @@ export function Markdown({
 
   return (
     <div className={`prose-content ${className}`.trim()}>
-      <ReactMarkdown>{children}</ReactMarkdown>
+      <ReactMarkdown rehypePlugins={[rehypeTextSize]}>{children}</ReactMarkdown>
     </div>
   );
 }
