@@ -16,13 +16,14 @@ import {
 import { isValidTextSizeToken } from "@/lib/utils/text-size";
 import { isValidYouTubeId } from "@/lib/utils/youtube";
 
-function warnInvalidMarkdownSyntax(content: string, location: string): void {
+function warnInvalidMarkdownSyntax(content: string, location: string): string[] {
+  const warnings: string[] = [];
   const sizePattern = /\{size:([^}]*)\}/g;
   let match: RegExpExecArray | null;
   while ((match = sizePattern.exec(content)) !== null) {
     if (!isValidTextSizeToken(match[1])) {
-      console.warn(
-        `[saveProjectDraft] Invalid text size token "${match[1]}" in ${location}`
+      warnings.push(
+        `Invalid text size token "${match[1]}" in ${location}`
       );
     }
   }
@@ -30,11 +31,13 @@ function warnInvalidMarkdownSyntax(content: string, location: string): void {
   const youtubePattern = /youtube:\/\/([^\s)]*)/g;
   while ((match = youtubePattern.exec(content)) !== null) {
     if (!isValidYouTubeId(match[1])) {
-      console.warn(
-        `[saveProjectDraft] Invalid YouTube video ID "${match[1]}" in ${location}`
+      warnings.push(
+        `Invalid YouTube video ID "${match[1]}" in ${location}`
       );
     }
   }
+
+  return warnings;
 }
 
 export type AdminProject = {
@@ -153,13 +156,17 @@ export async function saveProjectDraft(
     patch["coverImage.alt"] = data.coverImage.alt;
   }
 
+  const syntaxWarnings: string[] = [];
   if (data.shortSummary) {
-    warnInvalidMarkdownSyntax(data.shortSummary, "shortSummary");
+    syntaxWarnings.push(...warnInvalidMarkdownSyntax(data.shortSummary, "shortSummary"));
   }
   for (const section of data.sections) {
     if (section.description) {
-      warnInvalidMarkdownSyntax(section.description, `section "${section._key}"`);
+      syntaxWarnings.push(...warnInvalidMarkdownSyntax(section.description, `section "${section._key}"`));
     }
+  }
+  for (const warning of syntaxWarnings) {
+    console.warn(`[saveProjectDraft] ${warning}`);
   }
 
   const patchBuilder = writeClient.patch(id);
