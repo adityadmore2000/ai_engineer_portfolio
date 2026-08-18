@@ -1,4 +1,5 @@
 import React from 'react';
+import { isValidTextSizeToken, TEXT_SIZE_CSS_MAP } from '../../utils/text-size';
 
 export function renderMarkdown(content?: string): React.ReactNode {
   if (!content || !content.trim()) {
@@ -240,7 +241,7 @@ export function renderMarkdown(content?: string): React.ReactNode {
 
 function parseInline(text: string): React.ReactNode[] {
   const result: React.ReactNode[] = [];
-  const pattern = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\))/g;
+  const pattern = /(`[^`]+`|\*\*[^*]+\*\*|\*[^*]+\*|!\[[^\]]*\]\([^)]+\)|\[[^\]]+\]\([^)]+\)|\{size:(sm|base|lg|xl|2xl)\}(.*?)\{\/size\})/g;
   let lastIdx = 0;
   let match: RegExpExecArray | null;
   let keyIdx = 0;
@@ -305,6 +306,18 @@ function parseInline(text: string): React.ReactNode[] {
           {linkText}
         </a>
       );
+    } else if (token.startsWith('{size:') && match[2] != null) {
+      const sizeToken = match[2];
+      const innerContent = match[3] ?? '';
+      if (isValidTextSizeToken(sizeToken)) {
+        result.push(
+          <span key={`size-${keyIdx++}`} className={TEXT_SIZE_CSS_MAP[sizeToken]}>
+            {parseInline(innerContent)}
+          </span>
+        );
+      } else {
+        result.push(token);
+      }
     }
 
     lastIdx = pattern.lastIndex;
