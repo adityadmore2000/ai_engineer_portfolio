@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
 import { Experience } from '@/lib/admin/types';
-import { renderMarkdown } from '@/lib/admin/utils/markdown-parser';
+import { Markdown } from '@/components/Markdown';
 import { MarkdownEditor } from '@/components/admin/common/MarkdownEditor';
 import { TagInput } from '@/components/admin/common/TagInput';
 
@@ -514,7 +514,7 @@ export const ExperienceView: React.FC = () => {
                 {/* Short Description */}
                 {exp.shortDescription && (
                   <div className="pt-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                    {renderMarkdown(exp.shortDescription)}
+                    <Markdown variant="admin">{exp.shortDescription}</Markdown>
                   </div>
                 )}
 
