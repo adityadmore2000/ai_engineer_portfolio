@@ -1,5 +1,7 @@
 import React from 'react';
 import { isValidTextSizeToken, TEXT_SIZE_CSS_MAP } from '../../utils/text-size';
+import { YOUTUBE_PROTOCOL_PREFIX } from '../../utils/youtube';
+import { YouTubePreviewCard } from '../../../components/admin/common/YouTubePreviewCard';
 
 export function renderMarkdown(content?: string): React.ReactNode {
   if (!content || !content.trim()) {
@@ -202,25 +204,32 @@ export function renderMarkdown(content?: string): React.ReactNode {
     const blockImgMatch = trimmed.match(/^!\[([^\]]*)\]\(([^)]+)\)$/);
     if (blockImgMatch) {
       const [, altText, imgUrl] = blockImgMatch;
-      elements.push(
-        <figure key={`img-${index++}`} className="my-4">
-          <img
-            src={imgUrl}
-            alt={altText}
-            loading="lazy"
-            onError={(e) => {
-              e.currentTarget.src =
-                "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='120'%3E%3Crect fill='%23f1f5f9' width='100%25' height='100%25' rx='8'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='13' fill='%2394a3b8'%3E⚠ Image unavailable%3C/text%3E%3C/svg%3E";
-            }}
-            className="rounded-lg border border-slate-200 max-w-full h-auto shadow-sm"
-          />
-          {altText && (
-            <figcaption className="mt-1.5 text-center text-xs text-slate-500 italic">
-              {altText}
-            </figcaption>
-          )}
-        </figure>
-      );
+      if (imgUrl.startsWith(YOUTUBE_PROTOCOL_PREFIX)) {
+        const videoId = imgUrl.slice(YOUTUBE_PROTOCOL_PREFIX.length);
+        elements.push(
+          <YouTubePreviewCard key={`yt-${index++}`} videoId={videoId} />
+        );
+      } else {
+        elements.push(
+          <figure key={`img-${index++}`} className="my-4">
+            <img
+              src={imgUrl}
+              alt={altText}
+              loading="lazy"
+              onError={(e) => {
+                e.currentTarget.src =
+                  "data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='120'%3E%3Crect fill='%23f1f5f9' width='100%25' height='100%25' rx='8'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-size='13' fill='%2394a3b8'%3E⚠ Image unavailable%3C/text%3E%3C/svg%3E";
+              }}
+              className="rounded-lg border border-slate-200 max-w-full h-auto shadow-sm"
+            />
+            {altText && (
+              <figcaption className="mt-1.5 text-center text-xs text-slate-500 italic">
+                {altText}
+              </figcaption>
+            )}
+          </figure>
+        );
+      }
       continue;
     }
 
