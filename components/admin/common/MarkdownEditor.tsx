@@ -415,7 +415,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               className="p-4 bg-slate-50/50 overflow-y-auto max-h-[450px]"
               onScroll={handlePreviewScroll}
             >
-              <Markdown variant="admin" mediaAssets={mediaAssets}>{value}</Markdown>
+              <Markdown mediaAssets={mediaAssets}>{value}</Markdown>
             </div>
           </div>
         ) : viewMode === 'write' ? (
@@ -435,7 +435,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             style={{ minHeight }}
             className="p-4 bg-slate-50/50 overflow-y-auto max-h-[450px]"
           >
-            <Markdown variant="admin" mediaAssets={mediaAssets}>{value}</Markdown>
+            <Markdown mediaAssets={mediaAssets}>{value}</Markdown>
           </div>
         )}
       </div>

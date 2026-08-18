@@ -514,7 +514,7 @@ export const ExperienceView: React.FC = () => {
                 {/* Short Description */}
                 {exp.shortDescription && (
                   <div className="pt-4 text-xs sm:text-sm text-slate-700 leading-relaxed">
-                    <Markdown variant="admin">{exp.shortDescription}</Markdown>
+                    <Markdown>{exp.shortDescription}</Markdown>
                   </div>
                 )}
 

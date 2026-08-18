@@ -260,7 +260,7 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
                     </div>
                   )}
                   <div className="text-slate-700 leading-relaxed text-sm sm:text-base">
-                    <Markdown variant="admin" mediaAssets={project.mediaAssets || []}>{section.description}</Markdown>
+                    <Markdown mediaAssets={project.mediaAssets || []}>{section.description}</Markdown>
                   </div>
                 </section>
               ))

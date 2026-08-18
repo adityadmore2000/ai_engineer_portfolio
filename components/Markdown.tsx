@@ -4,21 +4,18 @@ import remarkGfm from "remark-gfm";
 import { remarkTextSize } from "@/lib/utils/remark-text-size";
 import { YOUTUBE_PROTOCOL_PREFIX, isValidYouTubeId } from "@/lib/utils/youtube";
 import { YouTubeEmbed } from "./YouTubeEmbed";
-import { YouTubePreviewCard } from "./admin/common/YouTubePreviewCard";
 import { resolveMediaReferences } from "@/lib/utils/resolve-media-references";
 
 interface MarkdownProps {
   children?: string | null;
   className?: string;
   mediaAssets?: Array<{ refId: string; url?: string; alt?: string }>;
-  variant?: "public" | "admin";
 }
 
 export function Markdown({
   children,
   className = "",
   mediaAssets,
-  variant = "public",
 }: MarkdownProps) {
   if (!children) {
     return null;
@@ -28,9 +25,6 @@ export function Markdown({
     mediaAssets && mediaAssets.length > 0
       ? resolveMediaReferences(children, mediaAssets)
       : children;
-
-  const YouTubeComponent =
-    variant === "admin" ? YouTubePreviewCard : YouTubeEmbed;
 
   return (
     <div className={`prose-content ${className}`.trim()}>
@@ -45,7 +39,7 @@ export function Markdown({
             if (typeof src === "string" && src.startsWith(YOUTUBE_PROTOCOL_PREFIX)) {
               const videoId = src.slice(YOUTUBE_PROTOCOL_PREFIX.length);
               if (isValidYouTubeId(videoId)) {
-                return <YouTubeComponent videoId={videoId} />;
+                return <YouTubeEmbed videoId={videoId} />;
               }
               return null;
             }
