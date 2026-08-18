@@ -20,8 +20,7 @@ import {
   Type,
   ChevronDown,
 } from 'lucide-react';
-import { renderMarkdown } from '@/lib/admin/utils/markdown-parser';
-import { resolveMediaReferences } from '@/lib/utils/resolve-media-references';
+import { Markdown } from '@/components/Markdown';
 import { YouTubeInsertModal } from './YouTubeInsertModal';
 
 const SIZE_OPTIONS = [
@@ -53,7 +52,6 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   mediaAssets = [],
   onInsertImage,
 }) => {
-  const resolvedValue = resolveMediaReferences(value, mediaAssets);
   const [viewMode, setViewMode] = useState<'write' | 'preview' | 'split'>('write');
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
   const [showYouTubeModal, setShowYouTubeModal] = useState(false);
@@ -417,7 +415,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
               className="p-4 bg-slate-50/50 overflow-y-auto max-h-[450px]"
               onScroll={handlePreviewScroll}
             >
-              {renderMarkdown(resolvedValue)}
+              <Markdown variant="admin" mediaAssets={mediaAssets}>{value}</Markdown>
             </div>
           </div>
         ) : viewMode === 'write' ? (
@@ -437,7 +435,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             style={{ minHeight }}
             className="p-4 bg-slate-50/50 overflow-y-auto max-h-[450px]"
           >
-            {renderMarkdown(value)}
+            <Markdown variant="admin" mediaAssets={mediaAssets}>{value}</Markdown>
           </div>
         )}
       </div>
