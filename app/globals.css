@@ -115,6 +115,28 @@ a {
   padding: 0.1rem 0.35rem;
 }
 
+.prose-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  margin: 1.5rem 0;
+}
+
+.prose-content figure {
+  margin: 1.5rem 0;
+}
+
+.prose-content figure img {
+  margin: 0;
+}
+
+.prose-content figcaption {
+  margin-top: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--muted-foreground, #64748b);
+  text-align: center;
+}
+
 .prose-content :first-child {
   margin-top: 0;
 }

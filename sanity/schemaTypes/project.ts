@@ -82,6 +82,35 @@ export const project = defineType({
       ],
     }),
     defineField({
+      name: "mediaAssets",
+      title: "Media Assets",
+      type: "array",
+      of: [
+        {
+          type: "object",
+          name: "mediaAsset",
+          fields: [
+            defineField({
+              name: "refId",
+              title: "Reference ID",
+              type: "string",
+              validation: (Rule) => Rule.required(),
+            }),
+            defineField({ name: "alt", title: "Alt Text", type: "string" }),
+            defineField({ name: "caption", title: "Caption", type: "string" }),
+            defineField({
+              name: "asset",
+              title: "Asset",
+              type: "image",
+              options: { hotspot: false },
+            }),
+          ],
+          preview: { select: { title: "refId", subtitle: "alt", media: "asset" } },
+        },
+      ],
+      hidden: true,
+    }),
+    defineField({
       name: "published",
       title: "Published",
       type: "boolean",

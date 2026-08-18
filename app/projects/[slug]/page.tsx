@@ -8,6 +8,7 @@ import { LightboxImage } from "@/components/LightboxImage";
 import { Markdown } from "@/components/Markdown";
 import { SectionShell } from "@/components/SectionShell";
 import { ProjectViewTracker } from "@/components/Analytics";
+import { resolveMediaReferences } from "@/lib/utils/resolve-media-references";
 import { isSanityConfigured } from "@/sanity/env";
 import {
   fallbackProjects,
@@ -126,7 +127,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                   </h2>
                   {section.description ? (
                     <Markdown className="mt-4 max-w-3xl text-slate-700">
-                      {section.description}
+                      {resolveMediaReferences(section.description, pageProject.mediaAssets || [])}
                     </Markdown>
                   ) : null}
                 </section>

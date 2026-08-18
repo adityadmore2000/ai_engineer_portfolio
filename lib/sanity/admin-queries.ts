@@ -9,7 +9,8 @@ export const adminProjectsQuery = `
     technologies,
     displayOrder,
     published,
-    sections[]{ _key, title, description }
+    sections[]{ _key, title, description },
+    mediaAssets[]{ _key, refId, alt, caption, "url": asset.asset->url, "assetRef": asset.asset->_id }
   }
 `;
 
@@ -24,7 +25,8 @@ export const adminProjectByIdQuery = `
     technologies,
     displayOrder,
     published,
-    sections[]{ _key, title, description }
+    sections[]{ _key, title, description },
+    mediaAssets[]{ _key, refId, alt, caption, "url": asset.asset->url, "assetRef": asset.asset->_id }
   }
 `;
 

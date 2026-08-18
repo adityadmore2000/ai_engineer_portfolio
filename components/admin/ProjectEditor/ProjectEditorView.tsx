@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   ArrowLeft,
   Save,
@@ -16,11 +16,18 @@ import {
   Hash,
   ImageIcon,
   RotateCcw,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  RefreshCw,
+  AlertTriangle,
+  Images,
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
 import { ProjectSection } from '@/lib/admin/types';
 import { TagInput } from '@/components/admin/common/TagInput';
 import { ImagePickerModal } from '@/components/admin/common/ImagePickerModal';
+import { MediaPickerModal, MediaInsertResult } from '@/components/admin/common/MediaPickerModal';
 import { SectionCard } from './SectionCard';
 import { PublishConfirmModal } from './PublishConfirmModal';
 import { SECTION_TEMPLATES } from '@/lib/admin/section-templates';
@@ -41,6 +48,31 @@ export const ProjectEditorView: React.FC = () => {
 
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
+  const [isMediaPanelOpen, setIsMediaPanelOpen] = useState(false);
+  const [replacingRefId, setReplacingRefId] = useState<string | null>(null);
+
+  const sections = useMemo(() => activeProject?.sections ?? [], [activeProject?.sections]);
+
+  const handleReplaceMediaAsset = useCallback((refId: string, newAssetRef: string, newUrl: string) => {
+    updateActiveProject((prev) => ({
+      ...prev,
+      mediaAssets: prev.mediaAssets.map((ma) =>
+        ma.refId === refId ? { ...ma, assetRef: newAssetRef, url: newUrl } : ma
+      ),
+    }));
+    showToast('success', 'Image replaced', 'All references will now point to the new image.');
+  }, [updateActiveProject, showToast]);
+
+  const mediaUsageCounts = useCallback((): Record<string, number> => {
+    const counts: Record<string, number> = {};
+    for (const section of sections) {
+      const matches = section.description?.matchAll(/!\[[^\]]*\]\(asset:\/\/((?:img|vid)_[a-z0-9]{8})\)/g) ?? [];
+      for (const m of matches) {
+        counts[m[1]] = (counts[m[1]] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [sections]);
 
   if (isLoading && !activeProject) {
     return (
@@ -76,8 +108,6 @@ export const ProjectEditorView: React.FC = () => {
     );
   }
 
-  const sections = activeProject.sections || [];
-
   const handleAddSection = (initialTitle = '', initialDesc = '') => {
     const newSection: ProjectSection = {
       id: `sec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -104,6 +134,12 @@ export const ProjectEditorView: React.FC = () => {
 
     updateActiveProject({ sections: reordered });
     showToast('info', 'Section rearranged', `Moved to position ${targetIndex + 1}.`);
+  };
+
+  const handleAddMediaAsset = (asset: import('@/lib/admin/types').MediaAsset) => {
+    updateActiveProject({
+      mediaAssets: [...(activeProject.mediaAssets ?? []), asset],
+    });
   };
 
   const handleDuplicateSection = (index: number) => {
@@ -389,7 +425,9 @@ export const ProjectEditorView: React.FC = () => {
                   section={section}
                   index={index}
                   totalCount={sections.length}
+                  mediaAssets={activeProject.mediaAssets}
                   onUpdate={(fields) => handleUpdateSection(section.id, fields)}
+                  onAddMediaAsset={handleAddMediaAsset}
                   onMoveUp={() => handleMoveSection(index, 'up')}
                   onMoveDown={() => handleMoveSection(index, 'down')}
                   onDuplicate={() => handleDuplicateSection(index)}
@@ -432,6 +470,107 @@ export const ProjectEditorView: React.FC = () => {
             </div>
           )}
         </section>
+
+        {/* 3. PROJECT MEDIA MANAGEMENT */}
+        {(activeProject.mediaAssets ?? []).length > 0 && (
+          <section className="rounded-2xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setIsMediaPanelOpen((v) => !v)}
+              className="w-full flex items-center justify-between px-6 py-4 hover:bg-slate-50 transition-colors cursor-pointer"
+            >
+              <div className="flex items-center gap-2.5">
+                <div className="w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center text-slate-500">
+                  <Images className="w-4 h-4" />
+                </div>
+                <div className="text-left">
+                  <span className="text-sm font-bold text-slate-800">Project Media</span>
+                  <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-100 text-slate-600">
+                    {(activeProject.mediaAssets ?? []).length}
+                  </span>
+                </div>
+              </div>
+              {isMediaPanelOpen ? (
+                <ChevronUp className="w-4 h-4 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-slate-400" />
+              )}
+            </button>
+
+            {isMediaPanelOpen && (() => {
+              const usageCounts = mediaUsageCounts();
+              return (
+                <div className="border-t border-slate-100 p-5">
+                  <p className="text-[11px] text-slate-400 mb-4">
+                    All images attached to this project. Use <span className="font-mono bg-slate-100 px-1 rounded">Copy Reference</span> to insert a reference into any section, or <span className="font-mono bg-slate-100 px-1 rounded">Replace</span> to swap the underlying image without changing any Markdown.
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {(activeProject.mediaAssets ?? []).map((asset) => {
+                      const count = usageCounts[asset.refId] ?? 0;
+                      return (
+                        <div
+                          key={asset.refId}
+                          className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden"
+                        >
+                          <div className="aspect-video bg-slate-200 overflow-hidden">
+                            <img
+                              src={asset.url}
+                              alt={asset.alt}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="p-3 space-y-2">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="text-[10px] font-mono text-indigo-700 bg-indigo-50 border border-indigo-100 px-2 py-0.5 rounded-md truncate">
+                                {asset.refId}
+                              </span>
+                              {count === 0 ? (
+                                <span className="flex items-center gap-1 text-[10px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full shrink-0">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  Unused
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full shrink-0">
+                                  {count}×
+                                </span>
+                              )}
+                            </div>
+                            {asset.alt && (
+                              <p className="text-[11px] text-slate-500 truncate">{asset.alt}</p>
+                            )}
+                            <div className="flex items-center gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const ref = `![${asset.alt || ''}](asset://${asset.refId})`;
+                                  navigator.clipboard.writeText(ref).then(() => {
+                                    showToast('success', 'Reference copied', ref);
+                                  });
+                                }}
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-[11px] font-medium text-slate-600 transition-colors cursor-pointer"
+                              >
+                                <Copy className="w-3 h-3" />
+                                Copy Ref
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setReplacingRefId(asset.refId)}
+                                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 text-[11px] font-medium text-slate-600 hover:text-indigo-700 transition-colors cursor-pointer"
+                              >
+                                <RefreshCw className="w-3 h-3" />
+                                Replace
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+          </section>
+        )}
       </div>
 
       {/* Persistent Bottom Editorial Action Bar */}
@@ -533,6 +672,21 @@ export const ProjectEditorView: React.FC = () => {
           updateActiveProject({
             coverImage: { url, alt: alt || '', _ref: assetRef },
           });
+        }}
+      />
+
+      {/* Replace Media Modal */}
+      <MediaPickerModal
+        isOpen={replacingRefId !== null}
+        onClose={() => setReplacingRefId(null)}
+        mode="replace"
+        mediaAssets={activeProject?.mediaAssets ?? []}
+        onUpload={uploadProjectImage}
+        onInsert={(result: MediaInsertResult) => {
+          if (result.type === 'new' && replacingRefId) {
+            handleReplaceMediaAsset(replacingRefId, result.assetRef, result.url);
+          }
+          setReplacingRefId(null);
         }}
       />
     </div>
