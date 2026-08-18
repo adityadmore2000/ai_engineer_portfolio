@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   Heading2,
   Heading3,
@@ -16,9 +16,19 @@ import {
   Eye,
   Edit3,
   Sparkles,
+  Type,
+  ChevronDown,
 } from 'lucide-react';
 import { renderMarkdown } from '@/lib/admin/utils/markdown-parser';
 import { resolveMediaReferences } from '@/lib/utils/resolve-media-references';
+
+const SIZE_OPTIONS = [
+  { label: 'Small', token: 'sm' },
+  { label: 'Normal', token: 'base' },
+  { label: 'Large', token: 'lg' },
+  { label: 'Extra Large', token: 'xl' },
+  { label: 'Display', token: '2xl' },
+] as const;
 
 interface MarkdownEditorProps {
   value: string;
@@ -43,10 +53,30 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
 }) => {
   const resolvedValue = resolveMediaReferences(value, mediaAssets);
   const [viewMode, setViewMode] = useState<'write' | 'preview' | 'split'>('write');
+  const [showSizeDropdown, setShowSizeDropdown] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const isSyncingRef = useRef<boolean>(false);
   const savedCursorRef = useRef<number>(0);
+  const sizeDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!showSizeDropdown) return;
+    const handleClick = (e: MouseEvent) => {
+      if (sizeDropdownRef.current && !sizeDropdownRef.current.contains(e.target as Node)) {
+        setShowSizeDropdown(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowSizeDropdown(false);
+    };
+    document.addEventListener('mousedown', handleClick);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [showSizeDropdown]);
 
   const handleTextareaScroll = (e: React.UIEvent<HTMLTextAreaElement>) => {
     if (isSyncingRef.current) return;
@@ -111,6 +141,28 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         textareaRef.current?.setSelectionRange(pos + text.length, pos + text.length);
       }, 10);
     });
+  };
+
+  const applyTextSize = (token: string) => {
+    setShowSizeDropdown(false);
+    if (token === 'base') {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = value.substring(start, end);
+      const stripped = selectedText
+        .replace(/\{size:(?:sm|base|lg|xl|2xl)\}/g, '')
+        .replace(/\{\/size\}/g, '');
+      const newValue = value.substring(0, start) + stripped + value.substring(end);
+      onChange(newValue);
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start, start + stripped.length);
+      }, 10);
+    } else {
+      insertFormat(`{size:${token}}`, `{/size}`, 'text');
+    }
   };
 
   const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
@@ -239,6 +291,35 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           >
             <TableIcon className="w-3.5 h-3.5" />
           </button>
+          <div className="h-3.5 w-px bg-slate-200 mx-0.5" />
+          <div className="relative" ref={sizeDropdownRef}>
+            <button
+              type="button"
+              onClick={() => setShowSizeDropdown(v => !v)}
+              className="flex items-center gap-0.5 p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
+              title="Text Size"
+            >
+              <Type className="w-3.5 h-3.5" />
+              <ChevronDown className="w-2.5 h-2.5" />
+            </button>
+            {showSizeDropdown && (
+              <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg min-w-[130px] py-1">
+                {SIZE_OPTIONS.map(({ label, token }) => (
+                  <button
+                    key={token}
+                    type="button"
+                    onClick={() => applyTextSize(token)}
+                    className="w-full text-left px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-100 transition-colors flex items-center justify-between gap-3"
+                  >
+                    <span>{label}</span>
+                    {token !== 'base' && (
+                      <span className="text-slate-400 font-mono text-[10px]">{token}</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* View Mode Toggle (Write / Preview / Split) */}
