@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import {
   ArrowLeft,
   Save,
@@ -51,6 +51,29 @@ export const ProjectEditorView: React.FC = () => {
   const [isMediaPanelOpen, setIsMediaPanelOpen] = useState(false);
   const [replacingRefId, setReplacingRefId] = useState<string | null>(null);
 
+  const sections = useMemo(() => activeProject?.sections ?? [], [activeProject?.sections]);
+
+  const handleReplaceMediaAsset = useCallback((refId: string, newAssetRef: string, newUrl: string) => {
+    updateActiveProject((prev) => ({
+      ...prev,
+      mediaAssets: prev.mediaAssets.map((ma) =>
+        ma.refId === refId ? { ...ma, assetRef: newAssetRef, url: newUrl } : ma
+      ),
+    }));
+    showToast('success', 'Image replaced', 'All references will now point to the new image.');
+  }, [updateActiveProject, showToast]);
+
+  const mediaUsageCounts = useCallback((): Record<string, number> => {
+    const counts: Record<string, number> = {};
+    for (const section of sections) {
+      const matches = section.description?.matchAll(/!\[[^\]]*\]\(asset:\/\/((?:img|vid)_[a-z0-9]{8})\)/g) ?? [];
+      for (const m of matches) {
+        counts[m[1]] = (counts[m[1]] ?? 0) + 1;
+      }
+    }
+    return counts;
+  }, [sections]);
+
   if (isLoading && !activeProject) {
     return (
       <div className="p-6 md:p-10 max-w-5xl mx-auto w-full space-y-8 animate-in fade-in duration-200">
@@ -85,8 +108,6 @@ export const ProjectEditorView: React.FC = () => {
     );
   }
 
-  const sections = activeProject.sections || [];
-
   const handleAddSection = (initialTitle = '', initialDesc = '') => {
     const newSection: ProjectSection = {
       id: `sec-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
@@ -120,27 +141,6 @@ export const ProjectEditorView: React.FC = () => {
       mediaAssets: [...(activeProject.mediaAssets ?? []), asset],
     });
   };
-
-  const handleReplaceMediaAsset = useCallback((refId: string, newAssetRef: string, newUrl: string) => {
-    updateActiveProject((prev) => ({
-      ...prev,
-      mediaAssets: prev.mediaAssets.map((ma) =>
-        ma.refId === refId ? { ...ma, assetRef: newAssetRef, url: newUrl } : ma
-      ),
-    }));
-    showToast('success', 'Image replaced', 'All references will now point to the new image.');
-  }, [updateActiveProject, showToast]);
-
-  const mediaUsageCounts = useCallback((): Record<string, number> => {
-    const counts: Record<string, number> = {};
-    for (const section of sections) {
-      const matches = section.description?.matchAll(/!\[[^\]]*\]\(asset:\/\/((?:img|vid)_[a-z0-9]{8})\)/g) ?? [];
-      for (const m of matches) {
-        counts[m[1]] = (counts[m[1]] ?? 0) + 1;
-      }
-    }
-    return counts;
-  }, [sections]);
 
   const handleDuplicateSection = (index: number) => {
     const original = sections[index];
