@@ -12,6 +12,7 @@ import {
   Quote,
   Link as LinkIcon,
   ImagePlus,
+  Play,
   Table as TableIcon,
   Eye,
   Edit3,
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 import { renderMarkdown } from '@/lib/admin/utils/markdown-parser';
 import { resolveMediaReferences } from '@/lib/utils/resolve-media-references';
+import { YouTubeInsertModal } from './YouTubeInsertModal';
 
 const SIZE_OPTIONS = [
   { label: 'Small', token: 'sm' },
@@ -54,6 +56,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const resolvedValue = resolveMediaReferences(value, mediaAssets);
   const [viewMode, setViewMode] = useState<'write' | 'preview' | 'split'>('write');
   const [showSizeDropdown, setShowSizeDropdown] = useState(false);
+  const [showYouTubeModal, setShowYouTubeModal] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const previewRef = useRef<HTMLDivElement>(null);
   const isSyncingRef = useRef<boolean>(false);
@@ -124,6 +127,23 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
         start + before.length,
         start + before.length + selectedText.length
       );
+    }, 10);
+  };
+
+  const handleInsertVideoClick = () => {
+    if (textareaRef.current) {
+      savedCursorRef.current = textareaRef.current.selectionStart;
+    }
+    setShowYouTubeModal(true);
+  };
+
+  const handleVideoInsert = (markdown: string) => {
+    const pos = savedCursorRef.current;
+    const newValue = value.substring(0, pos) + markdown + value.substring(pos);
+    onChange(newValue);
+    setTimeout(() => {
+      textareaRef.current?.focus();
+      textareaRef.current?.setSelectionRange(pos + markdown.length, pos + markdown.length);
     }, 10);
   };
 
@@ -268,14 +288,24 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             <LinkIcon className="w-3.5 h-3.5" />
           </button>
           {onInsertImage && (
-            <button
-              type="button"
-              onClick={handleInsertImageClick}
-              className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
-              title="Insert Image"
-            >
-              <ImagePlus className="w-3.5 h-3.5" />
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleInsertImageClick}
+                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
+                title="Insert Image"
+              >
+                <ImagePlus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                onClick={handleInsertVideoClick}
+                className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/70 rounded transition-colors"
+                title="Insert YouTube Video"
+              >
+                <Play className="w-3.5 h-3.5" />
+              </button>
+            </>
           )}
           <button
             type="button"
@@ -424,6 +454,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           <span>{charCount} chars</span>
         </span>
       </div>
+
+      <YouTubeInsertModal
+        isOpen={showYouTubeModal}
+        onClose={() => setShowYouTubeModal(false)}
+        onInsert={handleVideoInsert}
+      />
     </div>
   );
 };
