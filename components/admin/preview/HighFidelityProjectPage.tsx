@@ -260,7 +260,7 @@ export const HighFidelityProjectPage: React.FC<HighFidelityProjectPageProps> = (
                       </h2>
                     </div>
                   )}
-                  <div className="text-slate-700 leading-relaxed text-sm sm:text-base">
+                  <div className="prose-content text-slate-700 leading-relaxed text-sm sm:text-base">
                     {renderMarkdown(resolveMediaReferences(section.description || '', project.mediaAssets || []))}
                   </div>
                 </section>
