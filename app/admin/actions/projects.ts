@@ -13,6 +13,29 @@ import {
   MAX_UPLOAD_FILE_SIZE,
   ASSET_REF_PATTERN,
 } from "@/lib/utils/media-ref";
+import { isValidTextSizeToken } from "@/lib/utils/text-size";
+import { isValidYouTubeId } from "@/lib/utils/youtube";
+
+function warnInvalidMarkdownSyntax(content: string, location: string): void {
+  const sizePattern = /\{size:([^}]*)\}/g;
+  let match: RegExpExecArray | null;
+  while ((match = sizePattern.exec(content)) !== null) {
+    if (!isValidTextSizeToken(match[1])) {
+      console.warn(
+        `[saveProjectDraft] Invalid text size token "${match[1]}" in ${location}`
+      );
+    }
+  }
+
+  const youtubePattern = /youtube:\/\/([^\s)]*)/g;
+  while ((match = youtubePattern.exec(content)) !== null) {
+    if (!isValidYouTubeId(match[1])) {
+      console.warn(
+        `[saveProjectDraft] Invalid YouTube video ID "${match[1]}" in ${location}`
+      );
+    }
+  }
+}
 
 export type AdminProject = {
   _id: string;
@@ -128,6 +151,15 @@ export async function saveProjectDraft(
     };
   } else if (data.coverImage?.alt !== undefined) {
     patch["coverImage.alt"] = data.coverImage.alt;
+  }
+
+  if (data.shortSummary) {
+    warnInvalidMarkdownSyntax(data.shortSummary, "shortSummary");
+  }
+  for (const section of data.sections) {
+    if (section.description) {
+      warnInvalidMarkdownSyntax(section.description, `section "${section._key}"`);
+    }
   }
 
   const patchBuilder = writeClient.patch(id);
