@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
 import { MaintenanceCard } from './MaintenanceCard';
+import { AiChatCard } from './AiChatCard';
 
 export const DashboardView: React.FC = () => {
   const { projects, experiences, navigateTo, openCreateModal, isLoading } = usePortfolio();
@@ -285,6 +286,17 @@ export const DashboardView: React.FC = () => {
           </h2>
         </div>
         <MaintenanceCard />
+      </div>
+
+      {/* AI Chat Section */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <Sparkles className="w-4 h-4 text-slate-500" />
+          <h2 className="text-sm font-bold text-slate-800 uppercase tracking-wider font-mono">
+            AI Features
+          </h2>
+        </div>
+        <AiChatCard />
       </div>
     </div>
   );

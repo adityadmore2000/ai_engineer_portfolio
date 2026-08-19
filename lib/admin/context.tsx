@@ -93,6 +93,7 @@ const DEFAULT_MAINTENANCE: MaintenanceState = {
   enabled: false,
   message: 'Website update in progress — some features may be temporarily unavailable.',
   criticalLock: false,
+  showAiChat: true,
 };
 
 function mapAdminProjectToProject(ap: AdminProject): Project {
@@ -234,6 +235,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
             enabled: settings.maintenanceEnabled ?? false,
             message: settings.maintenanceMessage ?? DEFAULT_MAINTENANCE.message,
             criticalLock: settings.criticalLock ?? false,
+            showAiChat: settings.showAiChat ?? true,
           });
         }
       } catch {
@@ -268,6 +270,7 @@ export const PortfolioProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         maintenanceEnabled: next.enabled,
         maintenanceMessage: next.message,
         criticalLock: next.criticalLock,
+        showAiChat: next.showAiChat,
       });
     }
   }, []);

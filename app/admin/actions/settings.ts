@@ -24,6 +24,7 @@ export type AdminSiteSettings = {
   maintenanceEnabled?: boolean;
   maintenanceMessage?: string;
   criticalLock?: boolean;
+  showAiChat?: boolean;
 };
 
 export type SaveSiteSettingsData = {
@@ -88,7 +89,7 @@ export async function saveSiteSettings(
 
 export async function updateSiteStateSettings(
   id: string,
-  state: { maintenanceEnabled: boolean; maintenanceMessage: string; criticalLock: boolean }
+  state: { maintenanceEnabled: boolean; maintenanceMessage: string; criticalLock: boolean; showAiChat: boolean }
 ): Promise<void> {
   await requireAdmin();
   const writeClient = getWriteClient();
@@ -96,6 +97,7 @@ export async function updateSiteStateSettings(
     maintenanceEnabled: state.maintenanceEnabled,
     maintenanceMessage: state.maintenanceMessage,
     criticalLock: state.criticalLock,
+    showAiChat: state.showAiChat,
   }).commit();
   revalidatePath('/', 'layout');
 }
