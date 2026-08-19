@@ -60,4 +60,5 @@ export interface MaintenanceState {
   enabled: boolean;
   message: string;
   criticalLock: boolean;
+  showAiChat: boolean;
 }

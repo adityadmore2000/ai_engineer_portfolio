@@ -51,7 +51,8 @@ export const siteSettingsQuery = groq`
     seoDescription,
     maintenanceEnabled,
     maintenanceMessage,
-    criticalLock
+    criticalLock,
+    showAiChat
   }
 `;
 

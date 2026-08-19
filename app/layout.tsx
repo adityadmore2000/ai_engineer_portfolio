@@ -42,26 +42,43 @@ export default async function RootLayout({
   children: ReactNode;
 }>) {
   const siteSettings = await getSiteSettings();
+  const showAiChat = siteSettings?.showAiChat ?? true;
 
   return (
     <html lang="en">
       <body>
         <RootProvider search={{ enabled: false }} theme={{ enabled: false }}>
-          <ChatProvider>
-            <MaintenanceBanner
-              enabled={siteSettings?.maintenanceEnabled ?? false}
-              message={siteSettings?.maintenanceMessage ?? ''}
-            />
-            {children}
-            <FloatingButton />
-            <SlideOutPanel />
-            <CriticalSiteLock
-              criticalLock={siteSettings?.criticalLock ?? false}
-              email={siteSettings?.email}
-              linkedinUrl={siteSettings?.linkedinUrl}
-              githubUrl={siteSettings?.githubUrl}
-            />
-          </ChatProvider>
+          {showAiChat ? (
+            <ChatProvider>
+              <MaintenanceBanner
+                enabled={siteSettings?.maintenanceEnabled ?? false}
+                message={siteSettings?.maintenanceMessage ?? ''}
+              />
+              {children}
+              <FloatingButton />
+              <SlideOutPanel />
+              <CriticalSiteLock
+                criticalLock={siteSettings?.criticalLock ?? false}
+                email={siteSettings?.email}
+                linkedinUrl={siteSettings?.linkedinUrl}
+                githubUrl={siteSettings?.githubUrl}
+              />
+            </ChatProvider>
+          ) : (
+            <>
+              <MaintenanceBanner
+                enabled={siteSettings?.maintenanceEnabled ?? false}
+                message={siteSettings?.maintenanceMessage ?? ''}
+              />
+              {children}
+              <CriticalSiteLock
+                criticalLock={siteSettings?.criticalLock ?? false}
+                email={siteSettings?.email}
+                linkedinUrl={siteSettings?.linkedinUrl}
+                githubUrl={siteSettings?.githubUrl}
+              />
+            </>
+          )}
         </RootProvider>
         <Analytics />
         <GoogleAnalytics />

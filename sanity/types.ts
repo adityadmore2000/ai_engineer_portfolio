@@ -36,6 +36,7 @@ export type SiteSettings = {
   maintenanceEnabled?: boolean;
   maintenanceMessage?: string;
   criticalLock?: boolean;
+  showAiChat?: boolean;
 };
 
 export type ExperienceItem = {
