@@ -165,6 +165,13 @@ export const siteSettings = defineType({
       type: "boolean",
       initialValue: false,
     }),
+    defineField({
+      name: "showAiChat",
+      title: "Show AI Chat",
+      type: "boolean",
+      initialValue: true,
+      description: "Controls whether the floating AI chat button and ChatProvider are visible on the public website.",
+    }),
   ],
   preview: {
     select: {
