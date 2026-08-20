@@ -55,6 +55,7 @@ export type AdminRoute =
   | { view: 'project_edit'; projectId: string }
   | { view: 'experience' }
   | { view: 'faq' }
+  | { view: 'contact' }
   | { view: 'blog' }
   | { view: 'preview'; projectId: string; isLivePublic?: boolean };
 

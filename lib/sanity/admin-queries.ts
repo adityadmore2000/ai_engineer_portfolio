@@ -50,6 +50,16 @@ export const adminSiteSettingsQuery = `
   }
 `;
 
+export const adminContactSettingsQuery = `
+  *[_type == "contactSettings"][0] {
+    _id,
+    _rev,
+    sectionDescription,
+    modalDescription,
+    calendlyUrl
+  }
+`;
+
 export const adminExperiencesQuery = `
   *[_type == "experience"] | order(coalesce(displayOrder, 999) asc, startDate desc) {
     _id,

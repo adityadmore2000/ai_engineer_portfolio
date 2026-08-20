@@ -2,6 +2,7 @@ import { groq } from "next-sanity";
 import { sanityFetch } from "./client";
 import type {
   BlogPost,
+  ContactSettings,
   ExperienceItem,
   FaqItem,
   ProjectDetail,
@@ -57,6 +58,15 @@ export const siteSettingsQuery = groq`
     criticalLock,
     showAiChat,
     introductionVideoUrl
+  }
+`;
+
+export const contactSettingsQuery = groq`
+  *[_type == "contactSettings"][0]{
+    _id,
+    sectionDescription,
+    modalDescription,
+    calendlyUrl
   }
 `;
 
@@ -119,6 +129,10 @@ export const skillCategoriesQuery = groq`
 
 export async function getSiteSettings(fetcher: SanityFetcher = sanityFetch) {
   return fetcher<SiteSettings>({ query: siteSettingsQuery });
+}
+
+export async function getContactSettings(fetcher: SanityFetcher = sanityFetch) {
+  return fetcher<ContactSettings>({ query: contactSettingsQuery });
 }
 
 export async function getExperiences(fetcher: SanityFetcher = sanityFetch) {

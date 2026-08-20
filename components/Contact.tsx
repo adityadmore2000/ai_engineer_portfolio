@@ -1,12 +1,30 @@
 "use client";
 
-import { ArrowUpRight, Github, Linkedin, Mail } from "lucide-react";
-import type { SiteSettings } from "@/sanity/types";
-import { TrackLink } from "./Analytics";
-import { AnalyticsEvents } from "@/lib/analytics";
+import { useState } from "react";
+import { ArrowUpRight } from "lucide-react";
+import type { ContactSettings, SiteSettings } from "@/sanity/types";
+import { ProjectDiscussionModal } from "./ProjectDiscussionModal";
 
-export function Contact({ settings }: { settings?: SiteSettings | null }) {
+const DEFAULT_SECTION_DESCRIPTION =
+  "Have something you're building, exploring, or trying to solve? I'm open to conversations around AI engineering, ML systems, and interesting technical problems.";
+
+const DEFAULT_MODAL_DESCRIPTION =
+  "Have an AI project, a technical problem, or an idea you'd like to explore? Let's have a focused 30-minute conversation to understand what you're building and figure out how I can help.";
+
+interface ContactProps {
+  settings?: SiteSettings | null;
+  contactSettings?: ContactSettings | null;
+}
+
+export function Contact({ settings, contactSettings }: ContactProps) {
+  const [modalOpen, setModalOpen] = useState(false);
+
   if (!settings) return null;
+
+  const sectionDescription =
+    contactSettings?.sectionDescription || DEFAULT_SECTION_DESCRIPTION;
+  const modalDescription =
+    contactSettings?.modalDescription || DEFAULT_MODAL_DESCRIPTION;
 
   return (
     <section
@@ -29,65 +47,32 @@ export function Contact({ settings }: { settings?: SiteSettings | null }) {
           LET&apos;S<br />TALK NOW
         </h2>
 
-        {settings.email ? (
-          <TrackLink
-            href={`mailto:${settings.email}`}
-            event={AnalyticsEvents.ContactAction}
-            metadata={{ method: "email_cta" }}
-            className="flex-shrink-0 self-start md:self-auto"
-            aria-label="Book a call via email"
-          >
-            <span className="inline-flex h-28 w-28 flex-col items-center justify-center rounded-full bg-[var(--color-coral,#e36444)] text-white shadow-[0_8px_30px_rgba(227,100,68,0.4)] transition-transform hover:scale-105 md:h-36 md:w-36">
-              <span className="text-center text-xs font-bold uppercase leading-tight tracking-wide">
-                Book<br />A Call
-              </span>
-              <ArrowUpRight size={18} className="mt-1" />
+        <button
+          type="button"
+          onClick={() => setModalOpen(true)}
+          aria-label="Discuss a project"
+          className="flex-shrink-0 self-start md:self-auto"
+        >
+          <span className="inline-flex h-28 w-28 flex-col items-center justify-center rounded-full bg-[var(--color-coral,#e36444)] text-white shadow-[0_8px_30px_rgba(227,100,68,0.4)] transition-transform hover:scale-105 md:h-36 md:w-36">
+            <span className="text-center text-xs font-bold uppercase leading-tight tracking-wide">
+              Discuss<br />a Project
             </span>
-          </TrackLink>
-        ) : null}
+            <ArrowUpRight size={18} className="mt-1" />
+          </span>
+        </button>
       </div>
 
-      <div className="mt-12 flex flex-wrap items-center gap-3">
-        {settings.email ? (
-          <TrackLink
-            href={`mailto:${settings.email}`}
-            event={AnalyticsEvents.ContactAction}
-            metadata={{ method: "email" }}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-[var(--color-dark,#121315)] transition-colors hover:bg-gray-50"
-          >
-            <Mail size={15} />
-            {settings.email}
-          </TrackLink>
-        ) : null}
+      <p className="mt-10 max-w-xl text-base leading-relaxed text-[var(--color-gray-500,#6b7280)]">
+        {sectionDescription}
+      </p>
 
-        {settings.linkedinUrl ? (
-          <TrackLink
-            href={settings.linkedinUrl}
-            target="_blank"
-            rel="noreferrer"
-            event={AnalyticsEvents.ExternalClick}
-            metadata={{ destination: "linkedin" }}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-[var(--color-dark,#121315)] transition-colors hover:bg-gray-50"
-          >
-            <Linkedin size={15} />
-            LinkedIn
-          </TrackLink>
-        ) : null}
-
-        {settings.githubUrl ? (
-          <TrackLink
-            href={settings.githubUrl}
-            target="_blank"
-            rel="noreferrer"
-            event={AnalyticsEvents.ExternalClick}
-            metadata={{ destination: "github" }}
-            className="inline-flex items-center gap-2 rounded-full border border-gray-200 px-5 py-2.5 text-sm font-semibold text-[var(--color-dark,#121315)] transition-colors hover:bg-gray-50"
-          >
-            <Github size={15} />
-            GitHub
-          </TrackLink>
-        ) : null}
-      </div>
+      <ProjectDiscussionModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        calendlyUrl={contactSettings?.calendlyUrl}
+        email={settings.email}
+        modalDescription={modalDescription}
+      />
     </section>
   );
 }

@@ -19,6 +19,7 @@ import {
 import {
   getAllProjects,
   getBlogPosts,
+  getContactSettings,
   getExperiences,
   getFaqItems,
   getSiteSettings,
@@ -45,14 +46,15 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [settings, experiences, projects, workingProcess, blogPosts, faqItems] =
+  const [settings, experiences, projects, workingProcess, blogPosts, faqItems, contactSettings] =
     await Promise.all([
       getSiteSettings(),
       getExperiences(),
       getAllProjects(),
       getWorkingProcess(),
       getBlogPosts(),
-      getFaqItems()
+      getFaqItems(),
+      getContactSettings(),
     ]);
   const pageSettings = settings || fallbackSiteSettings;
   const pageExperiences = experiences.length ? experiences : fallbackExperiences;
@@ -72,7 +74,7 @@ export default async function Home() {
         <WorkingProcess steps={pageWorkingProcess} />
         <Blog posts={pageBlogPosts} />
         <FAQ items={pageFaqItems} />
-        <Contact settings={pageSettings} />
+        <Contact settings={pageSettings} contactSettings={contactSettings} />
       </main>
       <Footer settings={pageSettings} />
     </div>

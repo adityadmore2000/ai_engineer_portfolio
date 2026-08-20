@@ -138,6 +138,8 @@ function routeToPath(route: AdminRoute): string {
       return '/admin/experience';
     case 'faq':
       return '/admin/faqs';
+    case 'contact':
+      return '/admin/contact';
     case 'blog':
       return '/admin/blog';
     case 'preview':
@@ -165,6 +167,9 @@ function currentRouteFromPathname(
   }
   if (pathname === '/admin/faqs') {
     return { view: 'faq' };
+  }
+  if (pathname === '/admin/contact') {
+    return { view: 'contact' };
   }
   if (pathname === '/admin/blog') {
     return { view: 'blog' };

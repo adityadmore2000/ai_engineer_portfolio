@@ -9,6 +9,7 @@ import {
   FolderGit2,
   Briefcase,
   HelpCircle,
+  MessageCircle,
   Wrench,
   ExternalLink,
   Settings,
@@ -61,6 +62,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenNewProject }) => {
   const isProjects = pathname.startsWith('/admin/projects');
   const isExperience = pathname === '/admin/experience';
   const isFaq = pathname === '/admin/faqs';
+  const isContact = pathname === '/admin/contact';
 
   const publishedCount = projects.filter((p) => p.published).length;
 
@@ -180,6 +182,22 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenNewProject }) => {
             <div className="flex items-center gap-2.5">
               <HelpCircle className={`w-4 h-4 ${isFaq ? 'text-indigo-600' : 'text-slate-400'}`} />
               <span>FAQ</span>
+            </div>
+          </button>
+
+          <button
+            id="nav-link-contact"
+            type="button"
+            onClick={() => navigateTo({ view: 'contact' })}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+              isContact
+                ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <MessageCircle className={`w-4 h-4 ${isContact ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <span>Contact</span>
             </div>
           </button>
 

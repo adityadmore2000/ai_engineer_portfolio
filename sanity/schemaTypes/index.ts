@@ -1,4 +1,5 @@
 import { blogPost } from "./blogPost";
+import { contactSettings } from "./contactSettings";
 import { experience } from "./experience";
 import { faqItem } from "./faqItem";
 import { project } from "./project";
@@ -8,6 +9,7 @@ import { workingProcess } from "./workingProcess";
 
 export const schemaTypes = [
   siteSettings,
+  contactSettings,
   experience,
   project,
   skillCategory,

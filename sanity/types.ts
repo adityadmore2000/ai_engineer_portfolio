@@ -40,6 +40,13 @@ export type SiteSettings = {
   introductionVideoUrl?: string;
 };
 
+export type ContactSettings = {
+  _id: string;
+  sectionDescription?: string;
+  modalDescription?: string;
+  calendlyUrl?: string;
+};
+
 export type ExperienceItem = {
   _id: string;
   role: string;

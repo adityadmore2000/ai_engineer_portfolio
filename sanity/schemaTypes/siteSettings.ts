@@ -179,6 +179,13 @@ export const siteSettings = defineType({
       description: "YouTube URL for the introduction video shown in the About Me section (e.g. https://youtube.com/watch?v=…)",
       validation: urlRule,
     }),
+    defineField({
+      name: "calendlyUrl",
+      title: "Calendly Booking URL",
+      type: "url",
+      description: "Your Calendly link for the 'Schedule a Meeting' button (e.g. https://calendly.com/yourname/30min)",
+      validation: urlRule,
+    }),
   ],
   preview: {
     select: {
