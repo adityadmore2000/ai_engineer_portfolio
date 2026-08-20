@@ -106,64 +106,22 @@ export function Hero({ settings }: { settings?: SiteSettings | null }) {
         {/* Right: profile image */}
         {settings.profileImage?.url ? (
           <div className="relative mx-auto w-full max-w-sm lg:max-w-none">
-            {/* Layer 0: architectural node/graph SVG — extends slightly past container */}
-            <svg
-              className="pointer-events-none absolute z-0"
-              style={{ top: "-10%", left: "-8%", width: "116%", height: "116%" }}
-              viewBox="0 0 480 640"
-              xmlns="http://www.w3.org/2000/svg"
-              aria-hidden="true"
-            >
-              {/* Outer hull lines */}
-              <line x1="60"  y1="90"  x2="210" y2="40"  stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="210" y1="40"  x2="360" y2="120" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="360" y1="120" x2="430" y2="240" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="430" y1="240" x2="440" y2="400" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="440" y1="400" x2="360" y2="550" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="360" y1="550" x2="200" y2="600" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="200" y1="600" x2="60"  y2="490" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="60"  y1="490" x2="20"  y2="300" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="20"  y1="300" x2="60"  y2="90"  stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round"/>
-              {/* Inner cluster — cyan accent edges */}
-              <line x1="60"  y1="90"  x2="170" y2="190" stroke="rgba(34,211,238,0.14)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="170" y1="190" x2="270" y2="145" stroke="rgba(34,211,238,0.14)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="270" y1="145" x2="360" y2="120" stroke="rgba(34,211,238,0.12)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="210" y1="40"  x2="270" y2="145" stroke="rgba(255,255,255,0.07)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="170" y1="190" x2="290" y2="290" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="290" y1="290" x2="430" y2="240" stroke="rgba(255,255,255,0.07)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="290" y1="290" x2="350" y2="400" stroke="rgba(255,255,255,0.07)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="350" y1="400" x2="440" y2="400" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="350" y1="400" x2="360" y2="550" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="290" y1="290" x2="205" y2="400" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="205" y1="400" x2="60"  y2="490" stroke="rgba(255,255,255,0.06)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="205" y1="400" x2="200" y2="600" stroke="rgba(255,255,255,0.05)" strokeWidth="0.8" strokeLinecap="round"/>
-              {/* Left-side cyan accent path */}
-              <line x1="20"  y1="300" x2="100" y2="370" stroke="rgba(34,211,238,0.10)" strokeWidth="0.8" strokeLinecap="round"/>
-              <line x1="100" y1="370" x2="205" y2="400" stroke="rgba(34,211,238,0.10)" strokeWidth="0.8" strokeLinecap="round"/>
-              {/* Nodes */}
-              <circle cx="60"  cy="90"  r="2.5" fill="rgba(255,255,255,0.15)"/>
-              <circle cx="210" cy="40"  r="2"   fill="rgba(255,255,255,0.10)"/>
-              <circle cx="360" cy="120" r="2.5" fill="rgba(255,255,255,0.15)"/>
-              <circle cx="430" cy="240" r="2"   fill="rgba(255,255,255,0.10)"/>
-              <circle cx="440" cy="400" r="2"   fill="rgba(255,255,255,0.10)"/>
-              <circle cx="360" cy="550" r="2"   fill="rgba(255,255,255,0.10)"/>
-              <circle cx="200" cy="600" r="2"   fill="rgba(255,255,255,0.08)"/>
-              <circle cx="60"  cy="490" r="2.5" fill="rgba(255,255,255,0.12)"/>
-              <circle cx="20"  cy="300" r="2"   fill="rgba(255,255,255,0.10)"/>
-              <circle cx="170" cy="190" r="3"   fill="rgba(34,211,238,0.22)"/>
-              <circle cx="290" cy="290" r="3"   fill="rgba(34,211,238,0.22)"/>
-              <circle cx="205" cy="400" r="2.5" fill="rgba(255,255,255,0.12)"/>
-              <circle cx="350" cy="400" r="2"   fill="rgba(255,255,255,0.10)"/>
-              <circle cx="100" cy="370" r="2"   fill="rgba(34,211,238,0.15)"/>
-              <circle cx="270" cy="145" r="2"   fill="rgba(255,255,255,0.12)"/>
-            </svg>
-
-            {/* Layer 1: portrait — floats on top, bottom edge fades into background */}
+            {/* z-0: overhead studio spotlight — ellipse anchored top-center, casts downward */}
             <div
-              className="relative z-10 aspect-[3/4] w-full overflow-hidden rounded-[24px]"
+              className="pointer-events-none absolute inset-x-0 -top-[10%] z-0 h-[110%] blur-3xl"
               style={{
-                maskImage: "linear-gradient(to top, transparent 0%, black 20%)",
-                WebkitMaskImage: "linear-gradient(to top, transparent 0%, black 20%)",
+                background:
+                  "radial-gradient(ellipse 75% 55% at 50% 0%, rgba(56,189,248,0.16), rgba(99,102,241,0.06) 45%, transparent 80%)",
+              }}
+              aria-hidden="true"
+            />
+
+            {/* z-10: portrait — top-border catches overhead light, bottom edge fades out */}
+            <div
+              className="relative z-10 aspect-[3/4] w-full overflow-hidden rounded-3xl border-t border-white/[0.15]"
+              style={{
+                maskImage: "linear-gradient(to top, transparent 0%, black 22%)",
+                WebkitMaskImage: "linear-gradient(to top, transparent 0%, black 22%)",
               }}
             >
               <Image
