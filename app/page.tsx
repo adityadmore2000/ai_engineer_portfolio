@@ -1,4 +1,3 @@
-import { About } from "@/components/About";
 import { Blog } from "@/components/Blog";
 import { Contact } from "@/components/Contact";
 import { Experience } from "@/components/Experience";
@@ -8,7 +7,6 @@ import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { Projects } from "@/components/Projects";
 import { Showcase } from "@/components/Showcase";
-import { Skills } from "@/components/Skills";
 import { WorkingProcess } from "@/components/WorkingProcess";
 import type { Metadata } from "next";
 import { isSanityConfigured } from "@/sanity/env";
@@ -16,7 +14,6 @@ import {
   fallbackExperiences,
   fallbackProjects,
   fallbackSiteSettings,
-  fallbackSkillCategories,
   toProjectSummaries
 } from "@/sanity/fallbackContent";
 import {
@@ -25,7 +22,6 @@ import {
   getExperiences,
   getFaqItems,
   getSiteSettings,
-  getSkillCategories,
   getWorkingProcess
 } from "@/sanity/queries";
 
@@ -49,12 +45,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [settings, experiences, projects, skillCategories, workingProcess, blogPosts, faqItems] =
+  const [settings, experiences, projects, workingProcess, blogPosts, faqItems] =
     await Promise.all([
       getSiteSettings(),
       getExperiences(),
       getAllProjects(),
-      getSkillCategories(),
       getWorkingProcess(),
       getBlogPosts(),
       getFaqItems()
@@ -62,9 +57,6 @@ export default async function Home() {
   const pageSettings = settings || fallbackSiteSettings;
   const pageExperiences = experiences.length ? experiences : fallbackExperiences;
   const pageProjects = isSanityConfigured ? projects : toProjectSummaries(fallbackProjects);
-  const pageSkillCategories = skillCategories.length
-    ? skillCategories
-    : fallbackSkillCategories;
   const pageWorkingProcess = workingProcess;
   const pageBlogPosts = blogPosts;
   const pageFaqItems = faqItems;
@@ -76,9 +68,7 @@ export default async function Home() {
         <Hero settings={pageSettings} />
         <Projects projects={pageProjects} />
         <Showcase settings={pageSettings} experiences={pageExperiences} />
-        <About settings={pageSettings} />
         <Experience experiences={pageExperiences} />
-        <Skills categories={pageSkillCategories} />
         <WorkingProcess steps={pageWorkingProcess} />
         <Blog posts={pageBlogPosts} />
         <FAQ items={pageFaqItems} />

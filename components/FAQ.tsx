@@ -27,7 +27,7 @@ export function FAQ({ items }: { items: FaqItem[] }) {
           className="heading-display text-[var(--color-dark,#121315)]"
           style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", letterSpacing: "-0.02em" }}
         >
-          FAQ's
+          FAQ&apos;s
         </h2>
 
       </div>
