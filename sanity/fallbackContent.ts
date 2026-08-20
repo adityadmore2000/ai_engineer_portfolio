@@ -1,9 +1,12 @@
 import type {
+  BlogPost,
   ExperienceItem,
+  FaqItem,
   ProjectDetail,
   ProjectSummary,
   SiteSettings,
-  SkillCategory
+  SkillCategory,
+  WorkingProcessStep
 } from "./types";
 
 export const fallbackSiteSettings: SiteSettings = {
@@ -343,6 +346,115 @@ export const fallbackSkillCategories: SkillCategory[] = [
       "Artifact Versioning",
       "Model Serving"
     ],
+    displayOrder: 4
+  }
+];
+
+export const fallbackWorkingProcess: WorkingProcessStep[] = [
+  {
+    _id: "fallback.process.1",
+    title: "Understand the Problem",
+    description:
+      "I start by mapping the actual problem: what needs to be reliable, what can fail, and where the evidence or data lives. Clear problem framing prevents over-engineering.",
+    stepNumber: 1,
+    displayOrder: 1
+  },
+  {
+    _id: "fallback.process.2",
+    title: "Design the Pipeline",
+    description:
+      "I design the data flow and component boundaries before writing code. For AI systems this means deciding retrieval strategy, validation points, and where human oversight fits in.",
+    stepNumber: 2,
+    displayOrder: 2
+  },
+  {
+    _id: "fallback.process.3",
+    title: "Build & Evaluate",
+    description:
+      "I build iteratively with evaluation alongside development — not as an afterthought. Each component gets tested against real failure modes, not just happy-path cases.",
+    stepNumber: 3,
+    displayOrder: 3
+  },
+  {
+    _id: "fallback.process.4",
+    title: "Deploy & Iterate",
+    description:
+      "I deploy with observability in place so performance can be monitored and improved. Practical deployment constraints shape architecture decisions from day one.",
+    stepNumber: 4,
+    displayOrder: 4
+  }
+];
+
+export const fallbackBlogPosts: BlogPost[] = [
+  {
+    _id: "fallback.blog.1",
+    title: "Why Evidence-Grounding Matters in GenAI Systems",
+    slug: "evidence-grounding-genai",
+    summary:
+      "Generating plausible text is easy. Generating text that's traceable back to verified source material is the hard part — and the part that actually matters in production.",
+    publishedAt: "2024-06-01T00:00:00Z",
+    displayOrder: 1,
+    published: true
+  },
+  {
+    _id: "fallback.blog.2",
+    title: "RAG vs Fine-tuning: When to Use Which",
+    slug: "rag-vs-fine-tuning",
+    summary:
+      "The choice between retrieval-augmented generation and fine-tuning isn't about which is better — it's about what kind of knowledge needs to be dynamic vs. baked in.",
+    publishedAt: "2024-07-15T00:00:00Z",
+    displayOrder: 2,
+    published: true
+  },
+  {
+    _id: "fallback.blog.3",
+    title: "Evaluation-Driven ML: A Practical Guide",
+    slug: "evaluation-driven-ml",
+    summary:
+      "Most ML projects fail not because the models are bad, but because evaluation happens too late. Here's how I structure evaluation from the start of a project.",
+    publishedAt: "2024-09-01T00:00:00Z",
+    displayOrder: 3,
+    published: true
+  },
+  {
+    _id: "fallback.blog.4",
+    title: "Building Reliable OCR Pipelines",
+    slug: "reliable-ocr-pipelines",
+    summary:
+      "OCR looks solved until you hit production. Variable lighting, inconsistent layouts, and label quality variance make it one of the most underestimated engineering challenges in applied AI.",
+    publishedAt: "2024-10-20T00:00:00Z",
+    displayOrder: 4,
+    published: true
+  }
+];
+
+export const fallbackFaqItems: FaqItem[] = [
+  {
+    _id: "fallback.faq.1",
+    question: "What kinds of AI projects do you work on?",
+    answer:
+      "I focus on applied AI systems — RAG pipelines, computer vision, OCR automation, and LLM-backed workflows. The common thread is making AI reliable and deployable, not just technically impressive.",
+    displayOrder: 1
+  },
+  {
+    _id: "fallback.faq.2",
+    question: "Are you available for freelance or contract work?",
+    answer:
+      "Yes. I take on freelance and contract projects for AI engineering, ML pipeline development, and backend integration. Reach out via email or LinkedIn to discuss scope and availability.",
+    displayOrder: 2
+  },
+  {
+    _id: "fallback.faq.3",
+    question: "What's your preferred tech stack?",
+    answer:
+      "Python for ML and backend (FastAPI, Pydantic, SQLAlchemy), PyTorch and YOLO variants for computer vision, Qdrant for vector search, and Next.js for frontend. I pick based on what fits the problem, not habit.",
+    displayOrder: 3
+  },
+  {
+    _id: "fallback.faq.4",
+    question: "How do you approach a new AI project?",
+    answer:
+      "I start by understanding what needs to be reliable and where evidence lives, then design the pipeline with evaluation built in from day one. I avoid over-engineering early — the goal is something deployable that can be improved, not something perfect on paper.",
     displayOrder: 4
   }
 ];

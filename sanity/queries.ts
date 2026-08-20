@@ -1,11 +1,14 @@
 import { groq } from "next-sanity";
 import { sanityFetch } from "./client";
 import type {
+  BlogPost,
   ExperienceItem,
+  FaqItem,
   ProjectDetail,
   ProjectSummary,
   SiteSettings,
-  SkillCategory
+  SkillCategory,
+  WorkingProcessStep
 } from "./types";
 
 type SanityFetchParams = Record<string, string | number | boolean>;
@@ -142,4 +145,50 @@ export async function getSkillCategories(fetcher: SanityFetcher = sanityFetch) {
   return (
     (await fetcher<SkillCategory[]>({ query: skillCategoriesQuery })) || []
   );
+}
+
+export const workingProcessQuery = groq`
+  *[_type == "workingProcess"] | order(coalesce(displayOrder, 999) asc, stepNumber asc) {
+    _id,
+    title,
+    description,
+    stepNumber,
+    displayOrder
+  }
+`;
+
+export const blogPostsQuery = groq`
+  *[_type == "blogPost" && published == true] | order(coalesce(displayOrder, 999) asc, publishedAt desc) {
+    _id,
+    title,
+    "slug": slug.current,
+    summary,
+    coverImage{${imageFields}},
+    publishedAt,
+    displayOrder,
+    published
+  }
+`;
+
+export const faqItemsQuery = groq`
+  *[_type == "faqItem"] | order(coalesce(displayOrder, 999) asc) {
+    _id,
+    question,
+    answer,
+    displayOrder
+  }
+`;
+
+export async function getWorkingProcess(fetcher: SanityFetcher = sanityFetch) {
+  return (
+    (await fetcher<WorkingProcessStep[]>({ query: workingProcessQuery })) || []
+  );
+}
+
+export async function getBlogPosts(fetcher: SanityFetcher = sanityFetch) {
+  return (await fetcher<BlogPost[]>({ query: blogPostsQuery })) || [];
+}
+
+export async function getFaqItems(fetcher: SanityFetcher = sanityFetch) {
+  return (await fetcher<FaqItem[]>({ query: faqItemsQuery })) || [];
 }
