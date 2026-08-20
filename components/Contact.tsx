@@ -50,12 +50,12 @@ export function Contact({ settings, contactSettings }: ContactProps) {
         <button
           type="button"
           onClick={() => setModalOpen(true)}
-          aria-label="Discuss a project"
+          aria-label="Let's connect"
           className="flex-shrink-0 self-start md:self-auto"
         >
           <span className="inline-flex h-28 w-28 flex-col items-center justify-center rounded-full bg-[var(--color-coral,#e36444)] text-white shadow-[0_8px_30px_rgba(227,100,68,0.4)] transition-transform hover:scale-105 md:h-36 md:w-36">
             <span className="text-center text-xs font-bold uppercase leading-tight tracking-wide">
-              Discuss<br />a Project
+              Let&apos;s<br />Connect
             </span>
             <ArrowUpRight size={18} className="mt-1" />
           </span>
