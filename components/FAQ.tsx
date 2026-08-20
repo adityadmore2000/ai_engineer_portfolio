@@ -27,14 +27,9 @@ export function FAQ({ items }: { items: FaqItem[] }) {
           className="heading-display text-[var(--color-dark,#121315)]"
           style={{ fontSize: "clamp(2rem, 5vw, 3.5rem)", letterSpacing: "-0.02em" }}
         >
-          FAQ
+          FAQ's
         </h2>
-        <p
-          className="mt-3 text-[var(--color-gray-500,#6b7280)] max-w-xl"
-          style={{ fontFamily: "var(--font-inter, sans-serif)" }}
-        >
-          Answers to the questions I get asked most often.
-        </p>
+
       </div>
 
       <div className="flex flex-col gap-4 max-w-3xl">

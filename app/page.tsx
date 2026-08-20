@@ -13,13 +13,10 @@ import { WorkingProcess } from "@/components/WorkingProcess";
 import type { Metadata } from "next";
 import { isSanityConfigured } from "@/sanity/env";
 import {
-  fallbackBlogPosts,
   fallbackExperiences,
-  fallbackFaqItems,
   fallbackProjects,
   fallbackSiteSettings,
   fallbackSkillCategories,
-  fallbackWorkingProcess,
   toProjectSummaries
 } from "@/sanity/fallbackContent";
 import {
@@ -68,9 +65,9 @@ export default async function Home() {
   const pageSkillCategories = skillCategories.length
     ? skillCategories
     : fallbackSkillCategories;
-  const pageWorkingProcess = workingProcess.length ? workingProcess : fallbackWorkingProcess;
-  const pageBlogPosts = blogPosts.length ? blogPosts : fallbackBlogPosts;
-  const pageFaqItems = faqItems.length ? faqItems : fallbackFaqItems;
+  const pageWorkingProcess = workingProcess;
+  const pageBlogPosts = blogPosts;
+  const pageFaqItems = faqItems;
 
   return (
     <div className="min-h-screen bg-[var(--background)]">

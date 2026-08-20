@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   FolderGit2,
   Briefcase,
+  HelpCircle,
   Wrench,
   ExternalLink,
   Settings,
@@ -59,6 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenNewProject }) => {
   const isDashboard = pathname === '/admin';
   const isProjects = pathname.startsWith('/admin/projects');
   const isExperience = pathname === '/admin/experience';
+  const isFaq = pathname === '/admin/faqs';
 
   const publishedCount = projects.filter((p) => p.published).length;
 
@@ -164,6 +166,23 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenNewProject }) => {
               {experiences.length}
             </span>
           </button>
+
+          <button
+            id="nav-link-faq"
+            type="button"
+            onClick={() => navigateTo({ view: 'faq' })}
+            className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+              isFaq
+                ? 'bg-indigo-50 text-indigo-700 font-semibold border border-indigo-100 shadow-2xs'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <HelpCircle className={`w-4 h-4 ${isFaq ? 'text-indigo-600' : 'text-slate-400'}`} />
+              <span>FAQ</span>
+            </div>
+          </button>
+
         </div>
 
         {/* Future Modules Section (Coming later) */}
