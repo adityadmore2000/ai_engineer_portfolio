@@ -37,6 +37,14 @@ export type SiteSettings = {
   maintenanceMessage?: string;
   criticalLock?: boolean;
   showAiChat?: boolean;
+  introductionVideoUrl?: string;
+};
+
+export type ContactSettings = {
+  _id: string;
+  sectionDescription?: string;
+  modalDescription?: string;
+  calendlyUrl?: string;
 };
 
 export type ExperienceItem = {
@@ -86,6 +94,32 @@ export type SkillCategory = {
   _id: string;
   title: string;
   skills?: string[];
+  displayOrder?: number;
+};
+
+export type WorkingProcessStep = {
+  _id: string;
+  title: string;
+  description?: string;
+  stepNumber: number;
+  displayOrder?: number;
+};
+
+export type BlogPost = {
+  _id: string;
+  title: string;
+  slug?: string;
+  summary?: string;
+  coverImage?: SanityImage;
+  publishedAt?: string;
+  displayOrder?: number;
+  published?: boolean;
+};
+
+export type FaqItem = {
+  _id: string;
+  question: string;
+  answer?: string;
   displayOrder?: number;
 };
 

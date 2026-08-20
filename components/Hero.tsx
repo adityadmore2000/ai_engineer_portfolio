@@ -3,24 +3,21 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { Github, Linkedin, Mail } from "lucide-react";
 import type { SiteSettings } from "@/sanity/types";
-import { getResumeHref } from "@/sanity/utils";
 import { Markdown } from "./Markdown";
 import { TrackLink } from "./Analytics";
 import { AnalyticsEvents } from "@/lib/analytics";
 
 export function Hero({ settings }: { settings?: SiteSettings | null }) {
-  const resumeHref = getResumeHref(settings);
   const primaryCtaText = settings?.primaryCtaText || "View Projects";
-  const secondaryCtaText = settings?.secondaryCtaText || "Download Resume";
 
   if (!settings) {
     return (
-      <section className="px-5 py-20 md:px-8">
-        <div className="mx-auto max-w-6xl rounded-lg border border-dashed border-slate-300 bg-white p-8">
-          <h1 className="text-3xl font-bold text-slate-950">
+      <section className="flex min-h-screen items-center bg-[#121315] px-[var(--section-padding-x)] pt-20">
+        <div className="rounded-lg border border-dashed border-white/20 p-8">
+          <h1 className="text-3xl font-bold text-white">
             Portfolio content is ready for Sanity.
           </h1>
-          <p className="mt-3 max-w-2xl text-slate-700">
+          <p className="mt-3 max-w-2xl text-white/60">
             Configure the Sanity environment variables and add the initial site
             settings document in Studio to publish the live portfolio content.
           </p>
@@ -30,97 +27,113 @@ export function Hero({ settings }: { settings?: SiteSettings | null }) {
   }
 
   return (
-    <section id="home" className="px-5 py-16 md:px-8 md:py-24">
-      <div className="mx-auto grid max-w-6xl gap-12 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-center">
+    <section
+      id="home"
+      className="relative flex min-h-screen flex-col overflow-hidden bg-[#121315] px-[var(--section-padding-x)] pt-24 pb-0"
+    >
+      {/* Main content grid */}
+      <div className="flex flex-1 flex-col justify-center">
+      <div className="grid gap-12 py-16 lg:grid-cols-[1fr_400px] lg:items-center">
+        {/* Left: text content */}
         <div>
-          <p className="text-sm font-semibold uppercase tracking-wide text-teal-800">
-            {settings.role}
-          </p>
-          <h1 className="mt-4 text-5xl font-bold leading-tight text-slate-950 md:text-6xl">
+          <span className="pill-badge label-mono border-white/20 text-white/70">
+            {settings.role || "Applied AI Engineer"}
+          </span>
+
+          <h1 className="heading-display mt-8 text-[clamp(2.25rem,7vw,4.5rem)] leading-[1] text-white">
             {settings.name}
           </h1>
+
           {settings.heroDescription ? (
-            <Markdown className="mt-6 max-w-3xl text-xl text-slate-700">
+            <Markdown className="mt-10 max-w-xl text-lg leading-relaxed text-white/75 [&_a]:text-[#e36444] [&_strong]:text-white">
               {settings.heroDescription}
             </Markdown>
           ) : null}
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-8 flex flex-wrap gap-3">
             <Link
               href="/#projects"
-              className="inline-flex items-center justify-center rounded-md bg-teal-800 px-5 py-3 text-sm font-semibold text-white hover:bg-teal-900"
+              className="inline-flex items-center justify-center rounded-full bg-[#e36444] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#cf5535]"
             >
               {primaryCtaText}
             </Link>
-            {resumeHref ? (
-              <TrackLink
-                href={resumeHref}
-                target="_blank"
-                rel="noreferrer"
-                event={AnalyticsEvents.FileDownload}
-                metadata={{ file: "resume", format: "pdf" }}
-                className="inline-flex items-center justify-center rounded-md border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-50"
-              >
-                {secondaryCtaText}
-              </TrackLink>
-            ) : null}
           </div>
 
-          <div className="mt-7 flex flex-wrap gap-3">
+          <div className="mt-7 flex gap-3">
             {settings.linkedinUrl ? (
-              <SocialLink href={settings.linkedinUrl} label="LinkedIn" icon={<Linkedin size={18} />} event={AnalyticsEvents.ExternalClick} metadata={{ destination: "linkedin" }} />
+              <SocialIcon
+                href={settings.linkedinUrl}
+                label="LinkedIn"
+                icon={<Linkedin size={18} />}
+                event={AnalyticsEvents.ExternalClick}
+                metadata={{ destination: "linkedin" }}
+              />
             ) : null}
             {settings.githubUrl ? (
-              <SocialLink href={settings.githubUrl} label="GitHub" icon={<Github size={18} />} event={AnalyticsEvents.ExternalClick} metadata={{ destination: "github" }} />
+              <SocialIcon
+                href={settings.githubUrl}
+                label="GitHub"
+                icon={<Github size={18} />}
+                event={AnalyticsEvents.ExternalClick}
+                metadata={{ destination: "github" }}
+              />
             ) : null}
             {settings.email ? (
-              <SocialLink href={`mailto:${settings.email}`} label="Email" icon={<Mail size={18} />} />
+              <SocialIcon
+                href={`mailto:${settings.email}`}
+                label="Email"
+                icon={<Mail size={18} />}
+              />
             ) : null}
           </div>
         </div>
 
-        <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
-          {settings.profileImage?.url ? (
-            <div className="relative mb-5 aspect-[4/3] overflow-hidden rounded-md border border-slate-200 bg-slate-100">
+        {/* Right: profile image */}
+        {settings.profileImage?.url ? (
+          <div className="relative mx-auto w-full max-w-sm lg:max-w-none">
+            {/* z-0: overhead studio spotlight — ellipse anchored top-center, casts downward */}
+            <div
+              className="pointer-events-none absolute inset-x-0 -top-[10%] z-0 h-[110%] blur-3xl"
+              style={{
+                background:
+                  "radial-gradient(ellipse 75% 55% at 50% 0%, rgba(56,189,248,0.16), rgba(99,102,241,0.06) 45%, transparent 80%)",
+              }}
+              aria-hidden="true"
+            />
+
+            {/* z-10: portrait — top-border catches overhead light, bottom edge fades out */}
+            <div
+              className="relative z-10 aspect-[3/4] w-full overflow-hidden rounded-3xl border-t border-white/[0.15]"
+              style={{
+                maskImage: "linear-gradient(to top, transparent 0%, black 22%)",
+                WebkitMaskImage: "linear-gradient(to top, transparent 0%, black 22%)",
+              }}
+            >
               <Image
                 src={settings.profileImage.url}
                 alt={settings.profileImage.alt || `${settings.name} profile image`}
                 fill
-                className="object-cover"
+                className="object-cover object-top"
                 priority
               />
             </div>
-          ) : null}
-          <h2 className="text-sm font-bold uppercase tracking-wide text-slate-500">
-            Snapshot
-          </h2>
-          <div className="mt-4 grid gap-3">
-            {settings.heroMetrics?.map((metric) => (
-              <div
-                key={metric}
-                className="rounded-md border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-900"
-              >
-                {metric}
-              </div>
-            ))}
           </div>
-          {settings.availabilityText ? (
-            <p className="mt-5 rounded-md bg-teal-50 p-3 text-sm font-medium text-teal-950">
-              {settings.availabilityText}
-            </p>
-          ) : null}
-        </div>
+        ) : null}
       </div>
+      </div>
+
+      {/* Scroll transition: subtle gradient to ease into the next section */}
+      <div className="pointer-events-none absolute right-0 bottom-0 left-0 h-20 bg-gradient-to-b from-transparent to-white/[0.03]" />
     </section>
   );
 }
 
-function SocialLink({
+function SocialIcon({
   href,
   label,
   icon,
   event,
-  metadata
+  metadata,
 }: {
   href: string;
   label: string;
@@ -135,10 +148,10 @@ function SocialLink({
       rel={href.startsWith("mailto:") ? undefined : "noreferrer"}
       event={event}
       metadata={metadata}
-      className="inline-flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-semibold text-slate-800 hover:bg-slate-50"
+      aria-label={label}
+      className="inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/20 text-white/70 transition-colors hover:border-white/50 hover:text-white"
     >
       {icon}
-      {label}
     </TrackLink>
   );
 }

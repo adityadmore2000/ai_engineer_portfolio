@@ -136,6 +136,12 @@ function routeToPath(route: AdminRoute): string {
       return `/admin/projects/${route.projectId}/edit`;
     case 'experience':
       return '/admin/experience';
+    case 'faq':
+      return '/admin/faqs';
+    case 'contact':
+      return '/admin/contact';
+    case 'blog':
+      return '/admin/blog';
     case 'preview':
       return `/admin/preview/${route.projectId}`;
   }
@@ -158,6 +164,15 @@ function currentRouteFromPathname(
   }
   if (pathname === '/admin/experience') {
     return { view: 'experience' };
+  }
+  if (pathname === '/admin/faqs') {
+    return { view: 'faq' };
+  }
+  if (pathname === '/admin/contact') {
+    return { view: 'contact' };
+  }
+  if (pathname === '/admin/blog') {
+    return { view: 'blog' };
   }
   return { view: 'dashboard' };
 }

@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { LightboxImage } from "@/components/LightboxImage";
+import { ProjectCoverFallback } from "@/components/ProjectCoverFallback";
 import { Markdown } from "@/components/Markdown";
 import { SectionShell } from "@/components/SectionShell";
 import { ProjectViewTracker } from "@/components/Analytics";
@@ -108,8 +109,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                 </Markdown>
               ) : null}
 
-              {pageProject.coverImage?.url ? (
-                <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+              <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-lg border border-slate-200 bg-slate-100">
+                {pageProject.coverImage?.url ? (
                   <LightboxImage
                     src={pageProject.coverImage.url}
                     alt={pageProject.coverImage.alt || `${pageProject.title} cover image`}
@@ -117,8 +118,10 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
                     className="object-cover"
                     priority
                   />
-                </div>
-              ) : null}
+                ) : (
+                  <ProjectCoverFallback name={pageProject.title ?? ""} />
+                )}
+              </div>
 
               {pageProject.sections?.map((section) => (
                 <section key={section._key} className="mt-12">

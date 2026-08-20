@@ -45,7 +45,18 @@ export const adminSiteSettingsQuery = `
     maintenanceEnabled,
     maintenanceMessage,
     criticalLock,
-    showAiChat
+    showAiChat,
+    introductionVideoUrl
+  }
+`;
+
+export const adminContactSettingsQuery = `
+  *[_type == "contactSettings"][0] {
+    _id,
+    _rev,
+    sectionDescription,
+    modalDescription,
+    calendlyUrl
   }
 `;
 
@@ -63,5 +74,25 @@ export const adminExperiencesQuery = `
     bulletPoints,
     skills,
     displayOrder
+  }
+`;
+
+export const adminFaqItemsQuery = `
+  *[_type == "faqItem"] | order(coalesce(displayOrder, 999) asc) {
+    _id, _rev, question, answer, displayOrder
+  }
+`;
+
+export const adminBlogPostsQuery = `
+  *[_type == "blogPost"] | order(coalesce(displayOrder, 999) asc, publishedAt desc) {
+    _id, _rev, title, "slug": slug.current, summary,
+    coverImage{ "url": asset->url, "alt": coalesce(alt, asset->altText, ""), "assetRef": asset->_id },
+    publishedAt, displayOrder, published
+  }
+`;
+
+export const adminWorkingProcessQuery = `
+  *[_type == "workingProcess"] | order(coalesce(displayOrder, 999) asc, stepNumber asc) {
+    _id, _rev, title, description, stepNumber, displayOrder
   }
 `;

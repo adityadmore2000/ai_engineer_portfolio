@@ -172,6 +172,20 @@ export const siteSettings = defineType({
       initialValue: true,
       description: "Controls whether the floating AI chat button and ChatProvider are visible on the public website.",
     }),
+    defineField({
+      name: "introductionVideoUrl",
+      title: "Introduction Video URL",
+      type: "url",
+      description: "YouTube URL for the introduction video shown in the About Me section (e.g. https://youtube.com/watch?v=…)",
+      validation: urlRule,
+    }),
+    defineField({
+      name: "calendlyUrl",
+      title: "Calendly Booking URL",
+      type: "url",
+      description: "Your Calendly link for the 'Schedule a Meeting' button (e.g. https://calendly.com/yourname/30min)",
+      validation: urlRule,
+    }),
   ],
   preview: {
     select: {

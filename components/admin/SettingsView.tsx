@@ -14,6 +14,13 @@ import {
   X,
   CheckCircle2,
   Link as LinkIcon,
+  ListOrdered,
+  Plus,
+  Trash2,
+  Edit3,
+  ArrowUp,
+  ArrowDown,
+  Check,
 } from 'lucide-react';
 import { MarkdownEditor } from './common/MarkdownEditor';
 import {
@@ -23,6 +30,14 @@ import {
   type AdminSiteSettings,
   type SaveSiteSettingsData,
 } from '@/app/admin/actions/settings';
+import {
+  getAdminWorkingProcess,
+  createWorkingProcessStep,
+  updateWorkingProcessStep,
+  deleteWorkingProcessStep,
+  reorderWorkingProcessSteps,
+  type AdminWorkingProcessStep,
+} from '@/app/admin/actions/working-process';
 
 export const SettingsView: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
@@ -42,9 +57,18 @@ export const SettingsView: React.FC = () => {
   const [heroDescription, setHeroDescription] = useState('');
   const [aboutSummary, setAboutSummary] = useState('');
   const [shortBio, setShortBio] = useState('');
+  const [introductionVideoUrl, setIntroductionVideoUrl] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [profileImageAlt, setProfileImageAlt] = useState('');
   const [profileImageRef, setProfileImageRef] = useState<string | undefined>();
+
+  // Working Process state
+  const [steps, setSteps] = useState<AdminWorkingProcessStep[]>([]);
+  const [isAddingStep, setIsAddingStep] = useState(false);
+  const [editingStepId, setEditingStepId] = useState<string | null>(null);
+  const [isSavingStep, setIsSavingStep] = useState(false);
+  const [stepForm, setStepForm] = useState({ title: '', description: '', stepNumber: '' });
+  const [stepError, setStepError] = useState<string | null>(null);
 
   function hydrate(settings: AdminSiteSettings) {
     setSettingsId(settings._id);
@@ -56,6 +80,7 @@ export const SettingsView: React.FC = () => {
     setHeroDescription(settings.heroDescription ?? '');
     setAboutSummary(settings.aboutSummary ?? '');
     setShortBio(settings.shortBio ?? '');
+    setIntroductionVideoUrl(settings.introductionVideoUrl ?? '');
     setProfileImageUrl(settings.profileImage?.url ?? '');
     setProfileImageAlt(settings.profileImage?.alt ?? '');
     setProfileImageRef(settings.profileImage?.assetRef);
@@ -76,6 +101,104 @@ export const SettingsView: React.FC = () => {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await getAdminWorkingProcess();
+        setSteps(data);
+      } catch {
+        // silently fail; section renders empty
+      }
+    })();
+  }, []);
+
+  const handleStartAddStep = () => {
+    setEditingStepId(null);
+    setStepForm({ title: '', description: '', stepNumber: String(steps.length + 1) });
+    setStepError(null);
+    setIsAddingStep(true);
+  };
+
+  const handleStartEditStep = (step: AdminWorkingProcessStep) => {
+    setIsAddingStep(false);
+    setEditingStepId(step._id);
+    setStepForm({
+      title: step.title,
+      description: step.description ?? '',
+      stepNumber: String(step.stepNumber),
+    });
+    setStepError(null);
+  };
+
+  const handleCancelStepForm = () => {
+    setIsAddingStep(false);
+    setEditingStepId(null);
+    setStepError(null);
+  };
+
+  const handleSaveStep = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!stepForm.title.trim()) {
+      setStepError('Step title is required.');
+      return;
+    }
+    if (!stepForm.stepNumber || isNaN(Number(stepForm.stepNumber))) {
+      setStepError('Step number is required.');
+      return;
+    }
+    setIsSavingStep(true);
+    setStepError(null);
+    const payload = {
+      title: stepForm.title.trim(),
+      description: stepForm.description.trim() || undefined,
+      stepNumber: Number(stepForm.stepNumber),
+      displayOrder: Number(stepForm.stepNumber),
+    };
+    try {
+      if (isAddingStep) {
+        const created = await createWorkingProcessStep(payload);
+        setSteps((prev) => [...prev, created].sort((a, b) => (a.stepNumber ?? 0) - (b.stepNumber ?? 0)));
+        setIsAddingStep(false);
+      } else if (editingStepId) {
+        const current = steps.find((s) => s._id === editingStepId);
+        const updated = await updateWorkingProcessStep(editingStepId, { ...payload, _rev: current?._rev });
+        setSteps((prev) =>
+          prev.map((s) => (s._id === editingStepId ? updated : s)).sort((a, b) => (a.stepNumber ?? 0) - (b.stepNumber ?? 0))
+        );
+        setEditingStepId(null);
+      }
+    } catch (err) {
+      setStepError(err instanceof Error ? err.message : 'Save failed.');
+    } finally {
+      setIsSavingStep(false);
+    }
+  };
+
+  const handleDeleteStep = async (id: string) => {
+    try {
+      await deleteWorkingProcessStep(id);
+      setSteps((prev) => prev.filter((s) => s._id !== id));
+    } catch (err) {
+      setStepError(err instanceof Error ? err.message : 'Delete failed.');
+    }
+  };
+
+  const handleMoveStep = async (index: number, direction: 'up' | 'down') => {
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    if (targetIdx < 0 || targetIdx >= steps.length) return;
+    const list = [...steps];
+    const [moved] = list.splice(index, 1);
+    list.splice(targetIdx, 0, moved);
+    const reordered = list.map((s, i) => ({ ...s, displayOrder: i + 1, stepNumber: i + 1 }));
+    setSteps(reordered);
+    try {
+      await reorderWorkingProcessSteps(reordered.map((s) => ({ _id: s._id, displayOrder: s.displayOrder! })));
+    } catch {
+      const data = await getAdminWorkingProcess();
+      setSteps(data);
+    }
+  };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,6 +234,7 @@ export const SettingsView: React.FC = () => {
         linkedinUrl,
         githubUrl,
         aboutSummary,
+        introductionVideoUrl,
         profileImage: profileImageRef
           ? { _ref: profileImageRef, alt: profileImageAlt }
           : { alt: profileImageAlt },
@@ -353,6 +477,218 @@ export const SettingsView: React.FC = () => {
             placeholder="Extended about section content…"
             minHeight="160px"
           />
+        </div>
+
+        <div>
+          <LabeledInput
+            label="Introduction Video URL"
+            icon={LinkIcon}
+            type="url"
+            value={introductionVideoUrl}
+            onChange={setIntroductionVideoUrl}
+            placeholder="https://youtube.com/watch?v=…"
+          />
+          <p className="mt-1 text-[10px] text-slate-400">
+            YouTube URL shown as the introduction video in the About Me section.
+          </p>
+        </div>
+
+      </section>
+
+      {/* Working Process */}
+      <section className="space-y-4 pt-4 border-t border-slate-200">
+        <div className="flex items-center justify-between">
+          <div className="space-y-0.5">
+            <SectionHeading icon={ListOrdered} label="working-process" />
+            <p className="text-[11px] text-slate-400 pl-5">
+              Ordered steps shown in the Working Process section on the public site.
+            </p>
+          </div>
+          {!isAddingStep && (
+            <button
+              type="button"
+              onClick={handleStartAddStep}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-semibold shadow-sm shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+            >
+              <Plus className="w-3 h-3" />
+              Add Step
+            </button>
+          )}
+        </div>
+
+        {stepError && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{stepError}</span>
+            <button type="button" onClick={() => setStepError(null)} className="ml-auto text-rose-400 hover:text-rose-600">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Add / Edit Step Form */}
+        {(isAddingStep || editingStepId) && (
+          <div className="rounded-xl border-2 border-indigo-200 bg-white p-5 space-y-4 shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-indigo-600" />
+                <span className="text-xs font-bold text-slate-900 font-mono uppercase tracking-wider">
+                  {isAddingStep ? 'New Process Step' : 'Edit Process Step'}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelStepForm}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveStep} className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="sm:col-span-2 space-y-1">
+                  <label className="block text-[11px] font-semibold text-slate-600 font-mono uppercase tracking-wide">
+                    Title <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={stepForm.title}
+                    onChange={(e) => setStepForm({ ...stepForm, title: e.target.value })}
+                    placeholder="e.g. Problem Framing"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/30 shadow-2xs transition-all"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="block text-[11px] font-semibold text-slate-600 font-mono uppercase tracking-wide">
+                    Step # <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    required
+                    value={stepForm.stepNumber}
+                    onChange={(e) => setStepForm({ ...stepForm, stepNumber: e.target.value })}
+                    placeholder="1"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:ring-1 focus:ring-indigo-400/30 shadow-2xs transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-slate-600 font-mono uppercase tracking-wide">
+                  Description
+                </label>
+                <MarkdownEditor
+                  value={stepForm.description}
+                  onChange={(val) => setStepForm({ ...stepForm, description: val })}
+                  placeholder="Describe this process step…"
+                  minHeight="80px"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleCancelStepForm}
+                  className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-50 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSavingStep}
+                  className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm shadow-indigo-200 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isSavingStep ? (
+                    <span className="animate-pulse">Saving…</span>
+                  ) : (
+                    <>
+                      <Check className="w-3 h-3" />
+                      {isAddingStep ? 'Add Step' : 'Save'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* Steps List */}
+        <div className="space-y-2">
+          {steps.length === 0 && !isAddingStep ? (
+            <div className="p-6 rounded-xl border-2 border-dashed border-slate-200 bg-white text-center space-y-2">
+              <p className="text-xs font-semibold text-slate-500">No process steps yet</p>
+              <button
+                type="button"
+                onClick={handleStartAddStep}
+                className="text-xs text-indigo-600 hover:underline font-medium"
+              >
+                + Add first step
+              </button>
+            </div>
+          ) : (
+            steps.map((step, index) => {
+              if (editingStepId === step._id) return null;
+              const isFirst = index === 0;
+              const isLast = index === steps.length - 1;
+
+              return (
+                <div
+                  key={step._id}
+                  className="flex items-start gap-3 p-4 rounded-xl border border-slate-200 bg-white shadow-2xs hover:border-slate-300 transition-all"
+                >
+                  <span className="shrink-0 w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center text-xs font-bold font-mono border border-indigo-100">
+                    {String(step.stepNumber).padStart(2, '0')}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-slate-900">{step.title}</p>
+                    {step.description && (
+                      <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-2">{step.description}</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => void handleMoveStep(index, 'up')}
+                      disabled={isFirst}
+                      className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      title="Move up"
+                    >
+                      <ArrowUp className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleMoveStep(index, 'down')}
+                      disabled={isLast}
+                      className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                      title="Move down"
+                    >
+                      <ArrowDown className="w-3 h-3" />
+                    </button>
+                    <div className="w-px h-3 bg-slate-200 mx-0.5" />
+                    <button
+                      type="button"
+                      onClick={() => handleStartEditStep(step)}
+                      className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition-colors"
+                      title="Edit"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleDeleteStep(step._id)}
+                      className="p-1 rounded text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </section>
     </div>

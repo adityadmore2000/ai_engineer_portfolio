@@ -196,9 +196,9 @@ export const ProjectsListView: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-xs divide-y divide-slate-100">
+        <div className="rounded-2xl border border-slate-200 bg-white shadow-xs divide-y divide-slate-100">
           {/* Table Header (Desktop) */}
-          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50/80 text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200">
+          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50/80 text-[11px] font-mono font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200 rounded-t-2xl">
             <div className="col-span-6">Project &amp; Identifier</div>
             <div className="col-span-4">Publication State</div>
             <div className="col-span-2 text-right">Actions</div>
@@ -208,7 +208,7 @@ export const ProjectsListView: React.FC = () => {
           {filteredProjects.map((project) => (
             <div
               key={project._id}
-              className="p-4 md:px-6 md:py-4.5 hover:bg-slate-50/70 transition-colors flex flex-col md:grid md:grid-cols-12 md:items-center gap-4 group"
+              className="p-4 md:px-6 md:py-4.5 hover:bg-slate-50/70 transition-colors flex flex-col md:grid md:grid-cols-12 md:items-center gap-4 group last:rounded-b-2xl"
             >
               {/* Project Title & Meta (Col 6) */}
               <div className="col-span-6 flex items-start gap-3.5 min-w-0">

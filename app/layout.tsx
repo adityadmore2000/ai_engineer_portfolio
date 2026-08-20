@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Outfit, Inter, Geist_Mono } from "next/font/google";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { MaintenanceBanner } from "@/components/MaintenanceBanner";
 import { CriticalSiteLock } from "@/components/CriticalSiteLock";
@@ -8,6 +9,27 @@ import { GoogleAnalytics } from "@/components/Analytics";
 import { Analytics } from "@vercel/analytics/react";
 import { getSiteSettings } from "@/sanity/queries";
 import "./globals.css";
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  weight: ["800", "900"],
+  variable: "--font-outfit",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
+const geistMono = Geist_Mono({
+  subsets: ["latin"],
+  weight: ["400", "500"],
+  variable: "--font-geist-mono",
+  display: "swap",
+});
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -45,7 +67,7 @@ export default async function RootLayout({
   const showAiChat = siteSettings?.showAiChat ?? true;
 
   return (
-    <html lang="en">
+    <html lang="en" className={`${outfit.variable} ${inter.variable} ${geistMono.variable}`}>
       <body>
         <RootProvider search={{ enabled: false }} theme={{ enabled: false }}>
           {showAiChat ? (
