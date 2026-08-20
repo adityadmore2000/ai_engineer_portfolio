@@ -26,6 +26,7 @@ export type AdminSiteSettings = {
   maintenanceMessage?: string;
   criticalLock?: boolean;
   showAiChat?: boolean;
+  introductionVideoUrl?: string;
 };
 
 export type SaveSiteSettingsData = {
@@ -41,6 +42,7 @@ export type SaveSiteSettingsData = {
   linkedinUrl?: string;
   githubUrl?: string;
   aboutSummary?: string;
+  introductionVideoUrl?: string;
 };
 
 export async function getSiteSettings(): Promise<AdminSiteSettings | null> {
@@ -62,6 +64,7 @@ export async function saveSiteSettings(
     linkedinUrl: data.linkedinUrl ?? "",
     githubUrl: data.githubUrl ?? "",
     aboutSummary: data.aboutSummary ?? "",
+    introductionVideoUrl: data.introductionVideoUrl ?? "",
   };
 
   if (data.profileImage?._ref) {

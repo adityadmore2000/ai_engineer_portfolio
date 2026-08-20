@@ -172,6 +172,13 @@ export const siteSettings = defineType({
       initialValue: true,
       description: "Controls whether the floating AI chat button and ChatProvider are visible on the public website.",
     }),
+    defineField({
+      name: "introductionVideoUrl",
+      title: "Introduction Video URL",
+      type: "url",
+      description: "YouTube URL for the introduction video shown in the About Me section (e.g. https://youtube.com/watch?v=…)",
+      validation: urlRule,
+    }),
   ],
   preview: {
     select: {

@@ -42,6 +42,7 @@ export const SettingsView: React.FC = () => {
   const [heroDescription, setHeroDescription] = useState('');
   const [aboutSummary, setAboutSummary] = useState('');
   const [shortBio, setShortBio] = useState('');
+  const [introductionVideoUrl, setIntroductionVideoUrl] = useState('');
   const [profileImageUrl, setProfileImageUrl] = useState('');
   const [profileImageAlt, setProfileImageAlt] = useState('');
   const [profileImageRef, setProfileImageRef] = useState<string | undefined>();
@@ -56,6 +57,7 @@ export const SettingsView: React.FC = () => {
     setHeroDescription(settings.heroDescription ?? '');
     setAboutSummary(settings.aboutSummary ?? '');
     setShortBio(settings.shortBio ?? '');
+    setIntroductionVideoUrl(settings.introductionVideoUrl ?? '');
     setProfileImageUrl(settings.profileImage?.url ?? '');
     setProfileImageAlt(settings.profileImage?.alt ?? '');
     setProfileImageRef(settings.profileImage?.assetRef);
@@ -111,6 +113,7 @@ export const SettingsView: React.FC = () => {
         linkedinUrl,
         githubUrl,
         aboutSummary,
+        introductionVideoUrl,
         profileImage: profileImageRef
           ? { _ref: profileImageRef, alt: profileImageAlt }
           : { alt: profileImageAlt },
@@ -353,6 +356,20 @@ export const SettingsView: React.FC = () => {
             placeholder="Extended about section content…"
             minHeight="160px"
           />
+        </div>
+
+        <div>
+          <LabeledInput
+            label="Introduction Video URL"
+            icon={LinkIcon}
+            type="url"
+            value={introductionVideoUrl}
+            onChange={setIntroductionVideoUrl}
+            placeholder="https://youtube.com/watch?v=…"
+          />
+          <p className="mt-1 text-[10px] text-slate-400">
+            YouTube URL shown as the introduction video in the About Me section.
+          </p>
         </div>
       </section>
     </div>

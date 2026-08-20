@@ -1,39 +1,41 @@
 import type { SiteSettings } from "@/sanity/types";
-import { Markdown } from "./Markdown";
-import { SectionShell } from "./SectionShell";
 
 export function About({ settings }: { settings?: SiteSettings | null }) {
-  if (!settings?.aboutSummary && !settings?.focusAreas?.length) {
+  if (!settings?.focusAreas?.length) {
     return null;
   }
 
   return (
-    <SectionShell
+    <section
       id="about"
-      eyebrow="About"
-      title="Applied AI for production-minded teams"
-      className="bg-white"
+      className="w-full bg-white"
+      style={{
+        paddingTop: "0",
+        paddingBottom: "var(--section-padding-y, 100px)",
+        paddingLeft: "var(--section-padding-x, 80px)",
+        paddingRight: "var(--section-padding-x, 80px)"
+      }}
     >
-      {settings.aboutSummary ? (
-        <Markdown className="mb-10 max-w-3xl text-lg text-slate-700">
-          {settings.aboutSummary}
-        </Markdown>
-      ) : null}
-      {settings.focusAreas?.length ? (
-        <div>
-          <h3 className="text-xl font-bold text-slate-950">What I Focus On</h3>
-          <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {settings.focusAreas.map((area) => (
-              <div
-                key={area}
-                className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm font-semibold text-slate-800"
-              >
-                {area}
-              </div>
-            ))}
-          </div>
-        </div>
-      ) : null}
-    </SectionShell>
+      <div className="mb-8">
+        <h3
+          className="heading-display text-[var(--color-dark,#121315)]"
+          style={{ fontSize: "clamp(1.25rem, 2.5vw, 1.75rem)" }}
+        >
+          FOCUS AREAS
+        </h3>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
+        {settings.focusAreas.map((area) => (
+          <span
+            key={area}
+            className="pill-badge border-[var(--color-gray-400,#9ca3af)] text-[var(--color-dark,#121315)]"
+            style={{ fontFamily: "var(--font-inter, sans-serif)" }}
+          >
+            {area}
+          </span>
+        ))}
+      </div>
+    </section>
   );
 }

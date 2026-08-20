@@ -5,7 +5,7 @@ import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
 import { Projects } from "@/components/Projects";
-import { ResumeSection } from "@/components/ResumeSection";
+import { Showcase } from "@/components/Showcase";
 import { Skills } from "@/components/Skills";
 import type { Metadata } from "next";
 import { isSanityConfigured } from "@/sanity/env";
@@ -62,11 +62,11 @@ export default async function Home() {
       <Header settings={pageSettings} />
       <main>
         <Hero settings={pageSettings} />
+        <Projects projects={pageProjects} />
+        <Showcase settings={pageSettings} experiences={pageExperiences} />
         <About settings={pageSettings} />
         <Experience experiences={pageExperiences} />
-        <Projects projects={pageProjects} />
         <Skills categories={pageSkillCategories} />
-        <ResumeSection settings={pageSettings} />
         <Contact settings={pageSettings} />
       </main>
       <Footer settings={pageSettings} />

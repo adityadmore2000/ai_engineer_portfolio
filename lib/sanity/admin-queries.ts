@@ -45,7 +45,8 @@ export const adminSiteSettingsQuery = `
     maintenanceEnabled,
     maintenanceMessage,
     criticalLock,
-    showAiChat
+    showAiChat,
+    introductionVideoUrl
   }
 `;
 

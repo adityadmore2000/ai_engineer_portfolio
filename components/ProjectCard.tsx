@@ -5,8 +5,8 @@ import type { ProjectSummary } from "@/sanity/types";
 
 export function ProjectCard({ project }: { project: ProjectSummary }) {
   return (
-    <article className="group overflow-hidden rounded-[16px] bg-[#f3f4f6] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
-      <div className="relative aspect-[4/3] overflow-hidden">
+    <article className="group overflow-hidden rounded-[12px] bg-[#f3f4f6] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+      <div className="relative aspect-[16/9] overflow-hidden">
         {project.coverImage?.url ? (
           <Image
             src={project.coverImage.url}
@@ -15,17 +15,17 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center bg-slate-200 text-sm text-slate-500">
+          <div className="flex h-full items-center justify-center bg-slate-200 text-xs text-slate-500">
             Add a cover image in Sanity Studio
           </div>
         )}
 
         {project.technologies?.length ? (
-          <div className="absolute bottom-3 left-3 flex flex-wrap gap-1.5">
+          <div className="absolute bottom-2 left-2 flex flex-wrap gap-1">
             {project.technologies.slice(0, 4).map((tech) => (
               <span
                 key={tech}
-                className="rounded-full bg-black/60 px-2.5 py-0.5 text-xs font-medium text-white backdrop-blur-sm"
+                className="rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur-sm"
               >
                 {tech}
               </span>
@@ -34,9 +34,9 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
         ) : null}
       </div>
 
-      <div className="flex items-center justify-between p-5">
+      <div className="flex items-center justify-between px-4 py-3">
         <h3
-          className="text-lg font-bold text-[#121315]"
+          className="text-sm font-bold text-[#121315]"
           style={{ fontFamily: "var(--font-outfit)" }}
         >
           {project.title}
@@ -45,10 +45,10 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
         {project.slug ? (
           <Link
             href={`/projects/${project.slug}`}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#121315] text-white transition-colors hover:bg-[#e36444]"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#121315] text-white transition-colors hover:bg-[#e36444]"
             aria-label={`View ${project.title}`}
           >
-            <ArrowUpRight size={16} />
+            <ArrowUpRight size={13} />
           </Link>
         ) : null}
       </div>
