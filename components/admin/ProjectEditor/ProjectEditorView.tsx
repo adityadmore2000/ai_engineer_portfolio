@@ -22,6 +22,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Images,
+  Trash2,
 } from 'lucide-react';
 import { usePortfolio } from '@/lib/admin/context';
 import { ProjectSection } from '@/lib/admin/types';
@@ -30,6 +31,7 @@ import { ImagePickerModal } from '@/components/admin/common/ImagePickerModal';
 import { MediaPickerModal, MediaInsertResult } from '@/components/admin/common/MediaPickerModal';
 import { SectionCard } from './SectionCard';
 import { PublishConfirmModal } from './PublishConfirmModal';
+import { DeleteConfirmModal } from '@/components/admin/DeleteConfirmModal';
 import { SECTION_TEMPLATES } from '@/lib/admin/section-templates';
 import { uploadProjectImage } from '@/app/admin/actions/projects';
 import { MARKDOWN_ASSET_IMAGE_PATTERN } from '@/lib/utils/media-ref';
@@ -41,6 +43,7 @@ export const ProjectEditorView: React.FC = () => {
     updateActiveProject,
     saveDraft,
     publishProject,
+    deleteProject,
     discardUnsavedChanges,
     hasUnsavedChanges,
     isLoading,
@@ -48,6 +51,7 @@ export const ProjectEditorView: React.FC = () => {
   } = usePortfolio();
 
   const [isPublishModalOpen, setIsPublishModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isImagePickerOpen, setIsImagePickerOpen] = useState(false);
   const [isMediaPanelOpen, setIsMediaPanelOpen] = useState(false);
   const [replacingRefId, setReplacingRefId] = useState<string | null>(null);
@@ -602,6 +606,17 @@ export const ProjectEditorView: React.FC = () => {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+            <button
+              id="btn-editor-delete"
+              type="button"
+              onClick={() => setIsDeleteModalOpen(true)}
+              className="px-4 py-2 rounded-xl border border-rose-200 bg-white text-rose-600 hover:bg-rose-50 hover:border-rose-300 text-xs font-semibold transition-all flex items-center gap-2 cursor-pointer shadow-2xs"
+              title="Delete this project"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              <span>Delete</span>
+            </button>
+
             {hasUnsavedChanges && (
               <button
                 id="btn-editor-discard"
@@ -661,6 +676,17 @@ export const ProjectEditorView: React.FC = () => {
         project={activeProject}
         onClose={() => setIsPublishModalOpen(false)}
         onConfirm={() => publishProject(activeProject._id)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        project={activeProject}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={(id) => {
+          deleteProject(id);
+          navigateTo({ view: 'projects' });
+        }}
       />
 
       {/* Image Picker Modal */}

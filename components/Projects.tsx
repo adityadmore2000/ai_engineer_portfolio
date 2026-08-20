@@ -1,6 +1,5 @@
 import type { ProjectSummary } from "@/sanity/types";
 import { ProjectCard } from "./ProjectCard";
-import { SectionShell } from "./SectionShell";
 
 export function Projects({ projects }: { projects: ProjectSummary[] }) {
   if (!projects.length) {
@@ -8,17 +7,31 @@ export function Projects({ projects }: { projects: ProjectSummary[] }) {
   }
 
   return (
-    <SectionShell
+    <section
       id="projects"
-      eyebrow="Projects"
-      title="Selected AI systems"
       className="bg-white"
+      style={{
+        paddingLeft: "var(--section-padding-x)",
+        paddingRight: "var(--section-padding-x)",
+        paddingTop: "var(--section-padding-y)",
+        paddingBottom: "var(--section-padding-y)",
+      }}
     >
-      <div className="grid gap-5 lg:grid-cols-3">
+      <h2
+        className="heading-display text-[clamp(2.5rem,6vw,5rem)] text-[#121315]"
+      >
+        WORKS
+      </h2>
+      <p className="mt-3 max-w-xl text-lg text-[#9ca3af]">
+        A selection of projects showcasing my work in applied AI engineering.
+      </p>
+
+      <div className="mt-12 grid gap-8 lg:grid-cols-2">
         {projects.map((project) => (
           <ProjectCard key={project._id} project={project} />
         ))}
       </div>
-    </SectionShell>
+
+    </section>
   );
 }
