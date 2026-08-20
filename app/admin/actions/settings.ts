@@ -5,6 +5,7 @@ import { getWriteClient } from "@/lib/sanity/write-client";
 import { client as readClient } from "@/sanity/client";
 import { adminSiteSettingsQuery } from "@/lib/sanity/admin-queries";
 import { requireAdmin } from "@/lib/admin/auth";
+import { ALLOWED_UPLOAD_MIME_TYPES, MAX_UPLOAD_FILE_SIZE } from "@/lib/utils/media-ref";
 
 export type AdminSiteSettings = {
   _id: string;
@@ -109,12 +110,23 @@ export async function uploadSettingsImage(
   const file = formData.get("file") as File | null;
   if (!file) throw new Error("No file provided");
 
+  if (!(ALLOWED_UPLOAD_MIME_TYPES as readonly string[]).includes(file.type)) {
+    throw new Error("File type not supported. Allowed types: PNG, JPEG, WebP, GIF.");
+  }
+  if (file.size > MAX_UPLOAD_FILE_SIZE) {
+    throw new Error("File too large. Maximum size is 5MB.");
+  }
+
   const writeClient = getWriteClient();
   const buffer = Buffer.from(await file.arrayBuffer());
   const asset = await writeClient.assets.upload("image", buffer, {
     filename: file.name,
     contentType: file.type,
   });
+
+  if (!asset._id || !asset.url) {
+    throw new Error("Upload succeeded but Sanity did not return asset details.");
+  }
 
   return { assetId: asset._id, url: asset.url };
 }
