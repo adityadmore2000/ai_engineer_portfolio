@@ -2,6 +2,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import type { ProjectSummary } from "@/sanity/types";
+import { ProjectCoverFallback } from "./ProjectCoverFallback";
 
 export function ProjectCard({ project }: { project: ProjectSummary }) {
   return (
@@ -15,9 +16,7 @@ export function ProjectCard({ project }: { project: ProjectSummary }) {
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full items-center justify-center bg-slate-200 text-xs text-slate-500">
-            Add a cover image in Sanity Studio
-          </div>
+          <ProjectCoverFallback name={project.title ?? ""} />
         )}
 
         {project.technologies?.length ? (
