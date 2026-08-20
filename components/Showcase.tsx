@@ -1,8 +1,5 @@
 import type { SiteSettings, ExperienceItem } from "@/sanity/types";
-import { getResumeHref } from "@/sanity/utils";
 import { extractVideoId } from "@/lib/utils/youtube";
-import { AnalyticsEvents } from "@/lib/analytics";
-import { TrackLink } from "./Analytics";
 
 type ShowcaseProps = {
   settings?: SiteSettings | null;
@@ -31,7 +28,6 @@ function VideoEmbed({ url }: { url: string }) {
 }
 
 export function Showcase({ settings, experiences: _experiences = [] }: ShowcaseProps) {
-  const resumeHref = getResumeHref(settings);
   const hasVideo = Boolean(settings?.introductionVideoUrl);
 
   return (
@@ -68,17 +64,6 @@ export function Showcase({ settings, experiences: _experiences = [] }: ShowcaseP
             ) : null}
           </div>
 
-          {resumeHref ? (
-            <TrackLink
-              href={resumeHref}
-              event={AnalyticsEvents.FileDownload}
-              metadata={{ file: "resume", format: "pdf" }}
-              className="inline-flex items-center justify-center self-start rounded-full border-2 border-[var(--color-coral,#e36444)] bg-transparent px-6 py-3 text-sm font-semibold text-[var(--color-coral,#e36444)] transition hover:bg-[var(--color-coral,#e36444)] hover:text-white"
-              style={{ fontFamily: "var(--font-inter, sans-serif)" }}
-            >
-              Download CV
-            </TrackLink>
-          ) : null}
         </div>
 
         {/* Right — Introduction video */}

@@ -3,15 +3,12 @@ import Image from "next/image";
 import type { ReactNode } from "react";
 import { Github, Linkedin, Mail } from "lucide-react";
 import type { SiteSettings } from "@/sanity/types";
-import { getResumeHref } from "@/sanity/utils";
 import { Markdown } from "./Markdown";
 import { TrackLink } from "./Analytics";
 import { AnalyticsEvents } from "@/lib/analytics";
 
 export function Hero({ settings }: { settings?: SiteSettings | null }) {
-  const resumeHref = getResumeHref(settings);
   const primaryCtaText = settings?.primaryCtaText || "View Projects";
-  const secondaryCtaText = settings?.secondaryCtaText || "Download Resume";
 
   if (!settings) {
     return (
@@ -48,7 +45,7 @@ export function Hero({ settings }: { settings?: SiteSettings | null }) {
           </h1>
 
           {settings.heroDescription ? (
-            <Markdown className="mt-6 max-w-xl text-lg leading-relaxed text-[#9ca3af] [&_a]:text-[#e36444] [&_strong]:text-white">
+            <Markdown className="mt-10 max-w-xl text-lg leading-relaxed text-white/75 [&_a]:text-[#e36444] [&_strong]:text-white">
               {settings.heroDescription}
             </Markdown>
           ) : null}
@@ -60,18 +57,6 @@ export function Hero({ settings }: { settings?: SiteSettings | null }) {
             >
               {primaryCtaText}
             </Link>
-            {resumeHref ? (
-              <TrackLink
-                href={resumeHref}
-                target="_blank"
-                rel="noreferrer"
-                event={AnalyticsEvents.FileDownload}
-                metadata={{ file: "resume", format: "pdf" }}
-                className="inline-flex items-center justify-center rounded-full border border-white/30 px-6 py-3 text-sm font-semibold text-white transition-colors hover:border-white/60"
-              >
-                {secondaryCtaText}
-              </TrackLink>
-            ) : null}
           </div>
 
           <div className="mt-7 flex gap-3">
