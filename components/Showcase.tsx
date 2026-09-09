@@ -32,7 +32,7 @@ export function Showcase({ settings, experiences: _experiences = [] }: ShowcaseP
 
   return (
     <section
-      id="showcase"
+      id="about"
       className="w-full bg-white"
       style={{
         padding: "var(--section-padding-y, 100px) var(--section-padding-x, 80px)",
