@@ -70,9 +70,9 @@ export default async function Home() {
         <Projects projects={pageProjects} />
         <Showcase settings={pageSettings} experiences={pageExperiences} />
         <Experience experiences={pageExperiences} />
+        <Capabilities items={capabilities} />
         <WorkingProcess steps={pageWorkingProcess} />
         <Blog posts={pageBlogPosts} />
-        <Capabilities items={capabilities} />
         <Contact settings={pageSettings} contactSettings={contactSettings} />
       </main>
       <Footer settings={pageSettings} />
