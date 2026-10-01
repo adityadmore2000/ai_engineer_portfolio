@@ -1,7 +1,7 @@
 import { Blog } from "@/components/Blog";
 import { Contact } from "@/components/Contact";
 import { Experience } from "@/components/Experience";
-import { FAQ } from "@/components/FAQ";
+import { Capabilities } from "@/components/Capabilities";
 import { Footer } from "@/components/Footer";
 import { Header } from "@/components/Header";
 import { Hero } from "@/components/Hero";
@@ -21,7 +21,7 @@ import {
   getBlogPosts,
   getContactSettings,
   getExperiences,
-  getFaqItems,
+  getCapabilities,
   getSiteSettings,
   getWorkingProcess
 } from "@/sanity/queries";
@@ -46,14 +46,14 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function Home() {
-  const [settings, experiences, projects, workingProcess, blogPosts, faqItems, contactSettings] =
+  const [settings, experiences, projects, workingProcess, blogPosts, capabilities, contactSettings] =
     await Promise.all([
       getSiteSettings(),
       getExperiences(),
       getAllProjects(),
       getWorkingProcess(),
       getBlogPosts(),
-      getFaqItems(),
+      getCapabilities(),
       getContactSettings(),
     ]);
   const pageSettings = settings || fallbackSiteSettings;
@@ -61,7 +61,6 @@ export default async function Home() {
   const pageProjects = isSanityConfigured ? projects : toProjectSummaries(fallbackProjects);
   const pageWorkingProcess = workingProcess;
   const pageBlogPosts = blogPosts;
-  const pageFaqItems = faqItems;
 
   return (
     <div className="min-h-screen bg-[var(--background)]">
@@ -73,7 +72,7 @@ export default async function Home() {
         <Experience experiences={pageExperiences} />
         <WorkingProcess steps={pageWorkingProcess} />
         <Blog posts={pageBlogPosts} />
-        <FAQ items={pageFaqItems} />
+        <Capabilities items={capabilities} />
         <Contact settings={pageSettings} contactSettings={contactSettings} />
       </main>
       <Footer settings={pageSettings} />

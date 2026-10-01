@@ -4,7 +4,7 @@ import type {
   BlogPost,
   ContactSettings,
   ExperienceItem,
-  FaqItem,
+  Capability,
   ProjectDetail,
   ProjectSummary,
   SiteSettings,
@@ -184,12 +184,15 @@ export const blogPostsQuery = groq`
   }
 `;
 
-export const faqItemsQuery = groq`
-  *[_type == "faqItem"] | order(coalesce(displayOrder, 999) asc) {
+export const capabilitiesQuery = groq`
+  *[_type == "capability" && published == true] | order(coalesce(displayOrder, 999) asc) {
     _id,
-    question,
-    answer,
-    displayOrder
+    title,
+    shortDescription,
+    details,
+    useCases,
+    displayOrder,
+    published
   }
 `;
 
@@ -203,6 +206,6 @@ export async function getBlogPosts(fetcher: SanityFetcher = sanityFetch) {
   return (await fetcher<BlogPost[]>({ query: blogPostsQuery })) || [];
 }
 
-export async function getFaqItems(fetcher: SanityFetcher = sanityFetch) {
-  return (await fetcher<FaqItem[]>({ query: faqItemsQuery })) || [];
+export async function getCapabilities(fetcher: SanityFetcher = sanityFetch) {
+  return (await fetcher<Capability[]>({ query: capabilitiesQuery })) || [];
 }

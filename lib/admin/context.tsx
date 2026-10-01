@@ -136,8 +136,8 @@ function routeToPath(route: AdminRoute): string {
       return `/admin/projects/${route.projectId}/edit`;
     case 'experience':
       return '/admin/experience';
-    case 'faq':
-      return '/admin/faqs';
+    case 'capabilities':
+      return '/admin/capabilities';
     case 'contact':
       return '/admin/contact';
     case 'blog':
@@ -165,8 +165,8 @@ function currentRouteFromPathname(
   if (pathname === '/admin/experience') {
     return { view: 'experience' };
   }
-  if (pathname === '/admin/faqs') {
-    return { view: 'faq' };
+  if (pathname === '/admin/capabilities') {
+    return { view: 'capabilities' };
   }
   if (pathname === '/admin/contact') {
     return { view: 'contact' };

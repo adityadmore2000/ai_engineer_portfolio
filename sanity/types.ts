@@ -116,10 +116,12 @@ export type BlogPost = {
   published?: boolean;
 };
 
-export type FaqItem = {
+export type Capability = {
   _id: string;
-  question: string;
-  answer?: string;
+  title: string;
+  shortDescription: string;
+  details?: string;
+  useCases?: string[];
   displayOrder?: number;
+  published?: boolean;
 };
-

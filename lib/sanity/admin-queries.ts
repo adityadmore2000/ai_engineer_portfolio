@@ -77,9 +77,9 @@ export const adminExperiencesQuery = `
   }
 `;
 
-export const adminFaqItemsQuery = `
-  *[_type == "faqItem"] | order(coalesce(displayOrder, 999) asc) {
-    _id, _rev, question, answer, displayOrder
+export const adminCapabilitiesQuery = `
+  *[_type == "capability"] | order(coalesce(displayOrder, 999) asc) {
+    _id, _rev, title, shortDescription, details, useCases, displayOrder, published
   }
 `;
 
